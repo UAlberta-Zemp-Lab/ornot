@@ -1,0 +1,3 @@
+[submodule "core/lib/external/zstd"]
+	path = core/lib/external/zstd
+	url = https://github.com/facebook/zstd.git
