@@ -48,7 +48,7 @@ b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count
 	size buf_size  = ZSTD_COMPRESSBOUND(data_size);
 	MemoryBlock buf = os_block_alloc(buf_size);
 	if (buf.size) {
-		size written = ZSTD_compress(buf.data, buf.size, data, data_size, ZSTD_defaultCLevel());
+		size written = ZSTD_compress(buf.data, buf.size, data, data_size, ZSTD_CLEVEL_DEFAULT);
 		result       = !ZSTD_isError(written);
 		if (result)
 			result = os_write_new_file(output_name, (s8){.data = buf.data, .len = written});
