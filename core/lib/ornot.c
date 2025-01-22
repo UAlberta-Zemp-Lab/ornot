@@ -1,4 +1,4 @@
-#if 0
+#if 1
 /* IMPORTANT(rnp): depending on the license we are not allowed to do this if we intend
  * on shipping ornot as a library */
 #include "external/zstd/lib/common/entropy_common.c"

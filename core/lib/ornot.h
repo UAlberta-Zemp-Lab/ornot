@@ -17,7 +17,7 @@ typedef ptrdiff_t iptr;
 #ifdef _WIN32
 #define LIB_FN __declspec(dllexport)
 #else
-#define LIB_FN __attribute__((visibility ("default")))
+#define LIB_FN
 #endif
 
-LIB_FN b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count);
+LIB_FN b32 write_i16_data_compressed(char *output_name, i16 *data, u32 data_element_count);
