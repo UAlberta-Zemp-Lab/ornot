@@ -20,4 +20,8 @@ typedef ptrdiff_t iptr;
 #define LIB_FN
 #endif
 
+#include "zemp_bp.h"
+
+LIB_FN b32 write_zemp_bp_v1(char *output_name, zemp_bp_v1 *header);
+
 LIB_FN b32 write_i16_data_compressed(char *output_name, i16 *data, u32 data_element_count);

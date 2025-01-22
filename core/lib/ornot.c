@@ -34,6 +34,13 @@ typedef struct {
 
 #include "platform.h"
 
+b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
+{
+	b32 result = os_write_new_file(output_name,
+	                               (s8){.data = (u8 *)header, .len = sizeof(*header)});
+	return result;
+}
+
 b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count)
 {
 	b32 result = 0;
