@@ -19,6 +19,7 @@ PACK(struct zemp_bp_v1 {
 	float    sampling_frequency;
 	float    time_offset;
 	uint32_t transmit_mode;
+	float    transducer_element_pitch[2];
 	float    transducer_transform_matrices[64]; /* NOTE: column major order */
 	int16_t  channel_mapping[1024];
 	float    steering_angles[1024];
@@ -26,5 +27,4 @@ PACK(struct zemp_bp_v1 {
 	int16_t  sparse_elements[1024];
 	int16_t  hadamard_rows[1024];
 });
-
 typedef struct zemp_bp_v1 zemp_bp_v1;
