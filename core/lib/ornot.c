@@ -32,6 +32,11 @@ typedef struct {
 	u64   size;
 } MemoryBlock;
 
+typedef struct {
+	MemoryBlock backing;
+	size        filled;
+} MemoryStream;
+
 #include "platform.h"
 
 b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
@@ -39,6 +44,23 @@ b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
 	header->magic = ZEMP_BP_MAGIC;
 	b32 result = os_write_new_file(output_name,
 	                               (s8){.data = (u8 *)header, .len = sizeof(*header)});
+	return result;
+}
+
+b32 unpack_zemp_bp_v1(c8 *input_name, zemp_bp_v1 *output_header)
+{
+	MemoryStream file_data = os_read_whole_file(input_name);
+	b32 result = 0;
+
+	if (file_data.filled && (*(uint64_t *)file_data.backing.data == ZEMP_BP_MAGIC)) {
+		zemp_bp_v1 *header = file_data.backing.data;
+		if (header->version == 1) {
+			memcpy(output_header, header, sizeof(*header));
+			result = 1;
+			os_block_release(file_data.backing);
+		}
+	}
+
 	return result;
 }
 
