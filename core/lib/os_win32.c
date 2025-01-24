@@ -4,20 +4,10 @@
 #define MEM_RELEASE    0x8000
 
 #define GENERIC_WRITE  0x40000000
-#define GENERIC_WRITE  0x80000000
+#define GENERIC_READ   0x80000000
 
 #define CREATE_ALWAYS  2
 #define OPEN_EXISTING  3
-
-#define W32(r) __declspec(dllimport) r __stdcall
-W32(b32)    CloseHandle(iptr);
-W32(iptr)   CreateFileA(c8 *, u32, u32, void *, u32, u32, void *);
-W32(b32)    GetFileInformationByHandle(iptr, w32_file_info *);
-W32(i32)    GetLastError(void);
-W32(b32)    ReadFile(iptr, u8 *, i32, i32 *, void *);
-W32(b32)    WriteFile(iptr, u8 *, i32, i32 *, void *);
-W32(void *) VirtualAlloc(u8 *, size, u32, u32);
-W32(b32)    VirtualFree(u8 *, size, u32);
 
 PACK(struct w32_file_info {
 	u32 dwFileAttributes;
@@ -32,6 +22,16 @@ PACK(struct w32_file_info {
 	u32 nFileIndexLow;
 });
 typedef struct w32_file_info w32_file_info;
+
+#define W32(r) __declspec(dllimport) r __stdcall
+W32(b32)    CloseHandle(iptr);
+W32(iptr)   CreateFileA(c8 *, u32, u32, void *, u32, u32, void *);
+W32(b32)    GetFileInformationByHandle(iptr, w32_file_info *);
+W32(i32)    GetLastError(void);
+W32(b32)    ReadFile(iptr, u8 *, i32, i32 *, void *);
+W32(b32)    WriteFile(iptr, u8 *, i32, i32 *, void *);
+W32(void *) VirtualAlloc(u8 *, size, u32, u32);
+W32(b32)    VirtualFree(u8 *, size, u32);
 
 static PLATFORM_ALLOC_MEMORY_BLOCK_FN(os_block_alloc)
 {
@@ -60,11 +60,12 @@ static PLATFORM_READ_WHOLE_FILE_FN(os_read_whole_file)
 	w32_file_info fi;
 	iptr h = CreateFileA(fname, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
 	if (h != -1 && GetFileInformationByHandle(h, &fi)) {
-		result.backing = os_block_alloc((size)fi.nFileSizeHigh << 32 | (size)fi.nFileSizeLow);
+		size file_size = (size)fi.nFileSizeHigh << 32 | (size)fi.nFileSizeLow;
+		result.backing = os_block_alloc(file_size);
 		i32 rlen;
 		if (result.backing.size && result.backing.size <= ((size)(u32)-1) &&
-		    ReadFile(h, result.backing.data, result.backing.size, &rlen, 0) &&
-		    rlen == result.backing.size)
+		    ReadFile(h, result.backing.data, file_size, &rlen, 0) &&
+		    rlen == file_size)
 		{
 			result.filled = rlen;
 		} else if (result.backing.size) {
