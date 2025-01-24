@@ -20,7 +20,8 @@ static PLATFORM_ALLOC_MEMORY_BLOCK_FN(os_block_alloc)
 
 static PLATFORM_RELEASE_MEMORY_BLOCK_FN(os_block_release)
 {
-	munmap(memory.data, memory.size);
+	if (memory.size)
+		munmap(memory.data, memory.size);
 }
 
 static PLATFORM_READ_WHOLE_FILE_FN(os_read_whole_file)
