@@ -1,7 +1,11 @@
 /* NOTE: standalone header for getting zemp_bp struct definition */
 #include <stdint.h>
 
+// ('P' << 56 | 'B' << 48 | 'P' << 40 | 'M' << 32 | 'E' << 24 | 'Z' << 16 | 0xFE << 8 | 0xCA)
+#define ZEMP_BP_MAGIC (uint64_t)0x5042504D455AFECAull
+
 typedef struct {
+	uint64_t magic;
 	uint32_t version;
 	uint16_t decode_mode;
 	uint16_t beamform_mode;

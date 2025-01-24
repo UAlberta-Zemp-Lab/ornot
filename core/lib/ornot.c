@@ -36,6 +36,7 @@ typedef struct {
 
 b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
 {
+	header->magic = ZEMP_BP_MAGIC;
 	b32 result = os_write_new_file(output_name,
 	                               (s8){.data = (u8 *)header, .len = sizeof(*header)});
 	return result;
