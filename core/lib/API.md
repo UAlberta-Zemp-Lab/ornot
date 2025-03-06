@@ -23,6 +23,8 @@ Example:
 bp = libstruct("zemp_bp_v1", struct());
 % fill in the struct
 result = calllib("ornot", "unpack_zemp_bp_v1", file_path, bp);
+% convert back to MATLAB struct
+bp = struct(bp);
 ```
 
 ### `b32 write_i16_data_compressed(char *output_name, i16 *data, u32 data_element_count)`
