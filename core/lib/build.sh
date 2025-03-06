@@ -40,6 +40,7 @@ build_zstd()
 	${cc} ${cflags} -c ${src}/compress/zstd_ldm.c                 -o ${dst}/zstd_ldm.o
 	${cc} ${cflags} -c ${src}/compress/zstd_opt.c                 -o ${dst}/zstd_opt.o
 	${cc} ${cflags} -c ${src}/compress/zstdmt_compress.c          -o ${dst}/zstdmt_compress.o
+	${cc} ${cflags} -c ${src}/compress/zstd_preSplit.c            -o ${dst}/zstd_preSplit.o
 	${cc} ${cflags} -c ${src}/decompress/huf_decompress_amd64.S   -o ${dst}/huf_decompress_amd64.o
 	${cc} ${cflags} -c ${src}/decompress/huf_decompress.c         -o ${dst}/huf_decompress.o
 	${cc} ${cflags} -c ${src}/decompress/zstd_ddict.c             -o ${dst}/zstd_ddict.o
