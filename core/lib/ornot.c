@@ -1,27 +1,9 @@
-#if 1
-/* IMPORTANT(rnp): depending on the license we are not allowed to do this if we intend
- * on shipping ornot as a library */
-#include "external/zstd/lib/common/entropy_common.c"
-#include "external/zstd/lib/common/error_private.c"
-#include "external/zstd/lib/common/fse_decompress.c"
-#include "external/zstd/lib/common/xxhash.c"
-#include "external/zstd/lib/compress/fse_compress.c"
-#include "external/zstd/lib/compress/hist.c"
-#include "external/zstd/lib/compress/huf_compress.c"
-#include "external/zstd/lib/compress/zstd_compress.c"
-#include "external/zstd/lib/compress/zstd_compress_literals.c"
-#include "external/zstd/lib/compress/zstd_compress_sequences.c"
-#include "external/zstd/lib/compress/zstd_compress_superblock.c"
-#include "external/zstd/lib/compress/zstd_double_fast.c"
-#include "external/zstd/lib/compress/zstd_fast.c"
-#include "external/zstd/lib/compress/zstd_lazy.c"
-#include "external/zstd/lib/compress/zstd_ldm.c"
-#include "external/zstd/lib/compress/zstd_opt.c"
-#else
 #include <zstd.h>
-#endif
 
 #include "ornot.h"
+
+/* TODO(rnp): remove this dependency */
+void *memcpy(void *restrict, const void *restrict, size_t);
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(*a))
 typedef struct { size len; u8 *data; } s8;
