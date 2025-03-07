@@ -34,4 +34,11 @@ Compresses `data` using [zstd][], and writes the result to
 extension as required by their environment. Returns whether the
 operation succeeded.
 
+## MATLAB (Mex)
+
+### `out = ornot_zstd_decompress_mex(in)`
+
+Decompresses 1D `uint8` data `in` to `int16` array `out`. The
+function will error if these constraints are not met.
+
 [zstd]: https://facebook.github.io/zstd/
