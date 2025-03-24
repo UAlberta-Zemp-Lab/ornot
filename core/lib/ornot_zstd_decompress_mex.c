@@ -8,7 +8,7 @@ typedef int32_t i32;
 typedef size_t  ux;
 
 void
-mexFunction(i32 nlhs, mxArray *plhs[], i32 nrhs, mxArray *prhs[])
+mexFunction(i32 nlhs, mxArray *plhs[], i32 nrhs, const mxArray *prhs[])
 {
 	if (nlhs > 1)
 		mexErrMsgIdAndTxt("ornot:zstd_decompress", "function returns 1 result");
