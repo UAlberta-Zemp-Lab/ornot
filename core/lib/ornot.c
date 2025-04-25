@@ -38,6 +38,9 @@ b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
 	return result;
 }
 
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#warning "zemp_bp_v1 unpacking not yet implemented for big endian hosts"
+#else
 b32 unpack_zemp_bp_v1(c8 *input_name, zemp_bp_v1 *output_header)
 {
 	b32 result = 0;
@@ -54,6 +57,7 @@ b32 unpack_zemp_bp_v1(c8 *input_name, zemp_bp_v1 *output_header)
 
 	return result;
 }
+#endif
 
 b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count)
 {
