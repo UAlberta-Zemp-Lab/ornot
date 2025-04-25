@@ -2,11 +2,20 @@
 
 #include "ornot.h"
 
+typedef char      c8;
+typedef uint8_t   u8;
+typedef int16_t   i16;
+typedef uint32_t  u32;
+typedef uint32_t  b32;
+typedef uint64_t  u64;
+typedef ptrdiff_t iz;
+typedef ptrdiff_t iptr;
+
 /* TODO(rnp): remove this dependency */
 void *memcpy(void *restrict, const void *restrict, size_t);
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(*a))
-typedef struct { size len; u8 *data; } s8;
+typedef struct { iz len; u8 *data; } s8;
 #define s8(s) (s8){.len = ARRAY_COUNT(s) - 1, .data = (u8 *)s}
 
 typedef struct {
@@ -16,7 +25,7 @@ typedef struct {
 
 typedef struct {
 	MemoryBlock backing;
-	size        filled;
+	iz          filled;
 } MemoryStream;
 
 #include "platform.h"
@@ -49,12 +58,12 @@ b32 unpack_zemp_bp_v1(c8 *input_name, zemp_bp_v1 *output_header)
 b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count)
 {
 	b32 result = 0;
-	size data_size = data_element_count * sizeof(*data);
-	size buf_size  = ZSTD_COMPRESSBOUND(data_size);
+	iz data_size = data_element_count * sizeof(*data);
+	iz buf_size  = ZSTD_COMPRESSBOUND(data_size);
 	MemoryBlock buf = os_block_alloc(buf_size);
 	if (buf.size) {
-		size written = ZSTD_compress(buf.data, buf.size, data, data_size, ZSTD_CLEVEL_DEFAULT);
-		result       = !ZSTD_isError(written);
+		iz written = ZSTD_compress(buf.data, buf.size, data, data_size, ZSTD_CLEVEL_DEFAULT);
+		result     = !ZSTD_isError(written);
 		if (result)
 			result = os_write_new_file(output_name, (s8){.data = buf.data, .len = written});
 	}

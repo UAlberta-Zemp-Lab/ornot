@@ -6,8 +6,8 @@
 static PLATFORM_ALLOC_MEMORY_BLOCK_FN(os_block_alloc)
 {
 	MemoryBlock result = {0};
-	size pagesize = 4096L;
-	size capacity = requested_size;
+	iz pagesize = 4096L;
+	iz capacity = requested_size;
 	if (capacity % pagesize != 0)
 		capacity += pagesize - capacity % pagesize;
 
@@ -31,7 +31,7 @@ static PLATFORM_READ_WHOLE_FILE_FN(os_read_whole_file)
 	iptr fd = open(fname, O_RDONLY, 0);
 	if (fd != -1 && fstat(fd, &sb) != -1) {
 		result.backing = os_block_alloc(sb.st_size);
-		size rlen;
+		iz rlen;
 		if (result.backing.size &&
 		    ((rlen = read(fd, result.backing.data, sb.st_size)) == sb.st_size))
 		{

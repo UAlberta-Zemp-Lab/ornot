@@ -1,4 +1,4 @@
-#define PLATFORM_ALLOC_MEMORY_BLOCK_FN(name) MemoryBlock name(size requested_size)
+#define PLATFORM_ALLOC_MEMORY_BLOCK_FN(name) MemoryBlock name(iz requested_size)
 #define PLATFORM_RELEASE_MEMORY_BLOCK_FN(name) void name(MemoryBlock memory)
 #define PLATFORM_READ_WHOLE_FILE_FN(name) MemoryStream name(c8 *fname)
 #define PLATFORM_WRITE_NEW_FILE_FN(name) b32 name(c8 *fname, s8 raw)
