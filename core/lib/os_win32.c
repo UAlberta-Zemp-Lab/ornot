@@ -60,16 +60,16 @@ static PLATFORM_READ_WHOLE_FILE_FN(os_read_whole_file)
 	MemoryStream result = {0};
 	w32_file_info fi;
 	iptr h = CreateFileA(fname, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
-	if (h != -1 && GetFileInformationByHandle(h, &fi)) {
+	if (h >= 0 && GetFileInformationByHandle(h, &fi)) {
 		iz file_size   = (iz)fi.nFileSizeHigh << 32 | (iz)fi.nFileSizeLow;
 		result.backing = os_block_alloc(file_size);
 		i32 rlen;
-		if (result.backing.size && result.backing.size <= ((size)(u32)-1) &&
+		if (result.backing.size && file_size <= (iz)((u32)-1) &&
 		    ReadFile(h, result.backing.data, file_size, &rlen, 0) &&
 		    rlen == file_size)
 		{
 			result.filled = rlen;
-		} else if (result.backing.size) {
+		} else {
 			os_block_release(result.backing);
 			result.backing = (MemoryBlock){0};
 		}
