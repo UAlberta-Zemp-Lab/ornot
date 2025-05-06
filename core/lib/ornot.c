@@ -8,15 +8,17 @@ typedef int16_t   i16;
 typedef uint32_t  u32;
 typedef uint32_t  b32;
 typedef uint64_t  u64;
+typedef size_t    uz;
 typedef ptrdiff_t iz;
 typedef ptrdiff_t iptr;
-
-/* TODO(rnp): remove this dependency */
-void *memcpy(void *restrict, const void *restrict, size_t);
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(*a))
 typedef struct { iz len; u8 *data; } s8;
 #define s8(s) (s8){.len = ARRAY_COUNT(s) - 1, .data = (u8 *)s}
+
+#define function      static
+#define global        static
+#define local_persist static
 
 typedef struct {
 	void *data;
@@ -29,6 +31,13 @@ typedef struct {
 } MemoryStream;
 
 #include "platform.h"
+
+function void *mem_copy(void *restrict dst, void *restrict src, uz n)
+{
+	u8 *d = dst, *s = src;
+	for (; n; n--) *d++ = *s++;
+	return dst;
+}
 
 b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
 {
@@ -46,10 +55,10 @@ b32 unpack_zemp_bp_v1(c8 *input_name, zemp_bp_v1 *output_header)
 	b32 result = 0;
 
 	MemoryStream file_data = os_read_whole_file(input_name);
-	if (file_data.filled && (*(uint64_t *)file_data.backing.data == ZEMP_BP_MAGIC)) {
+	if (file_data.filled > 0 && (*(u64 *)file_data.backing.data == ZEMP_BP_MAGIC)) {
 		zemp_bp_v1 *header = file_data.backing.data;
 		if (header->version == 1) {
-			memcpy(output_header, header, sizeof(*header));
+			mem_copy(output_header, header, sizeof(*header));
 			result = 1;
 		}
 	}
