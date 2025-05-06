@@ -50,7 +50,7 @@ build_zstd()
 	ar rc ${zstd} "${dst}"/*.o
 }
 
-if [ ! -f external/zstd/README.md ] || [ "$(git status --short external/zstd)" ]; then
+if [ $(git diff-index --quiet HEAD -- external/zstd) ]; then
 	git submodule update --init --depth=1 external/zstd
 fi
 
