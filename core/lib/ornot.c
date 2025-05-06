@@ -69,6 +69,23 @@ b32 unpack_zemp_bp_v1(c8 *input_name, zemp_bp_v1 *output_header)
 }
 #endif
 
+b32 unpack_compressed_i16_data(c8 *file, void *output, size_t output_size)
+{
+	b32 result = 0;
+	MemoryStream file_data = os_read_whole_file(file);
+	if (file_data.filled > 0) {
+		u8 *input      = file_data.backing.data;
+		u64 input_size = file_data.backing.size;
+		u64 requested_size = ZSTD_getFrameContentSize(input, input_size);
+		if (requested_size <= output_size) {
+			u64 decompressed_size = ZSTD_decompress(output, output_size, input, input_size);
+			result = decompressed_size == requested_size;
+		}
+	}
+	os_block_release(file_data.backing);
+	return result;
+}
+
 b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count)
 {
 	b32 result = 0;

@@ -34,6 +34,13 @@ Compresses `data` using [zstd][], and writes the result to
 extension as required by their environment. Returns whether the
 operation succeeded.
 
+### `b32 unpack_compressed_i16_data(char *input_file, void *output, size_t output_size)`
+
+Reads input file (assumed to be zstandard compressed) and
+decompresses it into buffer. Buffer size can be determined from
+the zemp_bp header. You should not use this from anything other
+than a MATLAB script.
+
 ## MATLAB (Mex)
 
 ### `out = ornot_zstd_decompress_mex(in)`

@@ -13,3 +13,4 @@ LIB_FN uint32_t write_zemp_bp_v1(char *output_name, zemp_bp_v1 *header);
 LIB_FN uint32_t unpack_zemp_bp_v1(char *input_name, zemp_bp_v1 *output_header);
 
 LIB_FN uint32_t write_i16_data_compressed(char *output_name, int16_t *data, uint32_t data_element_count);
+LIB_FN uint32_t unpack_compressed_i16_data(char *input_file, void *output, size_t output_size);
