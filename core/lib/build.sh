@@ -1,6 +1,7 @@
 #!/bin/sh
 
-cflags="-march=native -std=c11 -O3 -Wall -fPIC -Wno-unused-variable"
+cflags="${CFLAGS:--march=native -O3}"
+cflags="${cflags} -std=c11 -Wall -fPIC -Wno-unused-variable"
 #cflags="${cflags} -fproc-stat-report"
 #cflags="${cflags} -Rpass-missed=.*"
 cflags="${cflags} -Iexternal/zstd/lib"
