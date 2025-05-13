@@ -1,11 +1,10 @@
 #!/bin/sh
 
-set -x
-
 cc=${CC:-cc}
 wd=${PWD}
 
-case $(uname -m) in
+machine=$(uname -m)
+case ${machine} in
 aarch64) target="aarch64"   ;;
 x86_64)  target="x86-64-v3" ;;
 *) echo "Target Unsupported: $(uname -m)"; exit 1 ;;
@@ -36,7 +35,7 @@ ${cc} build.c -o build
 cd "${wd}"
 
 # NOTE: finalize
-outname="pack-${machine}-$(git describe --always)"
+outname="pack-${machine}-$(git describe --tag)"
 mkdir -p "${outname}"
 cp "scripts/beamform_simple.m" "${outname}/"
 cp "${ornotlib}" "core/lib/ornot.h" "core/lib/zemp_bp.h" "${outname}/"
