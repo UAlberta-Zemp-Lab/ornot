@@ -35,7 +35,7 @@ ${cc} build.c -o build
 cd "${wd}"
 
 # NOTE: finalize
-outname="pack-${machine}-$(git describe --tag)"
+outname="beamformer-pack-${machine}-$(git describe --tag)"
 mkdir -p "${outname}"
 cp "scripts/beamform_simple.m" "${outname}/"
 cp "${ornotlib}" "core/lib/ornot.h" "core/lib/zemp_bp.h" "${outname}/"
