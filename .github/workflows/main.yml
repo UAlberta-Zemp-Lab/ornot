@@ -24,7 +24,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: windows-11-arm, sys: clangarm64, env: clang-aarch64, cc: "clang" }
+          # TODO: how do we detect the correct architecture in the scripts this reports x86_64
+          #- { os: windows-11-arm, sys: clangarm64, env: clang-aarch64, cc: "clang" }
           - { os: windows-latest, sys: clang64,    env: clang-x86_64,  cc: "clang" }
     runs-on: ${{matrix.os}}
     env:
