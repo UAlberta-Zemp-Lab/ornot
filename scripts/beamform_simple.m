@@ -96,6 +96,17 @@ catch
     error(strcat('ornot: failed to unpack file: ', char(file)))
 end
 
+% NOTE: check beamformer_parameters.h for other options
+das_id    = 2;
+decode_id = 3;
+shader_stages = [decode_id, das_id];
+try
+    assert(calllib('ogl_beamformer_lib', 'set_beamformer_pipeline', shader_stages, numel(shader_stages)));
+catch
+    errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
+    error(strcat('beamformer error: ', errmsg));
+end
+
 output_points = [output_points(1), 1, output_points(2)];
 output_count  = prod(output_points) * 2; % complex singles
 output_data   = libpointer('singlePtr', single(zeros(1, output_count)));
