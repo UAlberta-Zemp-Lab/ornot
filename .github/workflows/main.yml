@@ -19,6 +19,8 @@ jobs:
           run: ./ci/build.sh
 
   w32:
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
@@ -41,3 +43,11 @@ jobs:
             submodules: 'true'
         - name: Build
           run: ./ci/build.sh
+        - name: Build Release
+          if: github.ref_type == 'tag'
+          run: ./ci/release.sh
+        - name: Upload Release
+          if: github.ref_type == 'tag'
+          uses: softprops/action-gh-release@v2
+          with:
+            files: pack*.zip
