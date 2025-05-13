@@ -1,0 +1,43 @@
+name: main
+
+on: push
+
+jobs:
+  linux:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+        cc: ["gcc", "clang"]
+    runs-on: ${{matrix.os}}
+    env:
+      CC: ${{matrix.cc}}
+    steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - name: Build
+          run: ./ci/build.sh
+
+  w32:
+    strategy:
+      matrix:
+        include:
+          - { os: windows-11-arm, sys: clangarm64, env: clang-aarch64, cc: "clang" }
+          - { os: windows-latest, sys: clang64,    env: clang-x86_64,  cc: "clang" }
+    runs-on: ${{matrix.os}}
+    env:
+      CC: clang
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+        - uses: msys2/setup-msys2@v2
+          with:
+            msystem: ${{matrix.sys}}
+            update: true
+            install: git mingw-w64-${{matrix.env}}-clang
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - name: Build
+          run: ./ci/build.sh
