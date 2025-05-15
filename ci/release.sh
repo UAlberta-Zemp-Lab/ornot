@@ -5,7 +5,7 @@ wd=${PWD}
 
 machine=$(uname -m)
 case ${machine} in
-aarch64) target="aarch64"   ;;
+aarch64) target="armv8"     ;;
 x86_64)  target="x86-64-v3" ;;
 *) echo "Target Unsupported: $(uname -m)"; exit 1 ;;
 esac
