@@ -96,7 +96,7 @@ catch
     error(strcat('ornot: failed to unpack file: ', char(file)))
 end
 
-% NOTE: check beamformer_parameters.h for other options
+% NOTE: check ogl_beamformer_lib.h for other options
 das_id    = 2;
 decode_id = 3;
 shader_stages = [decode_id, das_id];
