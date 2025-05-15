@@ -45,4 +45,20 @@ cp -r "submodules/ogl_beamforming/assets" "submodules/ogl_beamforming/shaders" "
 cp "submodules/ogl_beamforming/LICENSE" "${outname}/LICENSE.ogl_beamforming"
 cp "LICENSE" "${outname}/LICENSE.ornot"
 
+# NOTE: readme
+cat << EOF >| "${outname}/README.txt"
+HOW TO USE
+
+1. Download previously acquired data and put it somewhere accesible.
+2. Launch the beamformer (ogl.exe).
+3. Open beamform_simple.m in MATLAB and point it to the data files.
+4. Modify number of output points and axial and lateral regions as desired.
+5. Run. The beamformed figure will be visible in the beamformer and in a MATLAB figure.
+
+TROUBLESHOOTING
+
+MATLAB is stalled or doesn't seem to be doing anything.
+-> Force close MATLAB and start from the top.
+EOF
+
 zip -r "${outname}.zip" "${outname}"
