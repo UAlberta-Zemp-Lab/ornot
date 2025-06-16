@@ -9,9 +9,8 @@
 #define PACK(s) s __attribute__((packed))
 #endif
 
-#ifdef _WIN32
-#include "os_win32.c"
-#elif __linux
-#include "os_unix.c"
+#if defined(_WIN32)
+  #include "os_win32.c"
+#elif defined(__linux__) || defined(__APPLE__)
+  #include "os_unix.c"
 #endif
-

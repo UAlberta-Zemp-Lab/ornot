@@ -18,6 +18,15 @@ jobs:
         - name: Build
           run: ./ci/build.sh
 
+  macos:
+    runs-on: macos-latest
+    steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - name: Build
+          run: ./ci/build.sh
+
   w32:
     permissions:
       contents: write

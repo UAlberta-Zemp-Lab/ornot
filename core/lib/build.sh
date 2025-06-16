@@ -12,6 +12,7 @@ zstd="libzstd.a"
 case $(uname -sm) in
 MINGW64*) libname="ornot.dll"   ;;
 Linux*)   libname="libornot.so" ;;
+Darwin*)  libname="ornot.dylib" ;;
 esac
 
 build_zstd()
