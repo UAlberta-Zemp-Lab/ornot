@@ -11,7 +11,7 @@ axial   = [ 5,  120] * 1e-3;
 timeout_ms = 10 * 1000;
 
 load_libraries();
-bp = upload_parameters(fullfile(data_dir, params_file), lateral, axial, f_number, timeout_ms);
+bp = upload_parameters(fullfile(data_dir, params_file), lateral, axial, f_number);
 beamformed_data = beamform_data(fullfile(data_dir, data_file), output_points, bp, timeout_ms);
 
 %% Plot Results
@@ -29,12 +29,15 @@ xlabel(ax, "X [mm]"); ylabel(ax, "Z [mm]");
 %%
 
 
-function bp = upload_parameters(file, lateral, axial, f_number, timeout_ms)
+function [bp, frame_count] = upload_parameters(file, lateral, axial, f_number)
 % NOTE: make an empty bp struct so that MATLAB can control the memory
 zbp    = libstruct('zemp_bp_v1', struct());
 calllib('ornot', 'unpack_zemp_bp_v1', char(file), zbp);
 zbp    = struct(zbp);
 
+frame_count = zbp.raw_data_dim(3);
+
+bp                    = OGLBeamformerParameters();
 bp.transmit_mode      = zbp.transmit_mode;
 bp.decode             = zbp.decode_mode;
 bp.das_shader_id      = zbp.beamform_mode;
@@ -49,8 +52,6 @@ bp.rf_raw_dim         = zbp.raw_data_dim(1:2);
 bp.f_number           = f_number;
 bp.interpolate        = 1;
 
-bp.output_min_coordinate    = zeros(1, 3);
-bp.output_max_coordinate    = zeros(1, 3);
 bp.output_min_coordinate(1) = lateral(1);
 bp.output_min_coordinate(2) = 0;
 bp.output_min_coordinate(3) = axial(1);
@@ -73,35 +74,40 @@ focal_vectors(1:2:end) = zbp.steering_angles(1:transmit_count);
 focal_vectors(2:2:end) = zbp.focal_depths(1:transmit_count);
 
 try
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_channel_mapping', channel_mapping, numel(channel_mapping), timeout_ms));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_sparse_elements', sparse_elements, numel(sparse_elements), timeout_ms));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_focal_vectors',   focal_vectors,   transmit_count,         timeout_ms));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_push_channel_mapping', channel_mapping, numel(channel_mapping)));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_push_sparse_elements', sparse_elements, numel(sparse_elements)));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_push_focal_vectors',   focal_vectors,   transmit_count));
 
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_parameters', bp, timeout_ms));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_push_parameters', struct(bp)));
 catch
     errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
     error(strcat('beamformer error: ', errmsg));
 end
 end
 
-function beamformed = beamform_data(file, output_points, bp, timeout_ms)
+function beamformed = beamform_data(file, output_points, bp, frame_count, timeout_ms)
 try
-    data_points = bp.rf_raw_dim;
-    data_size = prod(data_points) * 2; % int16 data - 2 byte per sample
-    data      = libpointer('int16Ptr', int16(zeros(1, prod(data_points))));
+    data_points = [bp.rf_raw_dim, frame_count];
+    data_size   = prod(data_points) * 2; % int16 data - 2 byte per sample
+    frame_size  = data_size / frame_count;
+    data        = libpointer('int16Ptr', int16(zeros(1, prod(data_points))));
     assert(calllib('ornot', 'unpack_compressed_i16_data', char(file), data, data_size));
 catch
-    % NOTE: ensure parameters are flushed if data file can't be found
-    calllib('ogl_beamformer_lib', 'beamformer_start_compute', 0);
     error(strcat('ornot: failed to unpack file: ', char(file)))
 end
 
-% NOTE: check ogl_beamformer_lib.h for other options
-das_id    = 2;
-decode_id = 3;
-shader_stages = [decode_id, das_id];
+shader_stages = [OGLBeamformerShaderStage.Demodulate, OGLBeamformerShaderStage.Decode, OGLBeamformerShaderStage.DAS];
+
+beta = 5.65;
+cutoff_frequency = 1.8e6;
+filter_length = 36;
+
 try
-    assert(calllib('ogl_beamformer_lib', 'set_beamformer_pipeline', shader_stages, numel(shader_stages)));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_push_pipeline', ...
+        int32(shader_stages), numel(shader_stages), ...
+        int32(OGLBeamformerDataKind.Int16)));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_create_kaiser_low_pass_filter', beta, cutoff_frequency, bp.sampling_frequency / 2, filter_length, 0));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_set_pipeline_stage_parameters', 0, 0));
 catch
     errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
     error(strcat('beamformer error: ', errmsg));
@@ -112,7 +118,7 @@ output_count  = prod(output_points) * 2; % complex singles
 output_data   = libpointer('singlePtr', single(zeros(1, output_count)));
 data = data.Value;
 try
-    assert(calllib('ogl_beamformer_lib', 'beamform_data_synchronized', data, data_size, output_points, output_data, timeout_ms));
+    assert(calllib('ogl_beamformer_lib', 'beamform_data_synchronized', data, frame_size, output_points, output_data, timeout_ms));
 catch
     errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
     error(strcat('beamformer error: ', errmsg));
@@ -122,6 +128,7 @@ beamformed = squeeze(reshape(beamformed, output_points))';
 end
 
 function load_libraries()
+addpath("matlab");
 if (~libisloaded('ogl_beamformer_lib'))
     loadlibrary('ogl_beamformer_lib');
 end
