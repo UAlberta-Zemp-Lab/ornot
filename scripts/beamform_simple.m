@@ -11,8 +11,8 @@ axial   = [ 5,  120] * 1e-3;
 timeout_ms = 10 * 1000;
 
 load_libraries();
-bp = upload_parameters(fullfile(data_dir, params_file), lateral, axial, f_number);
-beamformed_data = beamform_data(fullfile(data_dir, data_file), output_points, bp, timeout_ms);
+[bp, frame_count] = upload_parameters(fullfile(data_dir, params_file), lateral, axial, f_number);
+beamformed_data = beamform_data(fullfile(data_dir, data_file), output_points, bp, frame_count, timeout_ms);
 
 %% Plot Results
 axial_axis   = linspace(axial(1),   axial(2),   output_points(2));
