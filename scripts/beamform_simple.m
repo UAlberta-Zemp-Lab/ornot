@@ -106,7 +106,7 @@ try
     assert(calllib('ogl_beamformer_lib', 'beamformer_push_pipeline', ...
         int32(shader_stages), numel(shader_stages), ...
         int32(OGLBeamformerDataKind.Int16)));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_create_kaiser_low_pass_filter', beta, cutoff_frequency, bp.sampling_frequency / 2, filter_length, 0));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_create_kaiser_low_pass_filter', beta, cutoff_frequency, filter_length, 0));
     assert(calllib('ogl_beamformer_lib', 'beamformer_set_pipeline_stage_parameters', 0, 0));
 catch
     errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
@@ -117,6 +117,7 @@ output_points = [output_points(1), 1, output_points(2)];
 output_count  = prod(output_points) * 2; % complex singles
 output_data   = libpointer('singlePtr', single(zeros(1, output_count)));
 data = data.Value;
+data = reshape(data, bp.rf_raw_dim(1), bp.rf_raw_dim(2), []);
 try
     assert(calllib('ogl_beamformer_lib', 'beamform_data_synchronized', data, frame_size, output_points, output_data, timeout_ms));
 catch
@@ -130,9 +131,10 @@ end
 function load_libraries()
 addpath("matlab");
 if (~libisloaded('ogl_beamformer_lib'))
-    loadlibrary('ogl_beamformer_lib');
+    [~, ~] = loadlibrary('ogl_beamformer_lib');
 end
 if (~libisloaded('ornot'))
-    loadlibrary('ornot');
+    [~, ~] = loadlibrary('ornot');
 end
+warning('off','MATLAB:structOnObject');
 end
