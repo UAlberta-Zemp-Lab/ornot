@@ -103,11 +103,11 @@ cutoff_frequency = 1.8e6;
 filter_length = 36;
 
 try
+    assert(calllib('ogl_beamformer_lib', 'beamformer_create_kaiser_low_pass_filter', beta, cutoff_frequency, bp.sampling_frequency / 2, filter_length, 0, 0));
+    assert(calllib('ogl_beamformer_lib', 'beamformer_set_pipeline_stage_parameters', 0, 0));
     assert(calllib('ogl_beamformer_lib', 'beamformer_push_pipeline', ...
         int32(shader_stages), numel(shader_stages), ...
         int32(OGLBeamformerDataKind.Int16)));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_create_kaiser_low_pass_filter', beta, cutoff_frequency, filter_length, 0));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_set_pipeline_stage_parameters', 0, 0));
 catch
     errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
     error(strcat('beamformer error: ', errmsg));
@@ -130,11 +130,12 @@ end
 
 function load_libraries()
 addpath("matlab");
+warning('off','MATLAB:structOnObject');
 if (~libisloaded('ogl_beamformer_lib'))
     [~, ~] = loadlibrary('ogl_beamformer_lib');
+    calllib('ogl_beamformer_lib', 'beamformer_set_global_timeout', 1000);
 end
 if (~libisloaded('ornot'))
     [~, ~] = loadlibrary('ornot');
 end
-warning('off','MATLAB:structOnObject');
 end
