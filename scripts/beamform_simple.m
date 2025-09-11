@@ -3,7 +3,7 @@ data_dir    = "G:\My Drive\Researcher Files\Randy Palamar\250317\250317_MN45-1_3
 data_file   = "250317_MN45-1_3.30MHz_ATS539_Cyst_FORCES-TxRow_00.zst";
 params_file = "250317_MN45-1_3.30MHz_ATS539_Cyst_FORCES-TxRow.bp";
 
-output_points = [512, 1024];
+output_points = [512, 1, 1024];
 f_number = 1;
 lateral = [-40,  40] * 1e-3;
 axial   = [ 5,  120] * 1e-3;
@@ -11,47 +11,52 @@ axial   = [ 5,  120] * 1e-3;
 timeout_ms = 10 * 1000;
 
 load_libraries();
-[bp, frame_count] = upload_parameters(fullfile(data_dir, params_file), lateral, axial, f_number);
-beamformed_data = beamform_data(fullfile(data_dir, data_file), output_points, bp, frame_count, timeout_ms);
 
-%% Plot Results
-axial_axis   = linspace(axial(1),   axial(2),   output_points(2));
-lateral_axis = linspace(lateral(1), lateral(2), output_points(1));
-f = figure();
-ax = axes(f);
-threshold        = 60;
-intensity_data   = abs(beamformed_data);
-power_scale_data = min(10^(threshold / 20), intensity_data);
-imagesc(ax, lateral_axis*1e3, axial_axis*1e3, power_scale_data);
-axis(ax, "image"); colormap(ax, gray); colorbar(ax); clim(ax, [0, 10.^(threshold/20)]);
-xlabel(ax, "X [mm]"); ylabel(ax, "Z [mm]");
-
-%%
-
-
-function [bp, frame_count] = upload_parameters(file, lateral, axial, f_number)
-% NOTE: make an empty bp struct so that MATLAB can control the memory
+%%%%%%%%%%%%%%%%%%%%%%
+%% Setup Parameters %%
+%%%%%%%%%%%%%%%%%%%%%%
 zbp    = libstruct('zemp_bp_v1', struct());
-calllib('ornot', 'unpack_zemp_bp_v1', char(file), zbp);
+calllib('ornot', 'unpack_zemp_bp_v1', char(fullfile(data_dir, params_file)), zbp);
 zbp    = struct(zbp);
 
 frame_count = zbp.raw_data_dim(3);
 
-bp                    = OGLBeamformerParameters();
-bp.transmit_mode      = zbp.transmit_mode;
-bp.decode             = zbp.decode_mode;
-bp.das_shader_id      = zbp.beamform_mode;
-bp.time_offset        = zbp.time_offset;
-bp.sampling_frequency = zbp.sampling_frequency;
-bp.center_frequency   = zbp.center_frequency;
-bp.speed_of_sound     = zbp.speed_of_sound;
-bp.xdc_transform      = zbp.transducer_transform_matrix;
-bp.dec_data_dim       = zbp.decoded_data_dim;
-bp.xdc_element_pitch  = zbp.transducer_element_pitch;
-bp.rf_raw_dim         = zbp.raw_data_dim(1:2);
-bp.f_number           = f_number;
-bp.interpolate        = 1;
+bp                        = OGLBeamformerSimpleParameters();
+bp.decode                 = zbp.decode_mode;
+bp.das_shader_id          = zbp.beamform_mode;
+bp.time_offset            = zbp.time_offset;
+bp.sampling_frequency     = zbp.sampling_frequency;
+bp.demodulation_frequency = zbp.center_frequency;
+bp.speed_of_sound         = zbp.speed_of_sound;
+bp.xdc_transform          = zbp.transducer_transform_matrix;
+bp.xdc_element_pitch      = zbp.transducer_element_pitch;
+bp.raw_data_dimensions    = zbp.raw_data_dim(1:2);
+bp.f_number               = f_number;
+bp.interpolate            = 1;
 
+% NOTE: v1 data was always collected at 4X sampling, but most
+% parameters had the wrong value saved for center frequency
+bp.sampling_mode          = OGLBeamformerSamplingMode.m4X;
+bp.demodulation_frequency = bp.sampling_frequency / 4;
+
+switch zbp.transmit_mode
+	case 0
+		bp.transmit_mode = OGLBeamformerRCAOrientation.Rows;
+		bp.receive_mode  = OGLBeamformerRCAOrientation.Rows;
+	case 1
+		bp.transmit_mode = OGLBeamformerRCAOrientation.Rows;
+		bp.receive_mode  = OGLBeamformerRCAOrientation.Columns;
+	case 2
+		bp.transmit_mode = OGLBeamformerRCAOrientation.Columns;
+		bp.receive_mode  = OGLBeamformerRCAOrientation.Rows;
+	case 3
+		bp.transmit_mode = OGLBeamformerRCAOrientation.Columns;
+		bp.receive_mode  = OGLBeamformerRCAOrientation.Columns;
+	otherwise
+		error("unhandled transmit mode: 0x%02x", zbp.transmit_mode);
+end
+
+bp.output_points(1:3)       = output_points;
 bp.output_min_coordinate(1) = lateral(1);
 bp.output_min_coordinate(2) = 0;
 bp.output_min_coordinate(3) = axial(1);
@@ -59,74 +64,81 @@ bp.output_max_coordinate(1) = lateral(2);
 bp.output_max_coordinate(2) = 0;
 bp.output_max_coordinate(3) = axial(2);
 
-transmit_count = single(zbp.decoded_data_dim(3));
+bp.sample_count      = zbp.decoded_data_dim(1);
+bp.channel_count     = zbp.decoded_data_dim(2);
+bp.acquisition_count = zbp.decoded_data_dim(3);
 
-channel_mapping = zbp.channel_mapping(1:transmit_count);
+bp.channel_mapping(1:bp.channel_count)     = zbp.channel_mapping(1:bp.channel_count);
+bp.sparse_elements(1:bp.acquisition_count) = zbp.sparse_elements(1:bp.acquisition_count);
+bp.steering_angles(1:bp.acquisition_count) = zbp.steering_angles(1:bp.acquisition_count);
+bp.focal_depths(1:bp.acquisition_count)    = zbp.focal_depths(1:bp.acquisition_count);
 
-if zbp.sparse_elements(1) == -1
-    sparse_elements = linspace(0, transmit_count - 1, transmit_count);
-else
-    sparse_elements = zbp.sparse_elements;
+shaders = [OGLBeamformerShaderStage.Demodulate, OGLBeamformerShaderStage.Decode, OGLBeamformerShaderStage.DAS];
+bp.compute_stages(1:numel(shaders)) = shaders;
+bp.compute_stages_count             = numel(shaders);
+
+% NOTE: setup a low pass filter for demodulating
+beta                    = 5.65;
+cutoff_frequency        = 1.8e6;
+filter_length           = 36;
+kaiser = OGLBeamformerFilter.Kaiser(cutoff_frequency, beta, filter_length);
+
+filter_parameters       = kaiser.Flatten();
+filter_kind             = int32(OGLBeamformerFilterKind.Kaiser);
+filter_slot             = 0;
+filter_is_complex       = 0;
+demodulate_shader_index = 1;
+
+% NOTE: bind the filter (which we will create below) to the shader paramters
+bp.compute_stage_parameters(demodulate_shader_index) = filter_slot;
+
+data_points = [bp.raw_data_dimensions, frame_count];
+data_size   = prod(data_points) * 2; % int16 data - 2 byte per sample
+frame_size  = data_size / frame_count;
+data        = libpointer('int16Ptr', zeros(1, prod(data_points), 'int16'));
+if ~calllib('ornot', 'unpack_compressed_i16_data', char(fullfile(data_dir, data_file)), data, data_size)
+	error(strcat('ornot: failed to unpack file: ', char(fullfile(data_dir, data_file))))
 end
-
-focal_vectors = zeros(1, 2 * transmit_count);
-focal_vectors(1:2:end) = zbp.steering_angles(1:transmit_count);
-focal_vectors(2:2:end) = zbp.focal_depths(1:transmit_count);
-
-try
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_channel_mapping', channel_mapping, numel(channel_mapping)));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_sparse_elements', sparse_elements, numel(sparse_elements)));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_focal_vectors',   focal_vectors,   transmit_count));
-
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_parameters', struct(bp)));
-catch
-    errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
-    error(strcat('beamformer error: ', errmsg));
-end
-end
-
-function beamformed = beamform_data(file, output_points, bp, frame_count, timeout_ms)
-try
-    data_points = [bp.rf_raw_dim, frame_count];
-    data_size   = prod(data_points) * 2; % int16 data - 2 byte per sample
-    frame_size  = data_size / frame_count;
-    data        = libpointer('int16Ptr', int16(zeros(1, prod(data_points))));
-    assert(calllib('ornot', 'unpack_compressed_i16_data', char(file), data, data_size));
-catch
-    error(strcat('ornot: failed to unpack file: ', char(file)))
-end
-
-shader_stages = [OGLBeamformerShaderStage.Demodulate, OGLBeamformerShaderStage.Decode, OGLBeamformerShaderStage.DAS];
-
-beta = 5.65;
-cutoff_frequency = 1.8e6;
-filter_length = 36;
-
-try
-    assert(calllib('ogl_beamformer_lib', 'beamformer_create_kaiser_low_pass_filter', beta, cutoff_frequency, bp.sampling_frequency / 2, filter_length, 0, 0));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_set_pipeline_stage_parameters', 0, 0));
-    assert(calllib('ogl_beamformer_lib', 'beamformer_push_pipeline', ...
-        int32(shader_stages), numel(shader_stages), ...
-        int32(OGLBeamformerDataKind.Int16)));
-catch
-    errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
-    error(strcat('beamformer error: ', errmsg));
-end
-
-output_points = [output_points(1), 1, output_points(2)];
-output_count  = prod(output_points) * 2; % complex singles
-output_data   = libpointer('singlePtr', single(zeros(1, output_count)));
 data = data.Value;
-data = reshape(data, bp.rf_raw_dim(1), bp.rf_raw_dim(2), []);
+data = reshape(data, bp.raw_data_dimensions(1), bp.raw_data_dimensions(2), []);
+
+bp.data_kind = int32(OGLBeamformerDataKind.Int16);
+
+%%%%%%%%%%%%%%
+%% Beamform %%
+%%%%%%%%%%%%%%
+output_count = prod(output_points) * 2; % complex singles
+output_data  = libpointer('singlePtr', zeros(1, output_count, 'single'));
+
 try
-    assert(calllib('ogl_beamformer_lib', 'beamform_data_synchronized', data, frame_size, output_points, output_data, timeout_ms));
-catch
-    errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
-    error(strcat('beamformer error: ', errmsg));
+	assert(calllib('ogl_beamformer_lib', 'beamformer_create_filter', filter_kind, filter_parameters, ...
+	               numel(filter_parameters), bp.sampling_frequency / 2, filter_is_complex, filter_slot, 0));
+	assert(calllib('ogl_beamformer_lib', 'beamformer_beamform_data', struct(bp), data, data_size, ...
+	               output_data, timeout_ms));
+catch ME
+	errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
+	warning(strcat('beamformer error: ', errmsg));
+	rethrow(ME);
 end
+
 beamformed = complex(output_data.Value(1:2:end), output_data.Value(2:2:end));
 beamformed = squeeze(reshape(beamformed, output_points))';
-end
+
+%%%%%%%%%%%%%%%%%%
+%% Plot Results %%
+%%%%%%%%%%%%%%%%%%
+axial_axis   = linspace(axial(1),   axial(2),   output_points(3));
+lateral_axis = linspace(lateral(1), lateral(2), output_points(1));
+f = figure();
+ax = axes(f);
+threshold        = 60;
+intensity_data   = abs(beamformed);
+power_scale_data = min(10^(threshold / 20), intensity_data);
+imagesc(ax, lateral_axis*1e3, axial_axis*1e3, power_scale_data);
+axis(ax, "image"); colormap(ax, gray); colorbar(ax); clim(ax, [0, 10.^(threshold/20)]);
+xlabel(ax, "X [mm]"); ylabel(ax, "Z [mm]");
+
+%%
 
 function load_libraries()
 addpath("matlab");
