@@ -22,7 +22,7 @@ zbp    = struct(zbp);
 frame_count = zbp.raw_data_dim(3);
 
 bp                        = OGLBeamformerSimpleParameters();
-bp.decode                 = zbp.decode_mode;
+bp.decode_mode            = zbp.decode_mode;
 bp.das_shader_id          = zbp.beamform_mode;
 bp.time_offset            = zbp.time_offset;
 bp.sampling_frequency     = zbp.sampling_frequency;
@@ -32,28 +32,50 @@ bp.xdc_transform          = zbp.transducer_transform_matrix;
 bp.xdc_element_pitch      = zbp.transducer_element_pitch;
 bp.raw_data_dimensions    = zbp.raw_data_dim(1:2);
 bp.f_number               = f_number;
-bp.interpolate            = 1;
+bp.interpolation_mode     = uint32(OGLBeamformerInterpoloationMode.Cubic)
 
 % NOTE: v1 data was always collected at 4X sampling, but most
 % parameters had the wrong value saved for center frequency
-bp.sampling_mode          = OGLBeamformerSamplingMode.m4X;
+bp.sampling_mode          = uint32(OGLBeamformerSamplingMode.m4X);
 bp.demodulation_frequency = bp.sampling_frequency / 4;
 
 switch zbp.transmit_mode
 	case 0
-		bp.transmit_mode = OGLBeamformerRCAOrientation.Rows;
-		bp.receive_mode  = OGLBeamformerRCAOrientation.Rows;
+		transmit_mode = OGLBeamformerRCAOrientation.Rows;
+		receive_mode  = OGLBeamformerRCAOrientation.Rows;
 	case 1
-		bp.transmit_mode = OGLBeamformerRCAOrientation.Rows;
-		bp.receive_mode  = OGLBeamformerRCAOrientation.Columns;
+		transmit_mode = OGLBeamformerRCAOrientation.Rows;
+		receive_mode  = OGLBeamformerRCAOrientation.Columns;
 	case 2
-		bp.transmit_mode = OGLBeamformerRCAOrientation.Columns;
-		bp.receive_mode  = OGLBeamformerRCAOrientation.Rows;
+		transmit_mode = OGLBeamformerRCAOrientation.Columns;
+		receive_mode  = OGLBeamformerRCAOrientation.Rows;
 	case 3
-		bp.transmit_mode = OGLBeamformerRCAOrientation.Columns;
-		bp.receive_mode  = OGLBeamformerRCAOrientation.Columns;
+		transmit_mode = OGLBeamformerRCAOrientation.Columns;
+		receive_mode  = OGLBeamformerRCAOrientation.Columns;
 	otherwise
 		error("unhandled transmit mode: 0x%02x", zbp.transmit_mode);
+end
+
+transmit_receive_orientation = bitshift(uint8(transmit_mode), 4) + uint8(receive_mode);
+
+bp.sample_count      = zbp.decoded_data_dim(1);
+bp.channel_count     = zbp.decoded_data_dim(2);
+bp.acquisition_count = zbp.decoded_data_dim(3);
+
+bp.channel_mapping(1:bp.channel_count)     = zbp.channel_mapping(1:bp.channel_count);
+bp.sparse_elements(1:bp.acquisition_count) = zbp.sparse_elements(1:bp.acquisition_count);
+
+switch bp.das_shader_id
+	case {int32(OGLBeamformerAcquisitionKind.HERCULES), int32(OGLBeamformerAcquisitionKind.UHERCULES)}
+		bp.single_focus       = 1;
+		bp.single_orientation = 1;
+		bp.transmit_receive_orientation = transmit_receive_orientation;
+		bp.focal_vector(1) = zbp.steering_angles(1);
+		bp.focal_vector(2) = zbp.focal_depths(1);
+	otherwise
+		bp.transmit_receive_orientations(1:bp.acquisition_count) = transmit_receive_orientation;
+		bp.steering_angles(1:bp.acquisition_count) = zbp.steering_angles(1:bp.acquisition_count);
+		bp.focal_depths(1:bp.acquisition_count)    = zbp.focal_depths(1:bp.acquisition_count);
 end
 
 bp.output_points(1:3)       = output_points;
@@ -63,15 +85,6 @@ bp.output_min_coordinate(3) = axial(1);
 bp.output_max_coordinate(1) = lateral(2);
 bp.output_max_coordinate(2) = 0;
 bp.output_max_coordinate(3) = axial(2);
-
-bp.sample_count      = zbp.decoded_data_dim(1);
-bp.channel_count     = zbp.decoded_data_dim(2);
-bp.acquisition_count = zbp.decoded_data_dim(3);
-
-bp.channel_mapping(1:bp.channel_count)     = zbp.channel_mapping(1:bp.channel_count);
-bp.sparse_elements(1:bp.acquisition_count) = zbp.sparse_elements(1:bp.acquisition_count);
-bp.steering_angles(1:bp.acquisition_count) = zbp.steering_angles(1:bp.acquisition_count);
-bp.focal_depths(1:bp.acquisition_count)    = zbp.focal_depths(1:bp.acquisition_count);
 
 shaders = [OGLBeamformerShaderStage.Demodulate, OGLBeamformerShaderStage.Decode, OGLBeamformerShaderStage.DAS];
 bp.compute_stages(1:numel(shaders)) = shaders;

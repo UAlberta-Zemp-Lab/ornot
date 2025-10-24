@@ -31,7 +31,7 @@ cd "${wd}"
 # NOTE: build beamformer
 cd "submodules/ogl_beamforming"
 ${cc} build.c -o build
-./build --generic
+./build --generic --bake-shaders
 cd "${wd}"
 
 # NOTE: finalize
@@ -40,7 +40,6 @@ mkdir -p "${outname}"
 cp "scripts/beamform_simple.m" "${outname}/"
 cp "${ornotlib}" "core/lib/ornot.h" "core/lib/zemp_bp.h" "${outname}/"
 cp "${beamformerlib}" "submodules/ogl_beamforming/out/ogl_beamformer_lib.h" "${beamformer}" "${outname}/"
-cp -r "submodules/ogl_beamforming/assets" "submodules/ogl_beamforming/shaders" "${outname}/"
 cp -r "submodules/ogl_beamforming/out/matlab" "${outname}/"
 
 cp "submodules/ogl_beamforming/LICENSE" "${outname}/LICENSE.ogl_beamforming"
