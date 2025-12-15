@@ -14,19 +14,18 @@ case $(uname -sm) in
 MINGW64*)
 	beamformerlib="submodules/ogl_beamforming/out/ogl_beamformer_lib.dll"
 	beamformer="submodules/ogl_beamforming/ogl.exe"
-	ornotlib="core/lib/ornot.dll"
+	ornotlib="out/ornot.dll"
 	;;
 Linux*)
 	beamformerlib="submodules/ogl_beamforming/out/ogl_beamformer_lib.so"
 	beamformer="submodules/ogl_beamforming/ogl"
-	ornotlib="core/lib/libornot.so"
+	ornotlib="out/libornot.so"
 	;;
 esac
 
 # NOTE: build ornot
-cd "core/lib"
-CFLAGS="-march=${target} -O3" ./build.sh
-cd "${wd}"
+${cc} -march=native -O3 -fms-extensions -o build build.c
+./build --generic
 
 # NOTE: build beamformer
 cd "submodules/ogl_beamforming"
@@ -38,7 +37,7 @@ cd "${wd}"
 outname="beamformer-pack-${machine}-$(git describe --tag)"
 mkdir -p "${outname}"
 cp "scripts/beamform_simple.m" "${outname}/"
-cp "${ornotlib}" "core/lib/ornot.h" "core/lib/zemp_bp.h" "${outname}/"
+cp "${ornotlib}" "c/ornot.h" "c/zemp_bp.h" "${outname}/"
 cp "${beamformerlib}" "submodules/ogl_beamforming/out/ogl_beamformer_lib.h" "${beamformer}" "${outname}/"
 cp -r "submodules/ogl_beamforming/out/matlab" "${outname}/"
 

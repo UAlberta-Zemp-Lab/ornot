@@ -1,5 +1,5 @@
 [submodule "core/lib/external/zstd"]
-	path = core/lib/external/zstd
+	path = c/external/zstd
 	url = https://github.com/facebook/zstd.git
 [submodule "submodules/ogl_beamforming"]
 	path = submodules/ogl_beamforming
