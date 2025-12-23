@@ -486,9 +486,64 @@ push_str8_from_parts_(Arena *arena, str8 joiner, str8 *parts, sz count)
 	return result;
 }
 
+read_only global u8 meta_integer_print_digits[] = {16, 8, 4, 2};
+read_only global str8 meta_integer_print_c_suffix[] = {
+	str8_comp("ULL"),
+	str8_comp("UL"),
+	str8_comp("U"),
+	str8_comp("U"),
+};
+read_only global str8 meta_integer_print_matlab_kind[] = {
+	str8_comp("uint64"),
+	str8_comp("uint32"),
+	str8_comp("uint16"),
+	str8_comp("uint8"),
+};
+
+function u64 integer_width_index(u64 n)
+{
+	if (n <= 0x000000FFul) return 3;
+	if (n <= 0x0000FFFFul) return 2;
+	if (n <= 0xFFFFFFFFul) return 1;
+	return 0;
+}
+
 function IntegerConversion
 integer_from_str8(str8 raw)
 {
+	read_only local_persist s8 lut['f' + 1 - '0'] = {
+		[':'  - '0'] = -1,
+		[';'  - '0'] = -1,
+		['<'  - '0'] = -1,
+		['='  - '0'] = -1,
+		['>'  - '0'] = -1,
+		['?'  - '0'] = -1,
+		['@'  - '0'] = -1,
+		['['  - '0'] = -1,
+		['\\' - '0'] = -1,
+		[']'  - '0'] = -1,
+		['^'  - '0'] = -1,
+		['_'  - '0'] = -1,
+		['`'  - '0'] = -1,
+
+		['0' - '0'] = 0,
+		['1' - '0'] = 1,
+		['2' - '0'] = 2,
+		['3' - '0'] = 3,
+		['4' - '0'] = 4,
+		['5' - '0'] = 5,
+		['6' - '0'] = 6,
+		['7' - '0'] = 7,
+		['8' - '0'] = 8,
+		['9' - '0'] = 9,
+
+		['A' - '0'] = 10, ['a' - '0'] = 10,
+		['B' - '0'] = 11, ['b' - '0'] = 11,
+		['C' - '0'] = 12, ['c' - '0'] = 12,
+		['D' - '0'] = 13, ['d' - '0'] = 13,
+		['E' - '0'] = 14, ['e' - '0'] = 14,
+		['F' - '0'] = 15, ['f' - '0'] = 15,
+	};
 	IntegerConversion result = {0};
 
 	sz  i     = 0;
@@ -498,22 +553,45 @@ integer_from_str8(str8 raw)
 		i     =  1;
 	}
 
-	for (; i < raw.length; i++) {
-		s64 digit = (s64)raw.data[i] - '0';
-		if (Between(digit, 0, 9)) {
-			if (result.U64 > (U64_MAX - (u64)digit) / 10) {
-				result.result = IntegerConversionResult_OutOfRange;
-				result.U64    = U64_MAX;
+	b32 hex = 0;
+	if (raw.length - i > 2 && raw.data[i] == '0' && (raw.data[1] == 'x' || raw.data[1] == 'X')) {
+		hex = 1;
+		i += 2;
+	}
+
+	if (hex) {
+		for (; i < raw.length; i++) {
+			if (Between(raw.data[i], '0', 'f') && lut[raw.data[i] - '0'] >= 0) {
+				u64 digit = lut[raw.data[i] - '0'];
+				if (result.U64 > (U64_MAX - (u64)digit) / 16) {
+					result.result = IntegerConversionResult_OutOfRange;
+					result.U64    = U64_MAX;
+				} else {
+					result.U64 = 16 * result.U64 + (u64)digit;
+				}
 			} else {
-				result.U64 = 10 * result.U64 + (u64)digit;
+				break;
 			}
-		} else {
-			break;
+		}
+	} else {
+		for (; i < raw.length; i++) {
+			if (Between(raw.data[i], '0', '9')) {
+				u64 digit = raw.data[i] - '0';
+				if (result.U64 > (U64_MAX - digit) / 10) {
+					result.result = IntegerConversionResult_OutOfRange;
+					result.U64    = U64_MAX;
+				} else {
+					result.U64 = 10 * result.U64 + digit;
+				}
+			} else {
+				break;
+			}
 		}
 	}
+
 	result.unparsed = (str8){.length = raw.length - i, .data = raw.data + i};
 	result.result   = IntegerConversionResult_Success;
-	result.S64      = (s64)result.U64 * scale;
+	if (scale < 0) result.U64 = 0 - result.U64;
 
 	return result;
 }
@@ -1766,6 +1844,7 @@ meta_end_and_write_matlab(MetaprogramContext *m, char *path)
 	X(Invalid)      \
 	X(Array)        \
 	X(BeginScope)   \
+	X(Constant)     \
 	X(EndScope)     \
 	X(Enumeration)  \
 	X(Expand)       \
@@ -2346,6 +2425,12 @@ typedef struct {
 } MetaIDList;
 
 typedef struct {
+	u64 value;
+	u64 name_id;
+} MetaConstant;
+DA_STRUCT(MetaConstant, MetaConstant);
+
+typedef struct {
 	str8  *fields;
 	str8 **entries;
 	u32 field_count;
@@ -2438,6 +2523,9 @@ typedef struct {
 
 	str8_list         enumeration_kinds;
 	str8_list_table   enumeration_members;
+
+	str8_list         constant_names;
+	MetaConstantList  constants;
 
 	str8_list         table_names;
 	MetaTableList     tables;
@@ -2897,6 +2985,30 @@ meta_map_kind(str8 kind, str8 table_name, MetaLocation location, b32 can_fail)
 	return result;
 }
 
+function void
+meta_pack_constant(MetaContext *ctx, MetaEntry *e)
+{
+	assert(e->kind == MetaEntryKind_Constant);
+
+	MetaConstant *c = da_push(ctx->arena, &ctx->constants);
+	sz name_id = meta_lookup_string_slow(ctx->constant_names.data, ctx->constant_names.count, e->name);
+	if (name_id >= 0) meta_entry_error(e, "constant redefined\n");
+
+	str8 *c_name = da_push(ctx->arena, &ctx->constant_names);
+	c->name_id = (u64)da_index(c_name, &ctx->constant_names);
+	*c_name = e->name;
+
+	meta_entry_argument_expected(e, str8("value"));
+	str8 value = meta_entry_argument_expect(e, 0, MetaEntryArgumentKind_String).string;
+
+	IntegerConversion integer = integer_from_str8(value);
+	if (integer.result != IntegerConversionResult_Success || integer.unparsed.length != 0) {
+		meta_compiler_error(e->location, "Invalid integer in definition of Constant '%.*s': %.*s\n",
+		                    (s32)e->name.length, e->name.data, (s32)value.length, value.data);
+	}
+	c->value = integer.U64;
+}
+
 function sz
 meta_pack_table(MetaContext *ctx, MetaEntry *e, sz entry_count)
 {
@@ -3219,6 +3331,18 @@ metagen_emit_c_code(MetaContext *ctx, Arena arena)
 
 	meta_push(m, c_file_header);
 
+	////////////////////////
+	// NOTE(rnp): constants
+	for (sz constant = 0; constant < ctx->constants.count; constant++) {
+		MetaConstant *c = ctx->constants.data + constant;
+		str8 name  = ctx->constant_names.data[c->name_id];
+		u64  index = integer_width_index(c->value);
+		meta_begin_line(m, str8("#define "), zbp_namespace, str8("_"), name, str8(" (0x"));
+		meta_push_u64_hex_width(m, c->value, meta_integer_print_digits[index]);
+		meta_end_line(m, meta_integer_print_c_suffix[index], str8(")"));
+	}
+	if (ctx->constants.count > 0) meta_push_line(m);
+
 	/////////////////////////
 	// NOTE(rnp): enumerants
 	for (sz kind = 0; kind < ctx->enumeration_kinds.count; kind++) {
@@ -3300,6 +3424,26 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 	}
 
 	MetaprogramContext m[1] = {{.stream = arena_stream(arena), .scratch = ctx->scratch}};
+
+	////////////////////////
+	// NOTE(rnp): constants
+	{
+		Arena scratch = ctx->scratch;
+		str8 output = push_str8_from_parts(&scratch, str8(""), base_directory, str8(OS_PATH_SEPARATOR), str8("Constants.m"));
+
+		meta_push_line(m, matlab_file_header);
+		meta_begin_scope(m, str8("classdef Constants"));
+		meta_begin_scope(m, str8("properties (Constant)"));
+		for (sz constant = 0; constant < ctx->constants.count; constant++) {
+			MetaConstant *c = ctx->constants.data + constant;
+			str8 name  = ctx->constant_names.data[c->name_id];
+			u64  index = integer_width_index(c->value);
+			meta_begin_line(m, name, str8("(1,1) "), meta_integer_print_matlab_kind[index], str8(" = 0x"));
+			meta_push_u64_hex_width(m, c->value, meta_integer_print_digits[index]);
+			meta_end_line(m);
+		}
+		result &= meta_end_and_write_matlab(m, (c8 *)output.data);
+	}
 
 	/////////////////////////
 	// NOTE(rnp): enumerants
@@ -3409,6 +3553,9 @@ metagen_load_context(Arena *arena, char *filename)
 		}break;
 		case MetaEntryKind_Expand:{
 			i += meta_expand(ctx, scratch, e, entries.count - i, 0);
+		}break;
+		case MetaEntryKind_Constant:{
+			meta_pack_constant(ctx, e);
 		}break;
 		case MetaEntryKind_Struct:
 		case MetaEntryKind_Table:

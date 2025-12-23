@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#define ZBP_HeaderMagic (0x5042504d455afecaULL)
+
 typedef enum {
 	ZBP_RCAOrientation_None    = 0,
 	ZBP_RCAOrientation_Rows    = 1,
