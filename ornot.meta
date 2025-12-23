@@ -1,0 +1,151 @@
+@Enumeration(RCAOrientation [None Rows Columns])
+
+@Enumeration(DecodeMode [
+	None
+	Hadamard
+	Walsh
+])
+
+@Enumeration(SamplingMode [
+	Standard
+	Bandpass
+])
+
+@Enumeration(AcquisitionKind [
+	FORCES
+	UFORCES
+	HERCULES
+	RCA_VLS
+	RCA_TPW
+	UHERCULES
+	RACES
+	EPIC_FORCES
+	EPIC_UFORCES
+	EPIC_UHERCULES
+	Flash
+	HERO_PA
+])
+
+@Enumeration(ContrastMode [
+	None
+])
+
+@Enumeration(EmissionKind [
+	Sine
+	Chirp
+])
+
+@Table([name size elements]) DataKind
+{
+	[Int16          2 1]
+	[Int16Complex   2 2]
+	[Float32        4 1]
+	[Float32Complex 4 2]
+}
+
+@Expand(DataKind) @Enumeration(DataKind `$(name)`)
+
+@Enumeration(DataCompressionKind [
+	None
+	ZSTD
+])
+
+@Struct BaseHeader
+{
+	[magic U64 1]
+	[major U32 1]
+	[minor U32 1]
+}
+
+@Struct HeaderV2
+{
+	[magic U64 1]
+	[major U32 1]
+	[minor U32 1]
+
+	[raw_data_dimension            U32  4]
+	[raw_data_kind                 S32  1]
+	[raw_data_offset               S32  1]
+	[raw_data_compression_kind     S32  1]
+	[decode_mode                   S32  1]
+	[sampling_mode                 S32  1]
+	[sampling_frequency            F32  1]
+	[demodulation_frequency        F32  1]
+	[speed_of_sound                F32  1]
+	[channel_mapping_offset        S32  1]
+	[sample_count                  U32  1]
+	[channel_count                 U32  1]
+	[receive_event_count           U32  1]
+	[transducer_transform_matrix   F32 16]
+	[transducer_element_pitch      F32  2]
+	[time_offset                   F32  1]
+	[group_acquisition_time        F32  1]
+	[ensemble_repitition_interval  F32  1]
+	[acquisition_mode              S32  1]
+	[acquisition_parameters_offset S32  1]
+	[contrast_mode                 S32  1]
+	[contrast_parameters_offset    S32  1]
+	[emission_descriptors_offset   S32  1]
+}
+
+@Struct EmissionDescriptor
+{
+	[emission_kind     S32]
+	[parameters_offset S32]
+}
+
+@Struct EmissionSineParameters
+{
+	[cycles    F32]
+	[frequency F32]
+}
+
+@Struct EmissionChirpParameters
+{
+	[duration      F32]
+	[min_frequency F32]
+	[max_frequency F32]
+}
+
+@Struct RCATransmitFocus
+{
+	[focal_depth                  F32  1]
+	[steering_angle               F32  1]
+	[origin_offset                F32  1]
+	[transmit_receive_orientation U32  1]
+}
+
+@Struct FORCESParameters
+{
+	[transmit_focus RCATransmitFocus]
+}
+
+@Struct uFORCESParameters
+{
+	[transmit_focus         RCATransmitFocus]
+	[sparse_elements_offset S32]
+}
+
+@Struct HERCULESParameters
+{
+	[transmit_focus RCATransmitFocus]
+}
+
+@Struct uHERCULESParameters
+{
+	[transmit_focus         RCATransmitFocus]
+	[sparse_elements_offset S32]
+}
+
+@Struct TPWParameters
+{
+	[tilting_angles_offset                S32]
+	[transmit_receive_orientations_offset S32]
+}
+
+@Struct VLSParameters
+{
+	[focal_depths_offset                  S32]
+	[origin_offsets_offset                S32]
+	[transmit_receive_orientations_offset S32]
+}
