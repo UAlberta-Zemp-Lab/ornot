@@ -57,6 +57,32 @@
 	[minor U32 1]
 }
 
+@Struct HeaderV1
+{
+	[magic   U64 1]
+	[version U32 1]
+
+	[decode_mode                 S16   1]
+	[beamform_mode               S16   1]
+	[raw_data_dimension          U32   4]
+	[sample_count                U32   1]
+	[channel_count               U32   1]
+	[receive_event_count         U32   1]
+	[frame_count                 U32   1]
+	[transducer_element_pitch    F32   2]
+	[transducer_transform_matrix F32  16]
+	[channel_mapping             S16 256]
+	[steering_angles             F32 256]
+	[focal_depths                F32 256]
+	[sparse_elements             S16 256]
+	[hadamard_rows               S16 256]
+	[speed_of_sound              F32   1]
+	[demodulation_frequency      F32   1]
+	[sampling_frequency          F32   1]
+	[time_offset                 F32   1]
+	[transmit_mode               U32   1]
+}
+
 @Struct HeaderV2
 {
 	[magic U64 1]

@@ -71,6 +71,30 @@ typedef struct ZBP_BaseHeader {
 	uint32_t minor;
 } ZBP_BaseHeader;
 
+typedef struct ZBP_HeaderV1 {
+	uint64_t magic;
+	uint32_t version;
+	int16_t  decode_mode;
+	int16_t  beamform_mode;
+	uint32_t raw_data_dimension[4];
+	uint32_t sample_count;
+	uint32_t channel_count;
+	uint32_t receive_event_count;
+	uint32_t frame_count;
+	float    transducer_element_pitch[2];
+	float    transducer_transform_matrix[16];
+	int16_t  channel_mapping[256];
+	float    steering_angles[256];
+	float    focal_depths[256];
+	int16_t  sparse_elements[256];
+	int16_t  hadamard_rows[256];
+	float    speed_of_sound;
+	float    demodulation_frequency;
+	float    sampling_frequency;
+	float    time_offset;
+	uint32_t transmit_mode;
+} ZBP_HeaderV1;
+
 typedef struct ZBP_HeaderV2 {
 	uint64_t magic;
 	uint32_t major;
