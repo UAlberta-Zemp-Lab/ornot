@@ -1,5 +1,6 @@
 #include <zstd.h>
 
+#include "generated/zemp_bp.h"
 #include "ornot.h"
 
 typedef char      c8;
@@ -40,9 +41,9 @@ function void *mem_copy(void *restrict dst, void *restrict src, uz n)
 	return dst;
 }
 
-b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
+b32 write_zemp_bp_v1(c8 *output_name, ZBP_HeaderV1 *header)
 {
-	header->magic = ZEMP_BP_MAGIC;
+	header->magic = ZBP_HeaderMagic;
 	b32 result = os_write_new_file(output_name,
 	                               (s8){.data = (u8 *)header, .len = sizeof(*header)});
 	return result;
@@ -51,13 +52,13 @@ b32 write_zemp_bp_v1(c8 *output_name, zemp_bp_v1 *header)
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #warning "zemp_bp_v1 unpacking not yet implemented for big endian hosts"
 #else
-b32 unpack_zemp_bp_v1(c8 *input_name, zemp_bp_v1 *output_header)
+b32 unpack_zemp_bp_v1(c8 *input_name, ZBP_HeaderV1 *output_header)
 {
 	b32 result = 0;
 
 	MemoryStream file_data = os_read_whole_file(input_name);
-	if (file_data.filled > 0 && (*(u64 *)file_data.backing.data == ZEMP_BP_MAGIC)) {
-		zemp_bp_v1 *header = file_data.backing.data;
+	if (file_data.filled > 0 && (*(u64 *)file_data.backing.data == ZBP_HeaderMagic)) {
+		ZBP_HeaderV1 *header = file_data.backing.data;
 		if (header->version == 1) {
 			mem_copy(output_header, header, sizeof(*header));
 			result = 1;

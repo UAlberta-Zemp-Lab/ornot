@@ -414,7 +414,6 @@ arena_pop(Arena *a, sz length)
 	a->beg -= length;
 }
 
-
 function str8
 str8_from_c_str(char *c_str)
 {
@@ -1686,78 +1685,6 @@ build_static_library(Arena a, CommandList cc, char *name, char **deps, char **ou
 	for (sz i = 0; i < count; i++)
 		result &= cc_single_file(a, cc, 0, deps[i], outputs[i], 0, 0);
 	if (result) result = build_static_library_from_objects(a, name, 0, 0, outputs, count);
-	return result;
-}
-
-function b32
-build_zstd(Arena arena, Options *options)
-{
-	b32 result = 1;
-	char *lib = OUTPUT_LIB(OS_STATIC_LIB("zstd"));
-
-	if (needs_rebuild_(lib, 0, 0)) {
-		os_make_directory(OUTPUT("zstd"));
-		#define ZSTD_BASE_DIRECTORY "c" OS_PATH_SEPARATOR "external" OS_PATH_SEPARATOR "zstd"
-		#define ZSTD_FILE_DIRECTORY ZSTD_BASE_DIRECTORY OS_PATH_SEPARATOR "lib"
-		// X(sub_directory, filename, extension)
-		#define ZSTD_SOURCES \
-			X(common,     debug,                    c) \
-			X(common,     entropy_common,           c) \
-			X(common,     error_private,            c) \
-			X(common,     fse_decompress,           c) \
-			X(common,     pool,                     c) \
-			X(common,     threading,                c) \
-			X(common,     xxhash,                   c) \
-			X(common,     zstd_common,              c) \
-			X(compress,   fse_compress,             c) \
-			X(compress,   hist,                     c) \
-			X(compress,   huf_compress,             c) \
-			X(compress,   zstd_compress,            c) \
-			X(compress,   zstd_compress_literals,   c) \
-			X(compress,   zstd_compress_sequences,  c) \
-			X(compress,   zstd_compress_superblock, c) \
-			X(compress,   zstd_double_fast,         c) \
-			X(compress,   zstd_fast,                c) \
-			X(compress,   zstd_lazy,                c) \
-			X(compress,   zstd_ldm,                 c) \
-			X(compress,   zstd_opt,                 c) \
-			X(compress,   zstdmt_compress,          c) \
-			X(compress,   zstd_preSplit,            c) \
-			X(decompress, huf_decompress_amd64,     S) \
-			X(decompress, huf_decompress,           c) \
-			X(decompress, zstd_ddict,               c) \
-			X(decompress, zstd_decompress,          c) \
-			X(decompress, zstd_decompress_block,    c) \
-
-		git_submodule_update(arena, ZSTD_BASE_DIRECTORY);
-
-		#define X(base, file, ext) ZSTD_FILE_DIRECTORY OS_PATH_SEPARATOR #base OS_PATH_SEPARATOR #file "." #ext,
-		char *srcs[] = {ZSTD_SOURCES};
-		#undef X
-		#define X(base, file, ext) OUTPUT("zstd" OS_PATH_SEPARATOR OBJECT(#file)),
-		char *outs[] = {ZSTD_SOURCES};
-		#undef X
-
-		CommandList cc = cmd_base(&arena, options);
-		result = build_static_library(arena, cc, lib, srcs, outs, countof(srcs));
-	}
-	return result;
-}
-
-function b32
-build_ornot(Arena arena, Options *options)
-{
-	b32 result = build_zstd(arena, options);
-	if (result) {
-		char *lib    = OUTPUT(OS_SHARED_LIB("ornot"));
-		char *libs[] = {OUTPUT(OS_STATIC_LIB("zstd"))};
-		CommandList cc = cmd_base(&arena, options);
-		cmd_append(&arena, &cc, "-I" ZSTD_FILE_DIRECTORY);
-		result = build_shared_library(arena, cc, "ornot", lib, libs, countof(libs),
-		                              (char *[]){"c" OS_PATH_SEPARATOR "ornot.c"}, 1);
-		result &= os_copy_file("c" OS_PATH_SEPARATOR "ornot.h",   OUTPUT("ornot.h"));
-		result &= os_copy_file("c" OS_PATH_SEPARATOR "zemp_bp.h", OUTPUT("zemp_bp.h"));
-	}
 	return result;
 }
 
@@ -3571,6 +3498,94 @@ metagen_load_context(Arena *arena, char *filename)
 	}
 
 	result->arena = 0;
+	return result;
+}
+
+function b32
+build_zstd(Arena arena, Options *options)
+{
+	b32 result = 1;
+	char *lib = OUTPUT_LIB(OS_STATIC_LIB("zstd"));
+
+	if (needs_rebuild_(lib, 0, 0)) {
+		os_make_directory(OUTPUT("zstd"));
+		#define ZSTD_BASE_DIRECTORY "c" OS_PATH_SEPARATOR "external" OS_PATH_SEPARATOR "zstd"
+		#define ZSTD_FILE_DIRECTORY ZSTD_BASE_DIRECTORY OS_PATH_SEPARATOR "lib"
+		// X(sub_directory, filename, extension)
+		#define ZSTD_SOURCES \
+			X(common,     debug,                    c) \
+			X(common,     entropy_common,           c) \
+			X(common,     error_private,            c) \
+			X(common,     fse_decompress,           c) \
+			X(common,     pool,                     c) \
+			X(common,     threading,                c) \
+			X(common,     xxhash,                   c) \
+			X(common,     zstd_common,              c) \
+			X(compress,   fse_compress,             c) \
+			X(compress,   hist,                     c) \
+			X(compress,   huf_compress,             c) \
+			X(compress,   zstd_compress,            c) \
+			X(compress,   zstd_compress_literals,   c) \
+			X(compress,   zstd_compress_sequences,  c) \
+			X(compress,   zstd_compress_superblock, c) \
+			X(compress,   zstd_double_fast,         c) \
+			X(compress,   zstd_fast,                c) \
+			X(compress,   zstd_lazy,                c) \
+			X(compress,   zstd_ldm,                 c) \
+			X(compress,   zstd_opt,                 c) \
+			X(compress,   zstdmt_compress,          c) \
+			X(compress,   zstd_preSplit,            c) \
+			X(decompress, huf_decompress_amd64,     S) \
+			X(decompress, huf_decompress,           c) \
+			X(decompress, zstd_ddict,               c) \
+			X(decompress, zstd_decompress,          c) \
+			X(decompress, zstd_decompress_block,    c) \
+
+		git_submodule_update(arena, ZSTD_BASE_DIRECTORY);
+
+		#define X(base, file, ext) ZSTD_FILE_DIRECTORY OS_PATH_SEPARATOR #base OS_PATH_SEPARATOR #file "." #ext,
+		char *srcs[] = {ZSTD_SOURCES};
+		#undef X
+		#define X(base, file, ext) OUTPUT("zstd" OS_PATH_SEPARATOR OBJECT(#file)),
+		char *outs[] = {ZSTD_SOURCES};
+		#undef X
+
+		CommandList cc = cmd_base(&arena, options);
+		result = build_static_library(arena, cc, lib, srcs, outs, countof(srcs));
+	}
+	return result;
+}
+
+function b32
+build_ornot(Arena arena, Options *options)
+{
+	b32 result = build_zstd(arena, options);
+	if (result) {
+		Arena scratch = arena;
+		char *lib     = OUTPUT(OS_SHARED_LIB("ornot"));
+		char *libs[]  = {OUTPUT(OS_STATIC_LIB("zstd"))};
+		CommandList cc = cmd_base(&scratch, options);
+		cmd_append(&scratch, &cc, "-I" ZSTD_FILE_DIRECTORY);
+		result = build_shared_library(scratch, cc, "ornot", lib, libs, countof(libs),
+		                              (char *[]){"c" OS_PATH_SEPARATOR "ornot.c"}, 1);
+	}
+	{
+		str8 output = str8(OUTPUT("ornot.h"));
+		str8 zempbp = str8("c" OS_PATH_SEPARATOR "generated" OS_PATH_SEPARATOR "zemp_bp.h");
+		str8 header = str8("c" OS_PATH_SEPARATOR "ornot.h");
+		if (needs_rebuild((c8 *)output.data, (c8 *)header.data, (c8 *)zempbp.data)) {
+			Arena scratch = arena;
+			MetaprogramContext m[1] = {{.stream = arena_stream(scratch)}};
+
+			m->stream.count += os_read_entire_file(&scratch, (c8 *)zempbp.data).length;
+			meta_push_line(m);
+
+			scratch.beg = m->stream.data + m->stream.count;
+			m->stream.count += os_read_entire_file(&scratch, (c8 *)header.data).length;
+
+			result &= meta_write_and_reset(m, (c8 *)output.data);
+		}
+	}
 	return result;
 }
 

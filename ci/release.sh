@@ -37,7 +37,7 @@ cd "${wd}"
 outname="beamformer-pack-${machine}-$(git describe --tag)"
 mkdir -p "${outname}"
 cp "scripts/beamform_simple.m" "${outname}/"
-cp "${ornotlib}" "c/ornot.h" "c/zemp_bp.h" "${outname}/"
+cp "${ornotlib}" "out/ornot.h" "${outname}/"
 cp "${beamformerlib}" "submodules/ogl_beamforming/out/ogl_beamformer_lib.h" "${beamformer}" "${outname}/"
 cp -r "submodules/ogl_beamforming/out/matlab" "${outname}/"
 
