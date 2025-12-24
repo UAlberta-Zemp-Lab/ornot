@@ -510,40 +510,14 @@ function u64 integer_width_index(u64 n)
 function IntegerConversion
 integer_from_str8(str8 raw)
 {
-	read_only local_persist s8 lut['f' + 1 - '0'] = {
-		[':'  - '0'] = -1,
-		[';'  - '0'] = -1,
-		['<'  - '0'] = -1,
-		['='  - '0'] = -1,
-		['>'  - '0'] = -1,
-		['?'  - '0'] = -1,
-		['@'  - '0'] = -1,
-		['['  - '0'] = -1,
-		['\\' - '0'] = -1,
-		[']'  - '0'] = -1,
-		['^'  - '0'] = -1,
-		['_'  - '0'] = -1,
-		['`'  - '0'] = -1,
-
-		['0' - '0'] = 0,
-		['1' - '0'] = 1,
-		['2' - '0'] = 2,
-		['3' - '0'] = 3,
-		['4' - '0'] = 4,
-		['5' - '0'] = 5,
-		['6' - '0'] = 6,
-		['7' - '0'] = 7,
-		['8' - '0'] = 8,
-		['9' - '0'] = 9,
-
-		['A' - '0'] = 10, ['a' - '0'] = 10,
-		['B' - '0'] = 11, ['b' - '0'] = 11,
-		['C' - '0'] = 12, ['c' - '0'] = 12,
-		['D' - '0'] = 13, ['d' - '0'] = 13,
-		['E' - '0'] = 14, ['e' - '0'] = 14,
-		['F' - '0'] = 15, ['f' - '0'] = 15,
+	read_only local_persist alignas(64) s8 lut[64] = {
+		 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
+		-1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	};
-	IntegerConversion result = {0};
+
+	IntegerConversion result = {.unparsed = raw};
 
 	sz  i     = 0;
 	s64 scale = 1;
@@ -558,35 +532,27 @@ integer_from_str8(str8 raw)
 		i += 2;
 	}
 
-	if (hex) {
-		for (; i < raw.length; i++) {
-			if (Between(raw.data[i], '0', 'f') && lut[raw.data[i] - '0'] >= 0) {
-				u64 digit = lut[raw.data[i] - '0'];
-				if (result.U64 > (U64_MAX - (u64)digit) / 16) {
-					result.result = IntegerConversionResult_OutOfRange;
-					result.U64    = U64_MAX;
-				} else {
-					result.U64 = 16 * result.U64 + (u64)digit;
-				}
-			} else {
-				break;
-			}
-		}
-	} else {
-		for (; i < raw.length; i++) {
-			if (Between(raw.data[i], '0', '9')) {
-				u64 digit = raw.data[i] - '0';
-				if (result.U64 > (U64_MAX - digit) / 10) {
-					result.result = IntegerConversionResult_OutOfRange;
-					result.U64    = U64_MAX;
-				} else {
-					result.U64 = 10 * result.U64 + digit;
-				}
-			} else {
-				break;
-			}
-		}
-	}
+	#define integer_conversion_body(radix, clamp) do {\
+		for (; i < raw.length; i++) {\
+			s64 value = lut[Min(raw.data[i] - '0', clamp)];\
+			if (value >= 0) {\
+				if (result.U64 > (U64_MAX - (u64)value) / radix) {\
+					result.result = IntegerConversionResult_OutOfRange;\
+					result.U64    = U64_MAX;\
+					return result;\
+				} else {\
+					result.U64 = radix * result.U64 + (u64)value;\
+				}\
+			} else {\
+				break;\
+			}\
+		}\
+	} while (0)
+
+	if (hex) integer_conversion_body(16u, 63u);
+	else     integer_conversion_body(10u, 15u);
+
+	#undef integer_conversion_body
 
 	result.unparsed = (str8){.length = raw.length - i, .data = raw.data + i};
 	result.result   = IntegerConversionResult_Success;
