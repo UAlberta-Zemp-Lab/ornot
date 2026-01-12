@@ -58,6 +58,8 @@ typedef enum {
 	ZBP_DataKind_Int16Complex   = 1,
 	ZBP_DataKind_Float32        = 2,
 	ZBP_DataKind_Float32Complex = 3,
+	ZBP_DataKind_Float16        = 4,
+	ZBP_DataKind_Float16Complex = 5,
 	ZBP_DataKind_Count,
 } ZBP_DataKind;
 

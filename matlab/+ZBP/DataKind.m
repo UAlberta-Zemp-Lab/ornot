@@ -8,5 +8,7 @@ classdef DataKind < int32
 		Int16Complex   (1)
 		Float32        (2)
 		Float32Complex (3)
+		Float16        (4)
+		Float16Complex (5)
 	end
 end
