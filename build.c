@@ -2559,7 +2559,7 @@ typedef enum {
 
 read_only global str8 meta_expansion_token_strings[] = {
 	str8_comp("EOF"),
-	str8_comp("Indentifier"),
+	str8_comp("Identifier"),
 	str8_comp("Number"),
 	str8_comp("String"),
 	#define X(s, kind, ...) str8_comp(#s),
