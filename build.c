@@ -1786,6 +1786,12 @@ read_only global u8 meta_kind_elements[] = {
 	#undef X
 };
 
+read_only global u8 meta_kind_bytes[] = {
+	#define X(_k, _b, _m, bytes, ...) bytes,
+	META_KIND_LIST
+	#undef X
+};
+
 read_only global str8 meta_kind_meta_types[] = {
 	#define X(k, ...) str8_comp(#k),
 	META_KIND_LIST
@@ -3385,14 +3391,53 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 
 			op         = da_push(&m->scratch, ops);
 			op->kind   = MetaEmitOperationKind_String;
-			op->string = str8("	end");
-
-			op         = da_push(&m->scratch, ops);
-			op->kind   = MetaEmitOperationKind_String;
-			op->string = str8("end");
+			op->string = str8("	end\n");
 
 			meta_push_line(m, matlab_file_header);
 			metagen_run_emit(m, ctx, ops, &ctx->structs, meta_kind_matlab_types, str8(ZBP_NAMESPACE "."));
+
+			m->indentation_level++;
+
+			meta_begin_scope(m, str8("methods (Static)")); {
+				meta_begin_scope(m, str8("function [out, consumed] = fromBytes(bytes)")); {
+					str8 *members  = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("name"))];
+					str8 *types    = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("type"))];
+					str8 *elements = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("elements"))];
+					meta_push_line(m, str8("consumed = 0;"));
+					meta_push_line(m, str8("out      = " ZBP_NAMESPACE "."), ctx->table_names.data[s->table_name_id], str8(";"));
+
+					for (u32 entry = 0; entry < s->entry_count; entry++) {
+						meta_push(m, str8("\n"));
+
+						sz id = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, types[entry]);
+						if (id < 0) {
+							meta_push_line(m, str8("[sub, subUsed] = " ZBP_NAMESPACE "."), types[entry], str8(".fromBytes(bytes((consumed + 1):end));"));
+							meta_push_line(m, str8("out."), members[entry], str8(" = sub;"));
+							meta_push_line(m, str8("consumed = consumed + subUsed;"));
+						} else {
+							u32 byte_size     = meta_kind_bytes[id];
+							u32 element_count = 0;
+							IntegerConversion integer = integer_from_str8(elements[entry]);
+							if (integer.result == IntegerConversionResult_Success)
+								element_count = integer.U64;
+
+							meta_begin_line(m, str8("out."), members[entry], str8("(:) = typecast(bytes((consumed + 1):(consumed + "));
+
+							if (element_count > 0) {
+								meta_push_u64(m, byte_size * element_count);
+								meta_end_line(m, str8(")), '"), meta_kind_matlab_types[id], str8("');"));
+
+								meta_begin_line(m, str8("consumed = consumed + "));
+								meta_push_u64(m, byte_size * element_count);
+								meta_end_line(m, str8(";"));
+							} else {
+								InvalidCodePath;
+							}
+						}
+					}
+				} meta_end_scope(m, str8("end"));
+			} meta_end_scope(m, str8("end"));
+			meta_end_scope(m, str8("end"));
 
 			result &= meta_write_and_reset(m, (c8 *)output.data);
 			m->scratch = scratch;
