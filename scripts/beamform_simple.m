@@ -15,9 +15,9 @@ load_libraries();
 %%%%%%%%%%%%%%%%%%%%%%
 %% Setup Parameters %%
 %%%%%%%%%%%%%%%%%%%%%%
-zbp    = libstruct('ZBP_HeaderV1', struct());
-calllib('ornot', 'unpack_zemp_bp_v1', char(fullfile(data_dir, params_file)), zbp);
-zbp    = struct(zbp);
+fd  = fopen(fullfile(data_dir, params_file), 'r');
+zbp = ZBP.HeaderV1.fromBytes(fread(fd, '*uint8'));
+fclose(fd); clear fd;
 
 frame_count = zbp.raw_data_dimension(3);
 
@@ -26,7 +26,7 @@ bp.decode_mode            = zbp.decode_mode;
 bp.das_shader_id          = zbp.beamform_mode;
 bp.time_offset            = zbp.time_offset;
 bp.sampling_frequency     = zbp.sampling_frequency;
-bp.demodulation_frequency = zbp.center_frequency;
+bp.demodulation_frequency = zbp.demodulation_frequency;
 bp.speed_of_sound         = zbp.speed_of_sound;
 bp.xdc_transform          = zbp.transducer_transform_matrix;
 bp.xdc_element_pitch      = zbp.transducer_element_pitch;
