@@ -534,7 +534,7 @@ integer_from_str8(str8 raw)
 
 	#define integer_conversion_body(radix, clamp) do {\
 		for (; i < raw.length; i++) {\
-			s64 value = lut[Min(raw.data[i] - '0', clamp)];\
+			s64 value = lut[Min((u8)(raw.data[i] - (u8)'0'), clamp)];\
 			if (value >= 0) {\
 				if (result.U64 > (U64_MAX - (u64)value) / radix) {\
 					result.result = IntegerConversionResult_OutOfRange;\
@@ -1758,20 +1758,20 @@ read_only global char *meta_entry_kind_strings[] = {META_ENTRY_KIND_LIST};
 #undef X
 
 #define META_KIND_LIST \
-	X(M4,  float,    single, 64, 16) \
-	X(SV4, int32_t,  int32,  16,  4) \
-	X(UV4, uint32_t, uint32, 16,  4) \
-	X(UV2, uint32_t, uint32,  8,  2) \
-	X(V3,  float,    single, 12,  3) \
-	X(V2,  float,    single,  8,  2) \
-	X(F32, float,    single,  4,  1) \
-	X(S32, int32_t,  int32,   4,  1) \
-	X(S16, int16_t,  int16,   2,  1) \
-	X(S8,  int8_t,   int8,    1,  1) \
-	X(U64, uint64_t, uint64,  8,  1) \
-	X(U32, uint32_t, uint32,  4,  1) \
-	X(U16, uint16_t, uint16,  2,  1) \
-	X(U8,  uint8_t,  uint8,   1,  1)
+	X(M4,  float,    single, f, 64, 16) \
+	X(SV4, int32_t,  int32,  l, 16,  4) \
+	X(UV4, uint32_t, uint32, L, 16,  4) \
+	X(UV2, uint32_t, uint32, L,  8,  2) \
+	X(V3,  float,    single, f, 12,  3) \
+	X(V2,  float,    single, f,  8,  2) \
+	X(F32, float,    single, f,  4,  1) \
+	X(S32, int32_t,  int32,  l,  4,  1) \
+	X(S16, int16_t,  int16,  h,  2,  1) \
+	X(S8,  int8_t,   int8,   b,  1,  1) \
+	X(U64, uint64_t, uint64, Q,  8,  1) \
+	X(U32, uint32_t, uint32, L,  4,  1) \
+	X(U16, uint16_t, uint16, H,  2,  1) \
+	X(U8,  uint8_t,  uint8,  B,  1,  1)
 
 typedef enum {
 	#define X(k, ...) MetaKind_## k,
@@ -1781,13 +1781,13 @@ typedef enum {
 } MetaKind;
 
 read_only global u8 meta_kind_elements[] = {
-	#define X(_k, _b, _m, _by, elements, ...) elements,
+	#define X(_k, _b, _m, _pys, _by, elements, ...) elements,
 	META_KIND_LIST
 	#undef X
 };
 
 read_only global u8 meta_kind_bytes[] = {
-	#define X(_k, _b, _m, bytes, ...) bytes,
+	#define X(_k, _b, _m, _pys, bytes, ...) bytes,
 	META_KIND_LIST
 	#undef X
 };
@@ -1810,7 +1810,13 @@ read_only global str8 meta_kind_matlab_types[] = {
 	#undef X
 };
 
-#define META_CURRENT_LOCATION (MetaLocation){__LINE__, 0}
+read_only global str8 meta_kind_python_struct_types[] = {
+	#define X(_k, _b, _m, pys, ...) str8_comp(#pys),
+	META_KIND_LIST
+	#undef X
+};
+
+#define META_CURRENT_LOCATION (MetaLocation){__LINE__ - 1, 0}
 typedef struct { u32 line, column; } MetaLocation;
 
 #define META_ENTRY_ARGUMENT_KIND_LIST \
@@ -2529,13 +2535,13 @@ meta_push_expansion_part(MetaContext *ctx, Arena *arena, MetaExpansionPartList *
 	case MetaExpansionPartKind_Reference:
 	{
 		sz index = meta_lookup_string_slow(t->fields, t->field_count, string);
-		result->strings = t->entries[index];
 		if (index < 0) {
 			/* TODO(rnp): fix this location to point directly at the field in the string */
 			str8 table_name = ctx->table_names.data[t->table_name_id];
 			meta_compiler_error(loc, "table \"%.*s\" does not contain member: %.*s\n",
 			                    (s32)table_name.length, table_name.data, (s32)string.length, string.data);
 		}
+		result->strings = t->entries[index];
 	}break;
 	case MetaExpansionPartKind_String:{ result->string = string; }break;
 	InvalidDefaultCase;
@@ -3302,7 +3308,7 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 
 	char *out_test = "matlab"          OS_PATH_SEPARATOR
 	                 "+" ZBP_NAMESPACE OS_PATH_SEPARATOR
-	                 "ZempBPv2.m";
+	                 "HeaderV2.m";
 
 	if (!needs_rebuild(out_test, "ornot.meta"))
 		return result;
@@ -3447,6 +3453,202 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 	return result;
 }
 
+function b32
+metagen_emit_python_code(MetaContext *ctx, Arena arena)
+{
+	b32 result = 1;
+
+	char *out = "python" OS_PATH_SEPARATOR ZBP_NAMESPACE ".py";
+
+	if (!needs_rebuild(out, "ornot.meta"))
+		return result;
+
+	build_log_generate("Python Bindings");
+
+	if (setjmp(compiler_jmp_buf)) {
+		build_log_error("Failed to generate Python Bindings");
+		return 0;
+	}
+
+	MetaprogramContext m[1] = {{.stream = arena_stream(arena), .scratch = ctx->scratch}};
+
+	read_only local_persist str8 python_file_header = str8_comp(""
+		"# See LICENSE for license details.\n\n"
+		"# GENERATED CODE\n"
+		"import struct\n"
+	);
+
+	meta_push_line(m, python_file_header);
+	meta_begin_scope(m, str8("class " ZBP_NAMESPACE ":"));
+
+	////////////////////////
+	// NOTE(rnp): constants
+	{
+		for (sz constant = 0; constant < ctx->constants.count; constant++) {
+			MetaConstant *c = ctx->constants.data + constant;
+			str8 name  = ctx->constant_names.data[c->name_id];
+			u64  index = integer_width_index(c->value);
+			meta_begin_line(m, name, str8(" = 0x"));
+			meta_push_u64_hex_width(m, c->value, meta_integer_print_digits[index]);
+			meta_end_line(m);
+		}
+	}
+
+	/////////////////////////
+	// NOTE(rnp): enumerants
+	for (sz kind = 0; kind < ctx->enumeration_kinds.count; kind++) {
+		str8 name      = ctx->enumeration_kinds.data[kind];
+		str8 name_full = push_str8_from_parts(&m->scratch, str8(""), name, str8("_"));
+		str8_list *kinds = ctx->enumeration_members.data + kind;
+		meta_push(m, str8("\n"));
+		meta_push_line(m, str8("# "), name);
+		metagen_push_counted_enum_body(m, name_full, str8(""), str8("= "), str8(""), kinds->data, kinds->count);
+		m->scratch = ctx->scratch;
+	}
+
+	//////////////////////
+	// NOTE(rnp): structs
+	if (ctx->structs.count > 0) {
+		u32 **table_byte_sizes = push_array(&m->scratch, u32 *, ctx->structs.count);
+
+		for (sz i = 0; i < ctx->structs.count; i++) {
+			table_byte_sizes[i] = push_array(&m->scratch, u32, ctx->structs.data[i].entry_count);
+			mem_clear(table_byte_sizes[i], 0xFF, sizeof(u32) * ctx->structs.data[i].entry_count);
+		}
+
+		u32 **table_element_counts = push_array(&m->scratch, u32 *, ctx->structs.count);
+		for (sz i = 0; i < ctx->structs.count; i++)
+			table_element_counts[i] = push_array(&m->scratch, u32, ctx->structs.data[i].entry_count);
+
+		u32 iterations = 0;
+		b32 all_done   = 0;
+		sz  types_id    = meta_lookup_string_slow(ctx->structs.data[0].fields, ctx->structs.data[0].field_count, str8("type"));
+		sz  elements_id = meta_lookup_string_slow(ctx->structs.data[0].fields, ctx->structs.data[0].field_count, str8("elements"));
+		while (!all_done && iterations < 16) {
+			// TODO(rnp): move into context loading so that this work can be reused in matlab codegen
+			for (sz structure = 0; structure < ctx->structs.count; structure++) {
+				MetaTable *s = ctx->structs.data + structure;
+				str8 *types    = s->entries[types_id];
+				str8 *elements = s->entries[elements_id];
+
+				for (u32 entry = 0; entry < s->entry_count; entry++) {
+					sz id = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, types[entry]);
+					if (id >= 0) {
+						IntegerConversion integer = integer_from_str8(elements[entry]);
+						if (integer.result == IntegerConversionResult_Success)
+							table_element_counts[structure][entry] = integer.U64;
+
+						table_byte_sizes[structure][entry] = meta_kind_bytes[id] * table_element_counts[structure][entry];
+					} else {
+						sz table_id  = meta_lookup_string_slow(ctx->table_names.data, ctx->table_names.count, types[entry]);
+						sz struct_id = -1;
+						for (sz try = 0; try < ctx->structs.count; try++) {
+							if (ctx->structs.data[try].table_name_id == table_id) {
+								struct_id = try;
+								break;
+							}
+						}
+
+						if (struct_id >= 0) {
+							b32 valid = 1;
+							u32 size  = 0;
+							for (u32 se = 0; se < ctx->structs.data[struct_id].entry_count; se++) {
+								valid &= table_byte_sizes[struct_id][se] != (u32)-1;
+								size  += table_byte_sizes[struct_id][se];
+							}
+							if (valid) table_byte_sizes[structure][entry] = size;
+						}
+					}
+				}
+			}
+
+			b32 found_ff = 0;
+			for (sz structure = 0; structure < ctx->structs.count; structure++)
+				for (u32 entry = 0; entry < ctx->structs.data[structure].entry_count; entry++)
+					found_ff |= table_byte_sizes[structure][entry] == (u32)-1;
+			all_done = found_ff == 0;
+		}
+
+		if (!all_done) {
+			// TODO(rnp): this can be improved when above gets moved into load_context
+			build_log_error("Failed to resolve all struct sizes\n");
+			return 0;
+		}
+
+		for (sz structure = 0; structure < ctx->structs.count; structure++) {
+			MetaTable *s = ctx->structs.data + structure;
+			Arena scratch = m->scratch;
+
+			str8 **columns = push_array(&m->scratch, str8 *, 3);
+			for (sz i = 0; i < 3; i++)
+				columns[i] = push_array(&m->scratch, str8, s->entry_count);
+
+			meta_push(m, str8("\n"));
+			meta_begin_scope(m, str8("class "), ctx->table_names.data[s->table_name_id], str8(":")); {
+				meta_push_line(m, str8("@classmethod"));
+				meta_begin_scope(m, str8("def from_bytes(cls, bytes):")); {
+					u32 offset = 0;
+					meta_push_line(m, str8("result = cls()"));
+
+					str8 *members  = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("name"))];
+					str8 *types    = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("type"))];
+					str8 *elements = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("elements"))];
+					for (u32 entry = 0; entry < s->entry_count; entry++) {
+						columns[0][entry] = members[entry];
+
+						Stream sb = arena_stream(m->scratch);
+						stream_append_str8(&sb, str8(" = "));
+
+						sz id = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, types[entry]);
+						if (id >= 0) {
+							stream_append_str8s(&sb, str8("struct.unpack_from('<"), elements[entry], meta_kind_python_struct_types[id], str8("',"));
+
+							columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+							stream_append_str8(&sb, str8("bytes, "));
+							stream_append_u64(&sb, offset);
+							stream_append_str8(&sb, str8(")"));
+
+							if (table_element_counts[structure][entry] == 1)
+								stream_append_str8(&sb, str8("[0]"));
+
+							columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+						} else {
+							stream_append_str8s(&sb, str8(ZBP_NAMESPACE "."), types[entry], str8(".from_bytes("));
+							columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+
+							stream_append_str8(&sb, str8("bytes["));
+							stream_append_u64(&sb, offset);
+							stream_append_str8(&sb, str8(":])"));
+							columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+						}
+						offset += table_byte_sizes[structure][entry];
+					}
+					metagen_push_table(m, m->scratch, str8("result."), str8(""), columns, s->entry_count, 3);
+					meta_push_line(m, str8("return result"));
+				} m->indentation_level--;
+
+				meta_push(m, str8("\n"));
+				meta_push_line(m, str8("@staticmethod"));
+				meta_begin_scope(m, str8("def byte_size():")); {
+					u32 byte_size = 0;
+					for (u32 entry = 0; entry < s->entry_count; entry++)
+						byte_size += table_byte_sizes[structure][entry];
+
+					meta_begin_line(m, str8("return "));
+					meta_push_u64(m, byte_size);
+					meta_end_line(m);
+				} m->indentation_level--;
+			} m->indentation_level--;
+
+			m->scratch = scratch;
+		}
+		m->scratch = ctx->scratch;
+	}
+	result &= meta_write_and_reset(m, out);
+
+	return result;
+}
+
 function MetaContext *
 metagen_load_context(Arena *arena, char *filename)
 {
@@ -3508,6 +3710,7 @@ metagen_load_context(Arena *arena, char *filename)
 		}
 	}
 
+	compiler_file = __FILE__;
 	result->arena = 0;
 	return result;
 }
@@ -3619,10 +3822,11 @@ main(s32 argc, char *argv[])
 
 	result &= metagen_emit_c_code(meta, arena);
 	result &= metagen_emit_matlab_code(meta, arena);
+	result &= metagen_emit_python_code(meta, arena);
 
 	Options options = parse_options(argc, argv);
 
-	result &= build_ornot(arena, &options);
+	//result &= build_ornot(arena, &options);
 
 	if (options.time) {
 		f64 seconds = (f64)(os_get_timer_counter() - start_time) / (f64)os_get_timer_frequency();
