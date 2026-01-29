@@ -12,8 +12,8 @@ classdef TPWParameters
 		function [out, consumed] = fromBytes(bytes)
 			consumed = 8;
 			out      = ZBP.TPWParameters;
-			out.tilting_angles_offset(:)                = typecast(bytes(1:4), '*int32');
-			out.transmit_receive_orientations_offset(:) = typecast(bytes(5:8), '*int32');
+			out.tilting_angles_offset(:)                = typecast(bytes(1:4), 'int32');
+			out.transmit_receive_orientations_offset(:) = typecast(bytes(5:8), 'int32');
 		end
 	end
 end

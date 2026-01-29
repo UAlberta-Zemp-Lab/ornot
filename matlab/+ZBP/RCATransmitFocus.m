@@ -14,10 +14,10 @@ classdef RCATransmitFocus
 		function [out, consumed] = fromBytes(bytes)
 			consumed = 16;
 			out      = ZBP.RCATransmitFocus;
-			out.focal_depth(:)                  = typecast(bytes(1:4),   '*single');
-			out.steering_angle(:)               = typecast(bytes(5:8),   '*single');
-			out.origin_offset(:)                = typecast(bytes(9:12),  '*single');
-			out.transmit_receive_orientation(:) = typecast(bytes(13:16), '*uint32');
+			out.focal_depth(:)                  = typecast(bytes(1:4),   'single');
+			out.steering_angle(:)               = typecast(bytes(5:8),   'single');
+			out.origin_offset(:)                = typecast(bytes(9:12),  'single');
+			out.transmit_receive_orientation(:) = typecast(bytes(13:16), 'uint32');
 		end
 	end
 end

@@ -12,8 +12,8 @@ classdef EmissionSineParameters
 		function [out, consumed] = fromBytes(bytes)
 			consumed = 8;
 			out      = ZBP.EmissionSineParameters;
-			out.cycles(:)    = typecast(bytes(1:4), '*single');
-			out.frequency(:) = typecast(bytes(5:8), '*single');
+			out.cycles(:)    = typecast(bytes(1:4), 'single');
+			out.frequency(:) = typecast(bytes(5:8), 'single');
 		end
 	end
 end

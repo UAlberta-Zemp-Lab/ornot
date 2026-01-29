@@ -12,8 +12,8 @@ classdef EmissionDescriptor
 		function [out, consumed] = fromBytes(bytes)
 			consumed = 8;
 			out      = ZBP.EmissionDescriptor;
-			out.emission_kind(:)     = typecast(bytes(1:4), '*int32');
-			out.parameters_offset(:) = typecast(bytes(5:8), '*int32');
+			out.emission_kind(:)     = typecast(bytes(1:4), 'int32');
+			out.parameters_offset(:) = typecast(bytes(5:8), 'int32');
 		end
 	end
 end

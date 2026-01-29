@@ -12,7 +12,7 @@ classdef uHERCULESParameters
 		function [out, consumed] = fromBytes(bytes)
 			consumed = 20;
 			out      = ZBP.uHERCULESParameters;
-			out.sparse_elements_offset(:) = typecast(bytes(17:20), '*int32');
+			out.sparse_elements_offset(:) = typecast(bytes(17:20), 'int32');
 			[out.transmit_focus, ~] = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
 	end

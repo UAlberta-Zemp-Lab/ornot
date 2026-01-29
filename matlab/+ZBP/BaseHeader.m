@@ -13,9 +13,9 @@ classdef BaseHeader
 		function [out, consumed] = fromBytes(bytes)
 			consumed = 16;
 			out      = ZBP.BaseHeader;
-			out.magic(:) = typecast(bytes(1:8),   '*uint64');
-			out.major(:) = typecast(bytes(9:12),  '*uint32');
-			out.minor(:) = typecast(bytes(13:16), '*uint32');
+			out.magic(:) = typecast(bytes(1:8),   'uint64');
+			out.major(:) = typecast(bytes(9:12),  'uint32');
+			out.minor(:) = typecast(bytes(13:16), 'uint32');
 		end
 	end
 end

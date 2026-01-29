@@ -3516,7 +3516,7 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 								stream_append_str8(&sb, str8("),"));
 								columns[1][row] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
-								columns[2][row] = push_str8_from_parts(&m->scratch, str8(""), str8("'*"),
+								columns[2][row] = push_str8_from_parts(&m->scratch, str8(""), str8("'"),
 								                                       meta_kind_matlab_types[type_id],
 								                                       str8("');"));
 							} else {
