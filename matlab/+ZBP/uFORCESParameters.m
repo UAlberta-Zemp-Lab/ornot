@@ -10,15 +10,10 @@ classdef uFORCESParameters
 
 	methods (Static)
 		function [out, consumed] = fromBytes(bytes)
-			consumed = 0;
+			consumed = 20;
 			out      = ZBP.uFORCESParameters;
-
-			[sub, subUsed] = ZBP.RCATransmitFocus.fromBytes(bytes((consumed + 1):end));
-			out.transmit_focus = sub;
-			consumed = consumed + subUsed;
-
-			out.sparse_elements_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
+			out.sparse_elements_offset(:) = typecast(bytes(17:20), '*int32');
+			[out.transmit_focus, ~] = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
 	end
 end

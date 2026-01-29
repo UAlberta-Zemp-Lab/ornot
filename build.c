@@ -71,6 +71,12 @@
   #endif
 #endif
 
+#if   COMPILER_CLANG
+  #pragma GCC diagnostic ignored "-Winitializer-overrides"
+#elif COMPILER_GCC
+  #pragma GCC diagnostic ignored "-Woverride-init"
+#endif
+
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -214,6 +220,8 @@ typedef struct {sz length; u8 *data;} str8;
 #define Clamp(x, a, b)   ((x) < (a) ? (a) : (x) > (b) ? (b) : (x))
 #define Min(a, b)        ((a) < (b) ? (a) : (b))
 #define Max(a, b)        ((a) > (b) ? (a) : (b))
+
+#define DeferLoop(begin, end)          for (s32 _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
 
 #define IsDigit(c)       (Between((c), '0', '9'))
 
@@ -753,18 +761,35 @@ arena_aligned_start(Arena a, uz alignment)
 	return result;
 }
 
-#define push_array(a, t, n) (t *)arena_alloc(a, sizeof(t), _Alignof(t), n)
-#define push_struct(a, t)   (t *)arena_alloc(a, sizeof(t), _Alignof(t), 1)
+typedef enum {
+	ArenaAllocateFlags_NoZero = 1 << 0,
+} ArenaAllocateFlags;
+
+typedef struct {
+	sz size;
+	uz align;
+	sz count;
+	ArenaAllocateFlags flags;
+} ArenaAllocateInfo;
+
+#define arena_alloc(a, ...)         arena_alloc_(a, (ArenaAllocateInfo){.align = 8, .count = 1, ##__VA_ARGS__})
+#define push_array(a, t, n)         (t *)arena_alloc(a, .size = sizeof(t), .align = alignof(t), .count = n)
+#define push_array_no_zero(a, t, n) (t *)arena_alloc(a, .size = sizeof(t), .align = alignof(t), .count = n, .flags = ArenaAllocateFlags_NoZero)
+#define push_struct(a, t)           push_array(a, t, 1)
+#define push_struct_no_zero(a, t)   push_array_no_zero(a, t, 1)
+
 function void *
-arena_alloc(Arena *a, sz len, uz align, sz count)
+arena_alloc_(Arena *a, ArenaAllocateInfo info)
 {
 	void *result = 0;
 	if (a->beg) {
-		u8 *start = arena_aligned_start(*a, align);
-		assert((a->end - start >= 0 && count <= (a->end - start) / len));
-		a->beg = start + count * len;
-		/* TODO: Performance? */
-		result = mem_clear(start, 0, count * len);
+		u8 *start = arena_aligned_start(*a, info.align);
+		sz available = a->end - start;
+		assert((available >= 0 && info.count <= available / info.size));
+		a->beg = start + info.count * info.size;
+		result = start;
+		if ((info.flags & ArenaAllocateFlags_NoZero) == 0)
+			result = mem_clear(start, 0, info.count * info.size);
 	}
 	return result;
 }
@@ -809,14 +834,14 @@ da_reserve_(Arena *a, void *data, sz *capacity, sz needed, uz align, sz size)
 	/* NOTE(rnp): handle both 0 initialized DAs and DAs that need to be moved (they started
 	 * on the stack or someone allocated something in the middle of the arena during usage) */
 	if (!data || a->beg != (u8 *)data + cap * size) {
-		void *copy = arena_alloc(a, size, align, cap);
+		void *copy = arena_alloc(a, .size = size, .align = align, .count = cap);
 		if (data) mem_copy(copy, data, (uz)(cap * size));
 		data = copy;
 	}
 
 	if (!cap) cap = DA_INITIAL_CAP;
 	while (cap < needed) cap *= 2;
-	arena_alloc(a, size, align, cap - *capacity);
+	arena_alloc(a, .size = size, .align = align, .count = cap - *capacity);
 	*capacity = cap;
 	return data;
 }
@@ -2344,6 +2369,22 @@ typedef struct {
 } MetaTable;
 DA_STRUCT(MetaTable, MetaTable);
 
+typedef struct {
+	str8  name;
+	str8 *types;
+	str8 *members;
+
+	s32  *type_ids;
+	s32  *sub_struct_ids;
+	u32  *elements;
+
+	u32   member_count;
+	u32   byte_size;
+
+	MetaLocation location;
+} MetaStruct;
+DA_STRUCT(MetaStruct, MetaStruct);
+
 typedef enum {
 	MetaExpansionPartKind_Alignment,
 	MetaExpansionPartKind_Conditional,
@@ -2434,7 +2475,7 @@ typedef struct {
 
 	str8_list         table_names;
 	MetaTableList     tables;
-	MetaTableList     structs;
+	MetaStructList    structs;
 } MetaContext;
 
 function sz
@@ -2915,18 +2956,10 @@ meta_pack_constant(MetaContext *ctx, MetaEntry *e)
 }
 
 function sz
-meta_pack_table(MetaContext *ctx, MetaEntry *e, sz entry_count)
+meta_pack_table(MetaContext *ctx, MetaEntry *e, sz entry_count, MetaTable *t)
 {
 	b32 structure = e->kind == MetaEntryKind_Struct;
 	assert(e->kind == MetaEntryKind_Table || structure);
-
-	MetaTable *t = da_push(ctx->arena, structure ? &ctx->structs : &ctx->tables);
-	sz table_name_id = meta_lookup_string_slow(ctx->table_names.data, ctx->table_names.count, e->name);
-	if (table_name_id >= 0) meta_entry_error(e, "%s redefined\n", structure ? "struct" : "table");
-
-	str8 *t_name = da_push(ctx->arena, &ctx->table_names);
-	t->table_name_id = (u32)da_index(t_name, &ctx->table_names);
-	*t_name = e->name;
 
 	if (structure) {
 		meta_entry_argument_expected_(e, 0, 0);
@@ -2984,6 +3017,44 @@ meta_pack_table(MetaContext *ctx, MetaEntry *e, sz entry_count)
 	}
 
 	return scope.consumed;
+}
+
+function void
+meta_intern_struct(MetaContext *ctx, MetaTable *t, MetaLocation loc)
+{
+	MetaStruct *s = da_push(ctx->arena, &ctx->structs);
+	s->name = ctx->table_names.data[t->table_name_id];
+
+	s->members        = push_array_no_zero(ctx->arena, str8, t->entry_count);
+	s->types          = push_array_no_zero(ctx->arena, str8, t->entry_count);
+	s->type_ids       = push_array_no_zero(ctx->arena, s32,  t->entry_count);
+	s->sub_struct_ids = push_array_no_zero(ctx->arena, s32,  t->entry_count);
+	s->elements       = push_array(ctx->arena, u32, t->entry_count);
+
+	s->location     = loc;
+	s->member_count = t->entry_count;
+	s->byte_size    = (u32)-1;
+
+	for (u32 entry = 0; entry < t->entry_count; entry++)
+		s->sub_struct_ids[entry] = -1;
+
+	sz types_id    = meta_lookup_string_slow(t->fields, t->field_count, str8("type"));
+	sz members_id  = meta_lookup_string_slow(t->fields, t->field_count, str8("name"));
+	sz elements_id = meta_lookup_string_slow(t->fields, t->field_count, str8("elements"));
+
+	mem_copy(s->members, t->entries[members_id], t->entry_count * sizeof(*s->members));
+	mem_copy(s->types,   t->entries[types_id],   t->entry_count * sizeof(*s->types));
+
+	str8 *elements = t->entries[elements_id];
+	for (u32 entry = 0; entry < t->entry_count; entry++) {
+		IntegerConversion integer = integer_from_str8(elements[entry]);
+		if (integer.result == IntegerConversionResult_Success) {
+			s->elements[entry] = integer.U64;
+		} else {
+			meta_compiler_error(loc, "invalid element count: %.*s",
+			                    (s32)elements[entry].length, elements[entry].data);
+		}
+	}
 }
 
 function void
@@ -3260,35 +3331,42 @@ metagen_emit_c_code(MetaContext *ctx, Arena arena)
 	//////////////////////
 	// NOTE(rnp): structs
 	{
-		MetaEmitOperationList ops[1] = {0};
-		str8 namespace = push_str8_from_parts(&m->scratch, str8(""), zbp_namespace, str8("_"));
 		for (sz structure = 0; structure < ctx->structs.count; structure++) {
-			ops->count = 0;
+			MetaStruct *s = ctx->structs.data + structure;
 
-			MetaTable *s = ctx->structs.data + structure;
+			s32 *type_map = push_array(&m->scratch, s32, s->member_count);
 
-			MetaEmitOperation *op = da_push(&m->scratch, ops);
-			op->kind   = MetaEmitOperationKind_String;
-			op->string = push_str8_from_parts(&m->scratch, str8(""), str8("typedef struct "), namespace,
-			                                  ctx->table_names.data[s->table_name_id], str8(" {"));
+			sz max_type_name_length = 0;
+			for (u32 member = 0; member < s->member_count; member++) {
+				s32 id = s->type_ids[member];
+				if (id < 0)  {
+					sz length = s->types[member].length + str8(ZBP_NAMESPACE "_").length;
+					max_type_name_length = Max(max_type_name_length, length);
+				} else {
+					max_type_name_length = Max(max_type_name_length, meta_kind_base_c_types[id].length);
+				}
+			}
 
-			str8 expr = str8("	$(%type)$(|)$(name)$(elements > 1 -> \"[\" elements \"]\");");
-			MetaExpansionPartList parts = meta_generate_expansion_set(ctx, &m->scratch, expr, s, META_CURRENT_LOCATION);
-			op = da_push(&m->scratch, ops);
-			op->kind = MetaEmitOperationKind_Expand;
-			op->expansion_operation.parts      = parts.data;
-			op->expansion_operation.part_count = (u32)parts.count;
-			op->expansion_operation.table_id   = structure;
+			if (structure != 0) meta_push(m, str8("\n"));
+			meta_begin_scope(m, str8("typedef struct " ZBP_NAMESPACE "_"), s->name, str8(" {")); {
+				for (u32 member = 0; member < s->member_count; member++) {
+					s32  id     = s->type_ids[member];
+					str8 kind   = id < 0 ? s->types[member] : meta_kind_base_c_types[id];
+					sz   length = kind.length + (id < 0 ? str8(ZBP_NAMESPACE "_").length : 0);
 
-			op = da_push(&m->scratch, ops);
-			op->kind   = MetaEmitOperationKind_String;
-			op->string = push_str8_from_parts(&m->scratch, str8(""), str8("} "), namespace,
-			                                  ctx->table_names.data[s->table_name_id], str8(";"));
-
-			if (structure != 0) meta_push_line(m);
-			metagen_run_emit(m, ctx, ops, &ctx->structs, meta_kind_base_c_types, namespace);
+					meta_begin_line(m, id < 0? str8(ZBP_NAMESPACE "_") : str8(""), kind);
+					meta_pad(m, ' ', 1 + (s32)(max_type_name_length - length));
+					meta_push(m, s->members[member]);
+					if (s->elements[member] > 1) {
+						meta_push(m, str8("["));
+						meta_push_u64(m, s->elements[member]);
+						meta_push(m, str8("]"));
+					}
+					meta_end_line(m, str8(";"));
+				}
+			} meta_end_scope(m, str8("} " ZBP_NAMESPACE "_"), s->name, str8(";"));
+			m->scratch = ctx->scratch;
 		}
-		m->scratch = ctx->scratch;
 	}
 
 	result = meta_write_and_reset(m, out_meta);
@@ -3368,88 +3446,124 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 
 	//////////////////////
 	// NOTE(rnp): structs
-	{
-		for (sz structure = 0; structure < ctx->structs.count; structure++) {
-			MetaTable *s = ctx->structs.data + structure;
+	for (sz structure = 0; structure < ctx->structs.count; structure++) {
+		MetaStruct *s = ctx->structs.data + structure;
 
-			Arena scratch = m->scratch;
+		Arena scratch = m->scratch;
 
-			MetaEmitOperationList ops[1] = {0};
-			str8 output = push_str8_from_parts(&m->scratch, str8(""), base_directory, str8(OS_PATH_SEPARATOR),
-			                                   ctx->table_names.data[s->table_name_id], str8(".m"));
+		str8 output = push_str8_from_parts(&m->scratch, str8(""), base_directory, str8(OS_PATH_SEPARATOR),
+		                                   s->name, str8(".m"));
 
-			MetaEmitOperation *op = da_push(&m->scratch, ops);
-			op->kind   = MetaEmitOperationKind_String;
-			op->string = push_str8_from_parts(&m->scratch, str8(""), str8("classdef "),
-			                                  ctx->table_names.data[s->table_name_id]);
+		meta_push_line(m, matlab_file_header);
+		meta_begin_scope(m, str8("classdef "), s->name); {
+			meta_begin_scope(m, str8("properties")); {
+				Arena properties_arena = m->scratch;
 
-			op         = da_push(&m->scratch, ops);
-			op->kind   = MetaEmitOperationKind_String;
-			op->string = str8("	properties");
+				str8 **columns = push_array(&m->scratch, str8 *, 2);
+				for (sz i = 0; i < 2; i++)
+					columns[i] = push_array(&m->scratch, str8, s->member_count);
 
-			str8 expr = str8("		$(name)(1,$(elements))$(|)$(%type)");
-			MetaExpansionPartList parts = meta_generate_expansion_set(ctx, &m->scratch, expr, s, META_CURRENT_LOCATION);
-			op = da_push(&m->scratch, ops);
-			op->kind = MetaEmitOperationKind_Expand;
-			op->expansion_operation.parts      = parts.data;
-			op->expansion_operation.part_count = (u32)parts.count;
-			op->expansion_operation.table_id   = structure;
+				for (u32 member = 0; member < s->member_count; member++) {
+					Stream sb = arena_stream(m->scratch);
+					stream_append_str8s(&sb, s->members[member], str8("(1,"));
+					stream_append_u64(&sb, s->elements[member]);
+					stream_append_str8(&sb, str8(")"));
 
-			op         = da_push(&m->scratch, ops);
-			op->kind   = MetaEmitOperationKind_String;
-			op->string = str8("	end\n");
+					columns[0][member] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
-			meta_push_line(m, matlab_file_header);
-			metagen_run_emit(m, ctx, ops, &ctx->structs, meta_kind_matlab_types, str8(ZBP_NAMESPACE "."));
+					s32 id = s->type_ids[member];
+					if (id >= 0) {
+						columns[1][member] = meta_kind_matlab_types[id];
+					} else {
+						stream_append_str8s(&sb, str8(ZBP_NAMESPACE "."), s->types[member]);
+						columns[1][member] = arena_stream_commit_and_reset(&m->scratch, &sb);
+					}
+				}
+				metagen_push_table(m, m->scratch, str8(""), str8(""), columns, s->member_count, 2);
+				m->scratch = properties_arena;
+			} meta_end_scope(m, str8("end"));
 
-			m->indentation_level++;
-
+			meta_push(m, str8("\n"));
 			meta_begin_scope(m, str8("methods (Static)")); {
 				meta_begin_scope(m, str8("function [out, consumed] = fromBytes(bytes)")); {
-					str8 *members  = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("name"))];
-					str8 *types    = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("type"))];
-					str8 *elements = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("elements"))];
-					meta_push_line(m, str8("consumed = 0;"));
-					meta_push_line(m, str8("out      = " ZBP_NAMESPACE "."), ctx->table_names.data[s->table_name_id], str8(";"));
+					meta_begin_line(m, str8("consumed = "));
+					meta_push_u64(m, s->byte_size);
+					meta_end_line(m, str8(";"));
+					meta_push_line(m, str8("out      = " ZBP_NAMESPACE "."), s->name, str8(";"));
 
-					for (u32 entry = 0; entry < s->entry_count; entry++) {
-						meta_push(m, str8("\n"));
+					// NOTE(rnp): first pass: base types
+					Arena pass_arena;
+					DeferLoop(pass_arena = m->scratch, m->scratch = pass_arena) {
+						str8 **columns = push_array(&m->scratch, str8 *, 3);
+						for (sz i = 0; i < 3; i++)
+							columns[i] = push_array(&m->scratch, str8, s->member_count);
 
-						sz id = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, types[entry]);
-						if (id < 0) {
-							meta_push_line(m, str8("[sub, subUsed] = " ZBP_NAMESPACE "."), types[entry], str8(".fromBytes(bytes((consumed + 1):end));"));
-							meta_push_line(m, str8("out."), members[entry], str8(" = sub;"));
-							meta_push_line(m, str8("consumed = consumed + subUsed;"));
-						} else {
-							u32 byte_size     = meta_kind_bytes[id];
-							u32 element_count = 0;
-							IntegerConversion integer = integer_from_str8(elements[entry]);
-							if (integer.result == IntegerConversionResult_Success)
-								element_count = integer.U64;
+						u32 offset  = 1;
+						u32 members = 0;
+						for (u32 member = 0; member < s->member_count; member++) {
+							s32 type_id = s->type_ids[member];
+							if (type_id >= 0) {
+								u32 row = members++;
+								columns[0][row] = push_str8_from_parts(&m->scratch, str8(""), str8("out."),
+								                                       s->members[member], str8("(:)"));
 
-							meta_begin_line(m, str8("out."), members[entry], str8("(:) = typecast(bytes((consumed + 1):(consumed + "));
+								Stream sb = arena_stream(m->scratch);
+								stream_append_str8(&sb, str8("= typecast(bytes("));
+								stream_append_u64(&sb, offset);
+								offset += s->elements[member] * meta_kind_bytes[type_id];
+								stream_append_str8(&sb, str8(":"));
+								stream_append_u64(&sb, offset - 1);
+								stream_append_str8(&sb, str8("),"));
+								columns[1][row] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
-							if (element_count > 0) {
-								meta_push_u64(m, byte_size * element_count);
-								meta_end_line(m, str8(")), '"), meta_kind_matlab_types[id], str8("');"));
-
-								meta_begin_line(m, str8("consumed = consumed + "));
-								meta_push_u64(m, byte_size * element_count);
-								meta_end_line(m, str8(";"));
+								columns[2][row] = push_str8_from_parts(&m->scratch, str8(""), str8("'*"),
+								                                       meta_kind_matlab_types[type_id],
+								                                       str8("');"));
 							} else {
-								InvalidCodePath;
+								offset += ctx->structs.data[s->sub_struct_ids[member]].byte_size;
 							}
 						}
+						metagen_push_table(m, m->scratch, str8(""), str8(""), columns, members, 3);
+					}
+
+					// NOTE(rnp): second pass: sub structures
+					DeferLoop(pass_arena = m->scratch, m->scratch = pass_arena) {
+						u32 offset  = 1;
+						u32 members = 0;
+						str8 **columns = push_array(&m->scratch, str8 *, 2);
+						for (sz i = 0; i < 2; i++)
+							columns[i] = push_array(&m->scratch, str8, s->member_count);
+
+						for (u32 member = 0; member < s->member_count; member++) {
+							s32 type_id = s->type_ids[member];
+							if (type_id < 0) {
+								u32 row = members++;
+								columns[0][row] = push_str8_from_parts(&m->scratch, str8(""), str8("[out."),
+								                                          s->members[member], str8(", ~]"));
+
+								Stream sb = arena_stream(m->scratch);
+								stream_append_str8s(&sb, str8("= " ZBP_NAMESPACE "."), s->types[member],
+								                    str8(".fromBytes(bytes("));
+								stream_append_u64(&sb, offset);
+								offset += ctx->structs.data[s->sub_struct_ids[member]].byte_size;
+								stream_append_str8(&sb, str8(":"));
+								stream_append_u64(&sb, offset - 1);
+								stream_append_str8(&sb, str8("));"));
+
+								columns[1][row] = arena_stream_commit_and_reset(&m->scratch, &sb);
+							} else {
+								offset += s->elements[member] * meta_kind_bytes[type_id];
+							}
+						}
+						metagen_push_table(m, m->scratch, str8(""), str8(""), columns, members, 2);
 					}
 				} meta_end_scope(m, str8("end"));
 			} meta_end_scope(m, str8("end"));
-			meta_end_scope(m, str8("end"));
+		} meta_end_scope(m, str8("end"));
 
-			result &= meta_write_and_reset(m, (c8 *)output.data);
-			m->scratch = scratch;
-		}
+		result &= meta_write_and_reset(m, (c8 *)output.data);
+		m->scratch = scratch;
 	}
-
 	return result;
 }
 
@@ -3508,142 +3622,69 @@ metagen_emit_python_code(MetaContext *ctx, Arena arena)
 
 	//////////////////////
 	// NOTE(rnp): structs
-	if (ctx->structs.count > 0) {
-		u32 **table_byte_sizes = push_array(&m->scratch, u32 *, ctx->structs.count);
+	for (sz structure = 0; structure < ctx->structs.count; structure++) {
+		MetaStruct *s = ctx->structs.data + structure;
+		Arena scratch = m->scratch;
 
-		for (sz i = 0; i < ctx->structs.count; i++) {
-			table_byte_sizes[i] = push_array(&m->scratch, u32, ctx->structs.data[i].entry_count);
-			mem_clear(table_byte_sizes[i], 0xFF, sizeof(u32) * ctx->structs.data[i].entry_count);
-		}
+		str8 **columns = push_array(&m->scratch, str8 *, 3);
+		for (sz i = 0; i < 3; i++)
+			columns[i] = push_array(&m->scratch, str8, s->member_count);
 
-		u32 **table_element_counts = push_array(&m->scratch, u32 *, ctx->structs.count);
-		for (sz i = 0; i < ctx->structs.count; i++)
-			table_element_counts[i] = push_array(&m->scratch, u32, ctx->structs.data[i].entry_count);
+		meta_push(m, str8("\n"));
+		meta_begin_scope(m, str8("class "), s->name, str8(":")); {
+			meta_push_line(m, str8("@classmethod"));
+			meta_begin_scope(m, str8("def from_bytes(cls, bytes):")); {
+				u32 offset = 0;
+				meta_push_line(m, str8("result = cls()"));
+				for (u32 entry = 0; entry < s->member_count; entry++) {
+					columns[0][entry] = s->members[entry];
 
-		u32 iterations = 0;
-		b32 all_done   = 0;
-		sz  types_id    = meta_lookup_string_slow(ctx->structs.data[0].fields, ctx->structs.data[0].field_count, str8("type"));
-		sz  elements_id = meta_lookup_string_slow(ctx->structs.data[0].fields, ctx->structs.data[0].field_count, str8("elements"));
-		while (!all_done && iterations < 16) {
-			// TODO(rnp): move into context loading so that this work can be reused in matlab codegen
-			for (sz structure = 0; structure < ctx->structs.count; structure++) {
-				MetaTable *s = ctx->structs.data + structure;
-				str8 *types    = s->entries[types_id];
-				str8 *elements = s->entries[elements_id];
+					Stream sb = arena_stream(m->scratch);
+					stream_append_str8(&sb, str8(" = "));
 
-				for (u32 entry = 0; entry < s->entry_count; entry++) {
-					sz id = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, types[entry]);
+					s32 id = s->type_ids[entry];
 					if (id >= 0) {
-						IntegerConversion integer = integer_from_str8(elements[entry]);
-						if (integer.result == IntegerConversionResult_Success)
-							table_element_counts[structure][entry] = integer.U64;
+						stream_append_str8(&sb, str8("struct.unpack_from('<"));
+						stream_append_u64(&sb, s->elements[entry]);
+						stream_append_str8s(&sb, meta_kind_python_struct_types[id], str8("',"));
 
-						table_byte_sizes[structure][entry] = meta_kind_bytes[id] * table_element_counts[structure][entry];
+						columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+						stream_append_str8(&sb, str8("bytes, "));
+						stream_append_u64(&sb, offset);
+						stream_append_str8(&sb, str8(")"));
+
+						if (s->elements[entry] == 1)
+							stream_append_str8(&sb, str8("[0]"));
+
+						columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+
+						offset += meta_kind_bytes[id] * s->elements[entry];
 					} else {
-						sz table_id  = meta_lookup_string_slow(ctx->table_names.data, ctx->table_names.count, types[entry]);
-						sz struct_id = -1;
-						for (sz try = 0; try < ctx->structs.count; try++) {
-							if (ctx->structs.data[try].table_name_id == table_id) {
-								struct_id = try;
-								break;
-							}
-						}
+						stream_append_str8s(&sb, str8(ZBP_NAMESPACE "."), s->types[entry], str8(".from_bytes("));
+						columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
-						if (struct_id >= 0) {
-							b32 valid = 1;
-							u32 size  = 0;
-							for (u32 se = 0; se < ctx->structs.data[struct_id].entry_count; se++) {
-								valid &= table_byte_sizes[struct_id][se] != (u32)-1;
-								size  += table_byte_sizes[struct_id][se];
-							}
-							if (valid) table_byte_sizes[structure][entry] = size;
-						}
+						stream_append_str8(&sb, str8("bytes["));
+						stream_append_u64(&sb, offset);
+						stream_append_str8(&sb, str8(":])"));
+						columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+						offset += ctx->structs.data[s->sub_struct_ids[entry]].byte_size;
 					}
 				}
-			}
-
-			b32 found_ff = 0;
-			for (sz structure = 0; structure < ctx->structs.count; structure++)
-				for (u32 entry = 0; entry < ctx->structs.data[structure].entry_count; entry++)
-					found_ff |= table_byte_sizes[structure][entry] == (u32)-1;
-			all_done = found_ff == 0;
-		}
-
-		if (!all_done) {
-			// TODO(rnp): this can be improved when above gets moved into load_context
-			build_log_error("Failed to resolve all struct sizes\n");
-			return 0;
-		}
-
-		for (sz structure = 0; structure < ctx->structs.count; structure++) {
-			MetaTable *s = ctx->structs.data + structure;
-			Arena scratch = m->scratch;
-
-			str8 **columns = push_array(&m->scratch, str8 *, 3);
-			for (sz i = 0; i < 3; i++)
-				columns[i] = push_array(&m->scratch, str8, s->entry_count);
-
-			meta_push(m, str8("\n"));
-			meta_begin_scope(m, str8("class "), ctx->table_names.data[s->table_name_id], str8(":")); {
-				meta_push_line(m, str8("@classmethod"));
-				meta_begin_scope(m, str8("def from_bytes(cls, bytes):")); {
-					u32 offset = 0;
-					meta_push_line(m, str8("result = cls()"));
-
-					str8 *members  = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("name"))];
-					str8 *types    = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("type"))];
-					str8 *elements = s->entries[meta_lookup_string_slow(s->fields, s->field_count, str8("elements"))];
-					for (u32 entry = 0; entry < s->entry_count; entry++) {
-						columns[0][entry] = members[entry];
-
-						Stream sb = arena_stream(m->scratch);
-						stream_append_str8(&sb, str8(" = "));
-
-						sz id = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, types[entry]);
-						if (id >= 0) {
-							stream_append_str8s(&sb, str8("struct.unpack_from('<"), elements[entry], meta_kind_python_struct_types[id], str8("',"));
-
-							columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
-							stream_append_str8(&sb, str8("bytes, "));
-							stream_append_u64(&sb, offset);
-							stream_append_str8(&sb, str8(")"));
-
-							if (table_element_counts[structure][entry] == 1)
-								stream_append_str8(&sb, str8("[0]"));
-
-							columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
-						} else {
-							stream_append_str8s(&sb, str8(ZBP_NAMESPACE "."), types[entry], str8(".from_bytes("));
-							columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
-
-							stream_append_str8(&sb, str8("bytes["));
-							stream_append_u64(&sb, offset);
-							stream_append_str8(&sb, str8(":])"));
-							columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
-						}
-						offset += table_byte_sizes[structure][entry];
-					}
-					metagen_push_table(m, m->scratch, str8("result."), str8(""), columns, s->entry_count, 3);
-					meta_push_line(m, str8("return result"));
-				} m->indentation_level--;
-
-				meta_push(m, str8("\n"));
-				meta_push_line(m, str8("@staticmethod"));
-				meta_begin_scope(m, str8("def byte_size():")); {
-					u32 byte_size = 0;
-					for (u32 entry = 0; entry < s->entry_count; entry++)
-						byte_size += table_byte_sizes[structure][entry];
-
-					meta_begin_line(m, str8("return "));
-					meta_push_u64(m, byte_size);
-					meta_end_line(m);
-				} m->indentation_level--;
+				metagen_push_table(m, m->scratch, str8("result."), str8(""), columns, s->member_count, 3);
+				meta_push_line(m, str8("return result"));
 			} m->indentation_level--;
 
-			m->scratch = scratch;
-		}
-		m->scratch = ctx->scratch;
+			meta_push(m, str8("\n"));
+			meta_push_line(m, str8("@staticmethod"));
+			meta_begin_scope(m, str8("def byte_size():")); {
+				meta_begin_line(m, str8("return "));
+				meta_push_u64(m, s->byte_size);
+				meta_end_line(m);
+			} m->indentation_level--;
+		} m->indentation_level--;
+		m->scratch = scratch;
 	}
+
 	result &= meta_write_and_reset(m, out);
 
 	return result;
@@ -3700,13 +3741,96 @@ metagen_load_context(Arena *arena, char *filename)
 		case MetaEntryKind_Struct:
 		case MetaEntryKind_Table:
 		{
-			i += meta_pack_table(ctx, e, entries.count - i);
+			b32 structure = e->kind == MetaEntryKind_Struct;
+			sz table_name_id = meta_lookup_string_slow(ctx->table_names.data, ctx->table_names.count, e->name);
+			if (table_name_id >= 0) meta_entry_error(e, "%s redefined\n", structure ? "struct" : "table");
+
+			str8 *t_name = da_push(ctx->arena, &ctx->table_names);
+			*t_name = e->name;
+
+			Arena temp = ctx->scratch;
+			MetaTable *t;
+			if (e->kind == MetaEntryKind_Struct) t = push_struct(&ctx->scratch, MetaTable);
+			else                                 t = da_push(ctx->arena, &ctx->tables);
+			t->table_name_id = (u32)da_index(t_name, &ctx->table_names);
+
+			i += meta_pack_table(ctx, e, entries.count - i, t);
+
+			if (structure)
+				meta_intern_struct(ctx, t, e->location);
+
+			ctx->scratch = temp;
+
 		}break;
 
 		default:
 		{
 			meta_entry_error(e, "invalid @%s() in global scope\n", meta_entry_kind_strings[e->kind]);
 		}break;
+		}
+	}
+
+	// NOTE(rnp): finalize struct info
+	{
+		for (sz structure = 0; structure < ctx->structs.count; structure++) {
+			MetaStruct *s = ctx->structs.data + structure;
+			for (u32 member = 0; member < s->member_count; member++) {
+				s->type_ids[member] = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, s->types[member]);
+
+				if (s->type_ids[member] == -1) {
+					for (sz try = 0; try < ctx->structs.count; try++) {
+						if (str8_equal(ctx->structs.data[try].name, s->types[member])) {
+							s->sub_struct_ids[member] = try;
+							break;
+						}
+					}
+				}
+
+				if (s->type_ids[member] == -1 && s->sub_struct_ids[member] == -1) {
+					meta_compiler_error(s->location, "struct '%.*s' references undefined struct '%.*s'\n",
+					                    (s32)s->name.length, s->name.data,
+					                    (s32)s->types[member].length, s->types[member].data);
+				}
+			}
+		}
+
+		// TODO(rnp): depth could be predetermined
+		u32 iterations = 0;
+		b32 all_done   = 0;
+		while (!all_done && iterations < 16) {
+			for (sz structure = 0; structure < ctx->structs.count; structure++) {
+				MetaStruct *s = ctx->structs.data + structure;
+				u32 size = 0;
+				for (u32 member = 0; member < s->member_count; member++) {
+					if (s->type_ids[member] >= 0) {
+						size += meta_kind_bytes[s->type_ids[member]] * s->elements[member];
+					} else {
+						MetaStruct *sub_struct = ctx->structs.data + s->sub_struct_ids[member];
+						if (sub_struct->byte_size != (u32)-1) {
+							size += sub_struct->byte_size;
+						} else {
+							size = (u32)-1;
+							break;
+						}
+					}
+				}
+				if (size != (u32)-1)
+					s->byte_size = size;
+			}
+
+			all_done = 1;
+			for (sz structure = 0; structure < ctx->structs.count; structure++)
+				all_done &= ctx->structs.data[structure].byte_size != (u32)-1;
+		}
+
+		if (!all_done) {
+			for (sz structure = 0; structure < ctx->structs.count; structure++) {
+				MetaStruct *s = ctx->structs.data + structure;
+				if (s->byte_size == (u32)-1) {
+					meta_compiler_error(s->location, "storage size for struct '%.*s' could not be determined\n",
+					                    (s32)s->name.length, s->name.data);
+				}
+			}
 		}
 	}
 

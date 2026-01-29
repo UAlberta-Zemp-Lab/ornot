@@ -11,17 +11,11 @@ classdef VLSParameters
 
 	methods (Static)
 		function [out, consumed] = fromBytes(bytes)
-			consumed = 0;
+			consumed = 12;
 			out      = ZBP.VLSParameters;
-
-			out.focal_depths_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.origin_offsets_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.transmit_receive_orientations_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
+			out.focal_depths_offset(:)                  = typecast(bytes(1:4),  '*int32');
+			out.origin_offsets_offset(:)                = typecast(bytes(5:8),  '*int32');
+			out.transmit_receive_orientations_offset(:) = typecast(bytes(9:12), '*int32');
 		end
 	end
 end

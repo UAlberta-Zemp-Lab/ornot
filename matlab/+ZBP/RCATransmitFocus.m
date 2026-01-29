@@ -12,20 +12,12 @@ classdef RCATransmitFocus
 
 	methods (Static)
 		function [out, consumed] = fromBytes(bytes)
-			consumed = 0;
+			consumed = 16;
 			out      = ZBP.RCATransmitFocus;
-
-			out.focal_depth(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.steering_angle(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.origin_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.transmit_receive_orientation(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'uint32');
-			consumed = consumed + 4;
+			out.focal_depth(:)                  = typecast(bytes(1:4),   '*single');
+			out.steering_angle(:)               = typecast(bytes(5:8),   '*single');
+			out.origin_offset(:)                = typecast(bytes(9:12),  '*single');
+			out.transmit_receive_orientation(:) = typecast(bytes(13:16), '*uint32');
 		end
 	end
 end

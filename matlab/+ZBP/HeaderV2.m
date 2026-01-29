@@ -34,86 +34,34 @@ classdef HeaderV2
 
 	methods (Static)
 		function [out, consumed] = fromBytes(bytes)
-			consumed = 0;
+			consumed = 184;
 			out      = ZBP.HeaderV2;
-
-			out.magic(:) = typecast(bytes((consumed + 1):(consumed + 8)), 'uint64');
-			consumed = consumed + 8;
-
-			out.major(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'uint32');
-			consumed = consumed + 4;
-
-			out.minor(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'uint32');
-			consumed = consumed + 4;
-
-			out.raw_data_dimension(:) = typecast(bytes((consumed + 1):(consumed + 16)), 'uint32');
-			consumed = consumed + 16;
-
-			out.raw_data_kind(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.raw_data_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.raw_data_compression_kind(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.decode_mode(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.sampling_mode(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.sampling_frequency(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.demodulation_frequency(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.speed_of_sound(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.channel_mapping_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.sample_count(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'uint32');
-			consumed = consumed + 4;
-
-			out.channel_count(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'uint32');
-			consumed = consumed + 4;
-
-			out.receive_event_count(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'uint32');
-			consumed = consumed + 4;
-
-			out.transducer_transform_matrix(:) = typecast(bytes((consumed + 1):(consumed + 64)), 'single');
-			consumed = consumed + 64;
-
-			out.transducer_element_pitch(:) = typecast(bytes((consumed + 1):(consumed + 8)), 'single');
-			consumed = consumed + 8;
-
-			out.time_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.group_acquisition_time(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.ensemble_repitition_interval(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.acquisition_mode(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.acquisition_parameters_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.contrast_mode(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.contrast_parameters_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
-
-			out.emission_descriptors_offset(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'int32');
-			consumed = consumed + 4;
+			out.magic(:)                         = typecast(bytes(1:8),     '*uint64');
+			out.major(:)                         = typecast(bytes(9:12),    '*uint32');
+			out.minor(:)                         = typecast(bytes(13:16),   '*uint32');
+			out.raw_data_dimension(:)            = typecast(bytes(17:32),   '*uint32');
+			out.raw_data_kind(:)                 = typecast(bytes(33:36),   '*int32');
+			out.raw_data_offset(:)               = typecast(bytes(37:40),   '*int32');
+			out.raw_data_compression_kind(:)     = typecast(bytes(41:44),   '*int32');
+			out.decode_mode(:)                   = typecast(bytes(45:48),   '*int32');
+			out.sampling_mode(:)                 = typecast(bytes(49:52),   '*int32');
+			out.sampling_frequency(:)            = typecast(bytes(53:56),   '*single');
+			out.demodulation_frequency(:)        = typecast(bytes(57:60),   '*single');
+			out.speed_of_sound(:)                = typecast(bytes(61:64),   '*single');
+			out.channel_mapping_offset(:)        = typecast(bytes(65:68),   '*int32');
+			out.sample_count(:)                  = typecast(bytes(69:72),   '*uint32');
+			out.channel_count(:)                 = typecast(bytes(73:76),   '*uint32');
+			out.receive_event_count(:)           = typecast(bytes(77:80),   '*uint32');
+			out.transducer_transform_matrix(:)   = typecast(bytes(81:144),  '*single');
+			out.transducer_element_pitch(:)      = typecast(bytes(145:152), '*single');
+			out.time_offset(:)                   = typecast(bytes(153:156), '*single');
+			out.group_acquisition_time(:)        = typecast(bytes(157:160), '*single');
+			out.ensemble_repitition_interval(:)  = typecast(bytes(161:164), '*single');
+			out.acquisition_mode(:)              = typecast(bytes(165:168), '*int32');
+			out.acquisition_parameters_offset(:) = typecast(bytes(169:172), '*int32');
+			out.contrast_mode(:)                 = typecast(bytes(173:176), '*int32');
+			out.contrast_parameters_offset(:)    = typecast(bytes(177:180), '*int32');
+			out.emission_descriptors_offset(:)   = typecast(bytes(181:184), '*int32');
 		end
 	end
 end

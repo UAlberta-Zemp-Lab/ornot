@@ -9,12 +9,9 @@ classdef HERCULESParameters
 
 	methods (Static)
 		function [out, consumed] = fromBytes(bytes)
-			consumed = 0;
+			consumed = 16;
 			out      = ZBP.HERCULESParameters;
-
-			[sub, subUsed] = ZBP.RCATransmitFocus.fromBytes(bytes((consumed + 1):end));
-			out.transmit_focus = sub;
-			consumed = consumed + subUsed;
+			[out.transmit_focus, ~] = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
 	end
 end

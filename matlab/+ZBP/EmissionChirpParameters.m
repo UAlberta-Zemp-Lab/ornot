@@ -11,17 +11,11 @@ classdef EmissionChirpParameters
 
 	methods (Static)
 		function [out, consumed] = fromBytes(bytes)
-			consumed = 0;
+			consumed = 12;
 			out      = ZBP.EmissionChirpParameters;
-
-			out.duration(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.min_frequency(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
-
-			out.max_frequency(:) = typecast(bytes((consumed + 1):(consumed + 4)), 'single');
-			consumed = consumed + 4;
+			out.duration(:)      = typecast(bytes(1:4),  '*single');
+			out.min_frequency(:) = typecast(bytes(5:8),  '*single');
+			out.max_frequency(:) = typecast(bytes(9:12), '*single');
 		end
 	end
 end
