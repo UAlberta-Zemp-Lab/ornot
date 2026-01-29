@@ -324,11 +324,14 @@ global char *g_argv0;
 #endif
 
 #if COMPILER_CLANG
-  #define COMPILER "clang"
+  #define COMPILER     "clang"
+  #define PREPROCESSOR "clang", "-E", "-P"
 #elif COMPILER_MSVC
-  #define COMPILER "cl"
+  #define COMPILER     "cl"
+  #define PREPROCESSOR "cl", "/EP"
 #else
-  #define COMPILER "cc"
+  #define COMPILER     "cc"
+  #define PREPROCESSOR "cc", "-E", "-P"
 #endif
 
 #if COMPILER_MSVC
@@ -337,6 +340,7 @@ global char *g_argv0;
   #define OUTPUT_DLL(name)           "/LD", "/Fe:", name
   #define OUTPUT_LIB(name)           "/out:" OUTPUT(name)
   #define OUTPUT_EXE(name)           "/Fe:", name
+  #define COMPILER_OUTPUT            "/Fo:"
   #define STATIC_LIBRARY_BEGIN(name) "lib", "/nologo", name
 #else
   #define LINK_LIB(name)             "-l" name
@@ -344,6 +348,7 @@ global char *g_argv0;
   #define OUTPUT_DLL(name)           "-fPIC", "-shared", "-o", name
   #define OUTPUT_LIB(name)           OUTPUT(name)
   #define OUTPUT_EXE(name)           "-o", name
+  #define COMPILER_OUTPUT            "-o"
   #define STATIC_LIBRARY_BEGIN(name) "ar", "rc", name
 #endif
 
@@ -3923,6 +3928,12 @@ build_ornot(Arena arena, Options *options)
 
 			result &= meta_write_and_reset(m, (c8 *)output.data);
 		}
+
+		{
+			CommandList cpp = {0};
+			cmd_append(&arena, &cpp, PREPROCESSOR, (c8 *)output.data, COMPILER_OUTPUT, OUTPUT("ornot_python_ffi.h"));
+			result &= run_synchronous(arena, &cpp);
+		}
 	}
 	return result;
 }
@@ -3950,7 +3961,7 @@ main(s32 argc, char *argv[])
 
 	Options options = parse_options(argc, argv);
 
-	//result &= build_ornot(arena, &options);
+	result &= build_ornot(arena, &options);
 
 	if (options.time) {
 		f64 seconds = (f64)(os_get_timer_counter() - start_time) / (f64)os_get_timer_frequency();
