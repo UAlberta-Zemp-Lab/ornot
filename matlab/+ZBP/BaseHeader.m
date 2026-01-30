@@ -9,10 +9,13 @@ classdef BaseHeader
 		minor(1,1) uint32
 	end
 
+	properties (Constant)
+		byteSize(1,1) uint32 = 16
+	end
+
 	methods (Static)
-		function [out, consumed] = fromBytes(bytes)
-			consumed = 16;
-			out      = ZBP.BaseHeader;
+		function out = fromBytes(bytes)
+			out = ZBP.BaseHeader;
 			out.magic(:) = typecast(bytes(1:8),   'uint64');
 			out.major(:) = typecast(bytes(9:12),  'uint32');
 			out.minor(:) = typecast(bytes(13:16), 'uint32');

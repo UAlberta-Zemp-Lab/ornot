@@ -7,10 +7,13 @@ classdef HERCULESParameters
 		transmit_focus(1,1) ZBP.RCATransmitFocus
 	end
 
+	properties (Constant)
+		byteSize(1,1) uint32 = 16
+	end
+
 	methods (Static)
-		function [out, consumed] = fromBytes(bytes)
-			consumed = 16;
-			out      = ZBP.HERCULESParameters;
+		function out = fromBytes(bytes)
+			out = ZBP.HERCULESParameters;
 			[out.transmit_focus, ~] = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
 	end

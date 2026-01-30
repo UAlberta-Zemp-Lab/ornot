@@ -230,7 +230,7 @@ typedef struct {sz length; u8 *data;} str8;
 #ifdef _DEBUG
   #define assert(c) do { if (!(c)) debugbreak(); } while (0)
 #else  /* !_DEBUG */
-  #define assert(c)
+  #define assert(c) ((void)(c))
 #endif /* !_DEBUG */
 
 #define InvalidHandle      (-1)
@@ -3339,8 +3339,6 @@ metagen_emit_c_code(MetaContext *ctx, Arena arena)
 		for (sz structure = 0; structure < ctx->structs.count; structure++) {
 			MetaStruct *s = ctx->structs.data + structure;
 
-			s32 *type_map = push_array(&m->scratch, s32, s->member_count);
-
 			sz max_type_name_length = 0;
 			for (u32 member = 0; member < s->member_count; member++) {
 				s32 id = s->type_ids[member];
@@ -3489,12 +3487,16 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 			} meta_end_scope(m, str8("end"));
 
 			meta_push(m, str8("\n"));
+			meta_begin_scope(m, str8("properties (Constant)")); {
+				meta_begin_line(m, str8("byteSize(1,1) uint32 = "));
+				meta_push_u64(m, s->byte_size);
+				meta_end_line(m);
+			} meta_end_scope(m, str8("end"));
+
+			meta_push(m, str8("\n"));
 			meta_begin_scope(m, str8("methods (Static)")); {
-				meta_begin_scope(m, str8("function [out, consumed] = fromBytes(bytes)")); {
-					meta_begin_line(m, str8("consumed = "));
-					meta_push_u64(m, s->byte_size);
-					meta_end_line(m, str8(";"));
-					meta_push_line(m, str8("out      = " ZBP_NAMESPACE "."), s->name, str8(";"));
+				meta_begin_scope(m, str8("function out = fromBytes(bytes)")); {
+					meta_push_line(m, str8("out = " ZBP_NAMESPACE "."), s->name, str8(";"));
 
 					// NOTE(rnp): first pass: base types
 					Arena pass_arena;

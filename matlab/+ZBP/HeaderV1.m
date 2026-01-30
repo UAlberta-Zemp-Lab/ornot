@@ -27,10 +27,13 @@ classdef HeaderV1
 		transmit_mode(1,1)                uint32
 	end
 
+	properties (Constant)
+		byteSize(1,1) uint32 = 3724
+	end
+
 	methods (Static)
-		function [out, consumed] = fromBytes(bytes)
-			consumed = 3724;
-			out      = ZBP.HeaderV1;
+		function out = fromBytes(bytes)
+			out = ZBP.HeaderV1;
 			out.magic(:)                       = typecast(bytes(1:8),       'uint64');
 			out.version(:)                     = typecast(bytes(9:12),      'uint32');
 			out.decode_mode(:)                 = typecast(bytes(13:14),     'int16');

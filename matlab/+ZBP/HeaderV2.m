@@ -32,10 +32,13 @@ classdef HeaderV2
 		emission_descriptors_offset(1,1)   int32
 	end
 
+	properties (Constant)
+		byteSize(1,1) uint32 = 184
+	end
+
 	methods (Static)
-		function [out, consumed] = fromBytes(bytes)
-			consumed = 184;
-			out      = ZBP.HeaderV2;
+		function out = fromBytes(bytes)
+			out = ZBP.HeaderV2;
 			out.magic(:)                         = typecast(bytes(1:8),     'uint64');
 			out.major(:)                         = typecast(bytes(9:12),    'uint32');
 			out.minor(:)                         = typecast(bytes(13:16),   'uint32');
