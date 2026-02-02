@@ -39,6 +39,8 @@ bp.interpolation_mode     = uint32(OGLBeamformerInterpoloationMode.Cubic)
 bp.sampling_mode          = uint32(OGLBeamformerSamplingMode.m4X);
 bp.demodulation_frequency = bp.sampling_frequency / 4;
 
+bp.data_kind = int32(OGLBeamformerDataKind.Int16);
+
 switch zbp.transmit_mode
 	case 0
 		transmit_mode = OGLBeamformerRCAOrientation.Rows;
@@ -91,12 +93,12 @@ bp.compute_stages(1:numel(shaders)) = shaders;
 bp.compute_stages_count             = numel(shaders);
 
 % NOTE: setup a low pass filter for demodulating
-beta                    = 5.65;
-cutoff_frequency        = 1.8e6;
-filter_length           = 36;
-kaiser = OGLBeamformerFilter.Kaiser(cutoff_frequency, beta, filter_length);
+kaiser = OGLBeamformerFilter.Kaiser;
+kaiser.beta             = 5.65;
+kaiser.cutoff_frequency = 1.8e6;
+kaiser.filter_length    = 36;
 
-filter_parameters       = kaiser.Flatten();
+filter_parameters       = kaiser.Pack();
 filter_kind             = int32(OGLBeamformerFilterKind.Kaiser);
 filter_slot             = 0;
 filter_is_complex       = 0;
@@ -114,8 +116,6 @@ if ~calllib('ornot', 'unpack_compressed_i16_data', char(fullfile(data_dir, data_
 end
 data = data.Value;
 data = reshape(data, bp.raw_data_dimensions(1), bp.raw_data_dimensions(2), []);
-
-bp.data_kind = int32(OGLBeamformerDataKind.Int16);
 
 %%%%%%%%%%%%%%
 %% Beamform %%

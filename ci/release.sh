@@ -38,7 +38,10 @@ outname="beamformer-pack-${machine}-$(git describe --tag)"
 mkdir -p "${outname}"
 cp "scripts/beamform_simple.m" "${outname}/"
 cp "${ornotlib}" "out/ornot.h" "${outname}/"
-cp "${beamformerlib}" "submodules/ogl_beamforming/out/ogl_beamformer_lib.h" "${beamformer}" "${outname}/"
+cp "${beamformerlib}" "${beamformer}" "${outname}/"
+cp "submodules/ogl_beamforming/out/ogl_beamformer_lib.h" "${outname}/"
+
+cp -r "matlab" "${outname}/"
 cp -r "submodules/ogl_beamforming/out/matlab" "${outname}/"
 
 cp "submodules/ogl_beamforming/LICENSE" "${outname}/LICENSE.ogl_beamforming"
