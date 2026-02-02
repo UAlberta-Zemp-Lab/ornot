@@ -70,7 +70,7 @@ b32 unpack_zemp_bp_v1(c8 *input_name, ZBP_HeaderV1 *output_header)
 }
 #endif
 
-b32 unpack_compressed_i16_data(c8 *file, void *output, uz output_size)
+b32 unpack_zstd_compressed_data(c8 *file, void *output, uz output_size)
 {
 	b32 result = 0;
 	MemoryStream file_data = os_read_whole_file(file);
@@ -87,11 +87,15 @@ b32 unpack_compressed_i16_data(c8 *file, void *output, uz output_size)
 	return result;
 }
 
-b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count)
+b32 unpack_compressed_i16_data(c8 *file, void *output, uz output_size)
 {
-	b32 result = 0;
-	iz data_size = data_element_count * sizeof(*data);
-	iz buf_size  = ZSTD_COMPRESSBOUND(data_size);
+	return unpack_zstd_compressed_data(file, output, output_size);
+}
+
+b32 write_data_with_zstd_compression(c8 *output_name, void *data, u64 data_size)
+{
+	b32 result   = 0;
+	u64 buf_size = ZSTD_COMPRESSBOUND(data_size);
 	MemoryBlock buf = os_block_alloc(buf_size);
 	if (buf.size) {
 		iz written = ZSTD_compress(buf.data, buf.size, data, data_size, ZSTD_CLEVEL_DEFAULT);
@@ -102,4 +106,9 @@ b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count
 	os_block_release(buf);
 
 	return result;
+}
+
+b32 write_i16_data_compressed(c8 *output_name, i16 *data, u32 data_element_count)
+{
+	return write_data_with_zstd_compression(output_name, data, (u64)data_element_count * sizeof(*data));
 }

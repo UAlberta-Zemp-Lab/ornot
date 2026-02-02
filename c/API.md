@@ -27,19 +27,19 @@ result = calllib("ornot", "unpack_zemp_bp_v1", file_path, bp);
 bp = struct(bp);
 ```
 
-### `b32 write_i16_data_compressed(char *output_name, i16 *data, u32 data_element_count)`
+### `b32 write_data_with_zstd_compression(char *output_name, void *data, u64 data_size)`
 
 Compresses `data` using [zstd][], and writes the result to
 `output_name`. The caller is responsible for adding the `.zst`
 extension as required by their environment. Returns whether the
 operation succeeded.
 
-### `b32 unpack_compressed_i16_data(char *input_file, void *output, size_t output_size)`
+### `b32 unpack_zstd_compressed_data(char *input_file, void *output, size_t output_size)`
 
 Reads input file (assumed to be zstandard compressed) and
 decompresses it into buffer. Buffer size can be determined from
 the zemp_bp header. You should not use this from anything other
-than a MATLAB script.
+than a MATLAB or Python script.
 
 ## MATLAB (Mex)
 
