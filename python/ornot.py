@@ -3,12 +3,20 @@
 import os
 import cffi
 
-from sys import platform
-
 from ZBP import ZBP
 
 class ornot:
 	def __init__(self, library_path):
+		"""
+		Initializes ornot helper class
+
+		Arguments:
+		  library_path (string): base path containing ornot.so/ornot.dylib/ornot.dll
+		                         and ogl_beamformer_lib.so/ogl_beamformer_lib.dll
+		                         libraries
+		"""
+		from sys import platform
+
 		self.ffi = cffi.FFI()
 		self.ffi.cdef(open('ogl_beamformer_lib_python_ffi.h').read())
 		self.ffi.cdef(open('ornot_python_ffi.h').read())
@@ -30,6 +38,19 @@ class ornot:
 
 	@staticmethod
 	def zbp_from_file(file):
+		"""
+		Unpacks a ZBP header file into a structured format.
+
+		Arguments:
+		  file (string): path to parameters file
+
+		Returns:
+		  Depending on the version of the parameters one of:
+		    V1 -> ZBP.HeaderV1: a version 1 header structure
+		    V2 -> ZBP.HeaderV2: a version 2 header structure
+
+		  (uint8 []): an array of all bytes in file, including the header
+		"""
 		with open(file, "rb") as f:
 			bytes = f.read()
 
@@ -58,6 +79,17 @@ class ornot:
 			return zbp, bytes
 
 	def data_from_file(self, zbp, file):
+		"""
+		Loads and decompresses a raw data file.
+
+		Arguments:
+		  zbp  (struct): a ZBP header struct, either V1 or V2
+		  file (string): path to raw data file
+
+		Returns:
+		  (ffi.type): an ffi pointer where type depends on zbp.raw_data_kind
+		  int:        size of data in bytes
+		"""
 		ogl = self.ogl
 		data_kind_size_table = {
 			ZBP.DataKind_Int16:          2,
@@ -91,6 +123,16 @@ class ornot:
 		return data, data_size
 
 	def beamformer_simple_parameters_from_zbp(self, zbp):
+		"""
+		Fills in all data dependant (zbp structure) members of a
+		BeamformerSimpleParameters structure.
+
+		Arguments:
+		  zbp (struct): a ZBP header struct, only V1 currently supported
+
+		Returns:
+		  (ffi.BeamformerSimpleParameters *): an ffi compatible parameters structure
+		"""
 		if zbp.version != 1:
 			raise ValueError("Only Vesion 1 Parameters Supported")
 
