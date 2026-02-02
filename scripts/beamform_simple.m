@@ -23,7 +23,7 @@ frame_count = zbp.raw_data_dimension(3);
 
 bp                        = OGLBeamformerSimpleParameters();
 bp.decode_mode            = zbp.decode_mode;
-bp.das_shader_id          = zbp.beamform_mode;
+bp.acquisition_kind       = zbp.beamform_mode;
 bp.time_offset            = zbp.time_offset;
 bp.sampling_frequency     = zbp.sampling_frequency;
 bp.demodulation_frequency = zbp.demodulation_frequency;
@@ -67,7 +67,7 @@ bp.acquisition_count = zbp.receive_event_count;
 bp.channel_mapping(1:bp.channel_count)     = zbp.channel_mapping(1:bp.channel_count);
 bp.sparse_elements(1:bp.acquisition_count) = zbp.sparse_elements(1:bp.acquisition_count);
 
-switch bp.das_shader_id
+switch bp.acquisition_kind
 	case {int32(OGLBeamformerAcquisitionKind.HERCULES), int32(OGLBeamformerAcquisitionKind.UHERCULES)}
 		bp.single_focus       = 1;
 		bp.single_orientation = 1;
