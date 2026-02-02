@@ -19,7 +19,7 @@ class ornot:
 			ornot_name = "ornot.so"
 			ogl_name   = "ogl_beamformer_lib.so"
 		elif platform == "darwin":
-			ornot_name = "ornot.so"
+			ornot_name = "ornot.dylib"
 		elif platform == "win32":
 			ornot_name = "ornot.dll"
 			ogl_name   = "ogl_beamformer_lib.dll"
