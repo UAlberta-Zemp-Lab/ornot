@@ -297,7 +297,7 @@ global char *g_argv0;
   #define W32_DECL(x)
 
   #if OS_LINUX
-    #define OS_SHARED_LIB(s)      "lib" s ".so"
+    #define OS_SHARED_LIB(s)      s ".so"
   #elif OS_MACOS
     #define OS_SHARED_LIB(s)      s ".dylib"
   #endif

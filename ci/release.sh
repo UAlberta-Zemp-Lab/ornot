@@ -19,7 +19,7 @@ MINGW64*)
 Linux*)
 	beamformerlib="submodules/ogl_beamforming/out/ogl_beamformer_lib.so"
 	beamformer="submodules/ogl_beamforming/ogl"
-	ornotlib="out/libornot.so"
+	ornotlib="out/ornot.so"
 	;;
 esac
 
@@ -29,7 +29,7 @@ ${cc} -march=native -O3 -fms-extensions -o build build.c
 
 # NOTE: build beamformer
 cd "submodules/ogl_beamforming"
-${cc} build.c -o build
+${cc} -march=native -O3 -fms-extensions build.c -o build
 ./build --generic --bake-shaders
 cd "${wd}"
 
