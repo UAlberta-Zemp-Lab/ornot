@@ -44,6 +44,10 @@ cp "submodules/ogl_beamforming/out/ogl_beamformer_lib.h" "${outname}/"
 cp -r "matlab" "${outname}/"
 cp -r "submodules/ogl_beamforming/out/matlab" "${outname}/"
 
+cp -r "python" "${outname}/"
+cp "submodules/ogl_beamforming/out/ogl_beamformer_lib_python_ffi.h" "${outname}/python"
+cp "out/ornot_python_ffi.h" "${outname}/python"
+
 cp "submodules/ogl_beamforming/LICENSE" "${outname}/LICENSE.ogl_beamforming"
 cp "LICENSE" "${outname}/LICENSE.ornot"
 
