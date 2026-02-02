@@ -1,3 +1,5 @@
+# See LICENSE for license details.
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
