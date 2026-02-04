@@ -72,5 +72,41 @@ classdef HeaderV2
 			out.contrast_parameters_offset(:)    = typecast(bytes(177:180), 'int32');
 			out.emission_descriptors_offset(:)   = typecast(bytes(181:184), 'int32');
 		end
+
+		function bytes = toBytes(obj)
+			arguments (Input)
+				obj(1,1) ZBP.HeaderV2
+			end
+			arguments (Output)
+				bytes uint8
+			end
+			bytes = zeros(1, ZBP.HeaderV2.byteSize);
+			bytes(1:8)     = typecast(obj.magic(:),                         'uint8');
+			bytes(9:12)    = typecast(obj.major(:),                         'uint8');
+			bytes(13:16)   = typecast(obj.minor(:),                         'uint8');
+			bytes(17:32)   = typecast(obj.raw_data_dimension(:),            'uint8');
+			bytes(33:36)   = typecast(obj.raw_data_kind(:),                 'uint8');
+			bytes(37:40)   = typecast(obj.raw_data_offset(:),               'uint8');
+			bytes(41:44)   = typecast(obj.raw_data_compression_kind(:),     'uint8');
+			bytes(45:48)   = typecast(obj.decode_mode(:),                   'uint8');
+			bytes(49:52)   = typecast(obj.sampling_mode(:),                 'uint8');
+			bytes(53:56)   = typecast(obj.sampling_frequency(:),            'uint8');
+			bytes(57:60)   = typecast(obj.demodulation_frequency(:),        'uint8');
+			bytes(61:64)   = typecast(obj.speed_of_sound(:),                'uint8');
+			bytes(65:68)   = typecast(obj.channel_mapping_offset(:),        'uint8');
+			bytes(69:72)   = typecast(obj.sample_count(:),                  'uint8');
+			bytes(73:76)   = typecast(obj.channel_count(:),                 'uint8');
+			bytes(77:80)   = typecast(obj.receive_event_count(:),           'uint8');
+			bytes(81:144)  = typecast(obj.transducer_transform_matrix(:),   'uint8');
+			bytes(145:152) = typecast(obj.transducer_element_pitch(:),      'uint8');
+			bytes(153:156) = typecast(obj.time_offset(:),                   'uint8');
+			bytes(157:160) = typecast(obj.group_acquisition_time(:),        'uint8');
+			bytes(161:164) = typecast(obj.ensemble_repitition_interval(:),  'uint8');
+			bytes(165:168) = typecast(obj.acquisition_mode(:),              'uint8');
+			bytes(169:172) = typecast(obj.acquisition_parameters_offset(:), 'uint8');
+			bytes(173:176) = typecast(obj.contrast_mode(:),                 'uint8');
+			bytes(177:180) = typecast(obj.contrast_parameters_offset(:),    'uint8');
+			bytes(181:184) = typecast(obj.emission_descriptors_offset(:),   'uint8');
+		end
 	end
 end

@@ -3571,6 +3571,79 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 						metagen_push_table(m, m->scratch, str8(""), str8(""), columns, members, 2);
 					}
 				} meta_end_scope(m, str8("end"));
+				meta_push(m, str8("\n"));
+				meta_begin_scope(m, str8("function bytes = toBytes(obj)")); {
+					meta_begin_scope(m, str8("arguments (Input)")); {
+						meta_push_line(m, str8("obj(1,1) " ZBP_NAMESPACE "."), s->name);
+					} meta_end_scope(m, str8("end"));
+					meta_begin_scope(m, str8("arguments (Output)")); {
+						meta_push_line(m, str8("bytes uint8"));
+					} meta_end_scope(m, str8("end"));
+					meta_push_line(m, str8("bytes = zeros(1, " ZBP_NAMESPACE "."), s->name, str8(".byteSize);"));
+
+					// NOTE(rnp): first pass: base types
+					Arena pass_arena;
+					DeferLoop(pass_arena = m->scratch, m->scratch = pass_arena) {
+						str8 **columns = push_array(&m->scratch, str8 *, 3);
+						for (sz i = 0; i < 3; i++)
+							columns[i] = push_array(&m->scratch, str8, s->member_count);
+
+						u32 offset  = 1;
+						u32 members = 0;
+						for (u32 member = 0; member < s->member_count; member++) {
+							s32 type_id = s->type_ids[member];
+							if (type_id >= 0) {
+								u32 row = members++;
+								Stream sb = arena_stream(m->scratch);
+								stream_append_str8(&sb, str8("bytes("));
+								stream_append_u64(&sb, offset);
+								offset += s->elements[member] * meta_kind_bytes[type_id];
+								stream_append_str8(&sb, str8(":"));
+								stream_append_u64(&sb, offset - 1);
+								stream_append_str8(&sb, str8(")"));
+								columns[0][row] = arena_stream_commit_and_reset(&m->scratch, &sb);
+
+								columns[1][row] = push_str8_from_parts(&m->scratch, str8(""), str8("= typecast(obj."), 
+																		s->members[member], str8("(:),"));
+								
+								columns[2][row] = push_str8_from_parts(&m->scratch, str8(""), str8("'uint8');"));
+							} else {
+								offset += ctx->structs.data[s->sub_struct_ids[member]].byte_size;
+							}
+						}
+						metagen_push_table(m, m->scratch, str8(""), str8(""), columns, members, 3);
+					}
+
+					// NOTE(rnp): second pass: sub structures
+					DeferLoop(pass_arena = m->scratch, m->scratch = pass_arena) {
+						u32 offset  = 1;
+						u32 members = 0;
+						str8 **columns = push_array(&m->scratch, str8 *, 2);
+						for (sz i = 0; i < 2; i++)
+							columns[i] = push_array(&m->scratch, str8, s->member_count);
+
+						for (u32 member = 0; member < s->member_count; member++) {
+							s32 type_id = s->type_ids[member];
+							if (type_id < 0) {
+								u32 row = members++;
+								Stream sb = arena_stream(m->scratch);
+								stream_append_str8s(&sb, str8("bytes("));
+								stream_append_u64(&sb, offset);
+								offset += ctx->structs.data[s->sub_struct_ids[member]].byte_size;
+								stream_append_str8(&sb, str8(":"));
+								stream_append_u64(&sb, offset - 1);
+								stream_append_str8(&sb, str8(")"));
+								columns[0][row] = arena_stream_commit_and_reset(&m->scratch, &sb);
+
+								columns[1][row] = push_str8_from_parts(&m->scratch, str8(""), str8("= obj."), s->members[member],
+																		str8(".toBytes();"));
+							} else {
+								offset += s->elements[member] * meta_kind_bytes[type_id];
+							}
+						}
+						metagen_push_table(m, m->scratch, str8(""), str8(""), columns, members, 2);
+					}
+				} meta_end_scope(m, str8("end"));
 			} meta_end_scope(m, str8("end"));
 		} meta_end_scope(m, str8("end"));
 

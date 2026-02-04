@@ -22,5 +22,16 @@ classdef HERCULESParameters
 			out = ZBP.HERCULESParameters;
 			out.transmit_focus = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
+
+		function bytes = toBytes(obj)
+			arguments (Input)
+				obj(1,1) ZBP.HERCULESParameters
+			end
+			arguments (Output)
+				bytes uint8
+			end
+			bytes = zeros(1, ZBP.HERCULESParameters.byteSize);
+			bytes(1:16) = obj.transmit_focus.toBytes();
+		end
 	end
 end

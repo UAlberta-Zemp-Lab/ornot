@@ -26,5 +26,18 @@ classdef EmissionChirpParameters
 			out.min_frequency(:) = typecast(bytes(5:8),  'single');
 			out.max_frequency(:) = typecast(bytes(9:12), 'single');
 		end
+
+		function bytes = toBytes(obj)
+			arguments (Input)
+				obj(1,1) ZBP.EmissionChirpParameters
+			end
+			arguments (Output)
+				bytes uint8
+			end
+			bytes = zeros(1, ZBP.EmissionChirpParameters.byteSize);
+			bytes(1:4)  = typecast(obj.duration(:),      'uint8');
+			bytes(5:8)  = typecast(obj.min_frequency(:), 'uint8');
+			bytes(9:12) = typecast(obj.max_frequency(:), 'uint8');
+		end
 	end
 end

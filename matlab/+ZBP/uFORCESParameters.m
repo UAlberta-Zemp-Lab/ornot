@@ -24,5 +24,17 @@ classdef uFORCESParameters
 			out.sparse_elements_offset(:) = typecast(bytes(17:20), 'int32');
 			out.transmit_focus = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
+
+		function bytes = toBytes(obj)
+			arguments (Input)
+				obj(1,1) ZBP.uFORCESParameters
+			end
+			arguments (Output)
+				bytes uint8
+			end
+			bytes = zeros(1, ZBP.uFORCESParameters.byteSize);
+			bytes(17:20) = typecast(obj.sparse_elements_offset(:), 'uint8');
+			bytes(1:16) = obj.transmit_focus.toBytes();
+		end
 	end
 end
