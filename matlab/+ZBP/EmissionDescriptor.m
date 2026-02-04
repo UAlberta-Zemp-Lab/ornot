@@ -14,6 +14,12 @@ classdef EmissionDescriptor
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.EmissionDescriptor
+			end
 			out = ZBP.EmissionDescriptor;
 			out.emission_kind(:)     = typecast(bytes(1:4), 'int32');
 			out.parameters_offset(:) = typecast(bytes(5:8), 'int32');

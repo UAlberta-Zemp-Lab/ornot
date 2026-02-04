@@ -16,6 +16,12 @@ classdef RCATransmitFocus
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.RCATransmitFocus
+			end
 			out = ZBP.RCATransmitFocus;
 			out.focal_depth(:)                  = typecast(bytes(1:4),   'single');
 			out.steering_angle(:)               = typecast(bytes(5:8),   'single');

@@ -3496,6 +3496,12 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 			meta_push(m, str8("\n"));
 			meta_begin_scope(m, str8("methods (Static)")); {
 				meta_begin_scope(m, str8("function out = fromBytes(bytes)")); {
+					meta_begin_scope(m, str8("arguments (Input)")); {
+						meta_push_line(m, str8("bytes uint8"));
+					} meta_end_scope(m, str8("end"));
+					meta_begin_scope(m, str8("arguments (Output)")); {
+						meta_push_line(m, str8("out(1,1) " ZBP_NAMESPACE "."), s->name);
+					} meta_end_scope(m, str8("end"));
 					meta_push_line(m, str8("out = " ZBP_NAMESPACE "."), s->name, str8(";"));
 
 					// NOTE(rnp): first pass: base types
@@ -3545,8 +3551,8 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 							s32 type_id = s->type_ids[member];
 							if (type_id < 0) {
 								u32 row = members++;
-								columns[0][row] = push_str8_from_parts(&m->scratch, str8(""), str8("[out."),
-								                                          s->members[member], str8(", ~]"));
+								columns[0][row] = push_str8_from_parts(&m->scratch, str8(""), str8("out."),
+								                                          s->members[member]);
 
 								Stream sb = arena_stream(m->scratch);
 								stream_append_str8s(&sb, str8("= " ZBP_NAMESPACE "."), s->types[member],

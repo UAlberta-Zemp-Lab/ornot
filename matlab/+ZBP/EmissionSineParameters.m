@@ -14,6 +14,12 @@ classdef EmissionSineParameters
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.EmissionSineParameters
+			end
 			out = ZBP.EmissionSineParameters;
 			out.cycles(:)    = typecast(bytes(1:4), 'single');
 			out.frequency(:) = typecast(bytes(5:8), 'single');

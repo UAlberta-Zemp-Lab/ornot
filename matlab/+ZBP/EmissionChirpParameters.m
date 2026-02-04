@@ -15,6 +15,12 @@ classdef EmissionChirpParameters
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.EmissionChirpParameters
+			end
 			out = ZBP.EmissionChirpParameters;
 			out.duration(:)      = typecast(bytes(1:4),  'single');
 			out.min_frequency(:) = typecast(bytes(5:8),  'single');

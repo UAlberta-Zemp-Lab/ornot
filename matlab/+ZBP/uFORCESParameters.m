@@ -14,9 +14,15 @@ classdef uFORCESParameters
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.uFORCESParameters
+			end
 			out = ZBP.uFORCESParameters;
 			out.sparse_elements_offset(:) = typecast(bytes(17:20), 'int32');
-			[out.transmit_focus, ~] = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
+			out.transmit_focus = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
 	end
 end

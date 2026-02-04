@@ -14,6 +14,12 @@ classdef TPWParameters
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.TPWParameters
+			end
 			out = ZBP.TPWParameters;
 			out.tilting_angles_offset(:)                = typecast(bytes(1:4), 'int32');
 			out.transmit_receive_orientations_offset(:) = typecast(bytes(5:8), 'int32');

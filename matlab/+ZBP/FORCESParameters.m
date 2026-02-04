@@ -13,8 +13,14 @@ classdef FORCESParameters
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.FORCESParameters
+			end
 			out = ZBP.FORCESParameters;
-			[out.transmit_focus, ~] = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
+			out.transmit_focus = ZBP.RCATransmitFocus.fromBytes(bytes(1:16));
 		end
 	end
 end

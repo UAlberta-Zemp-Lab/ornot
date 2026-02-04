@@ -38,6 +38,12 @@ classdef HeaderV2
 
 	methods (Static)
 		function out = fromBytes(bytes)
+			arguments (Input)
+				bytes uint8
+			end
+			arguments (Output)
+				out(1,1) ZBP.HeaderV2
+			end
 			out = ZBP.HeaderV2;
 			out.magic(:)                         = typecast(bytes(1:8),     'uint64');
 			out.major(:)                         = typecast(bytes(9:12),    'uint32');
