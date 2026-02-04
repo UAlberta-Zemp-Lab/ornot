@@ -1,5 +1,6 @@
 // NOTE: ('P' << 56 | 'B' << 48 | 'P' << 40 | 'M' << 32 | 'E' << 24 | 'Z' << 16 | 0xFE << 8 | 0xCA)
 @Constant(0x5042504D455AFECA) HeaderMagic
+@Constant(4) OffsetAlignment
 
 @Enumeration(RCAOrientation [None Rows Columns])
 

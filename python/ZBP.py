@@ -5,6 +5,7 @@ import struct
 
 class ZBP:
 	HeaderMagic = 0x5042504d455afeca
+	OffsetAlignment = 0x04
 
 	# RCAOrientation
 	RCAOrientation_None    = 0
