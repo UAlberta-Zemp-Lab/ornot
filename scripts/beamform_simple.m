@@ -32,7 +32,7 @@ bp.xdc_transform          = zbp.transducer_transform_matrix;
 bp.xdc_element_pitch      = zbp.transducer_element_pitch;
 bp.raw_data_dimensions    = zbp.raw_data_dimension(1:2);
 bp.f_number               = f_number;
-bp.interpolation_mode     = uint32(OGLBeamformerInterpoloationMode.Cubic)
+bp.interpolation_mode     = uint32(OGLBeamformerInterpolationMode.Cubic);
 
 % NOTE: v1 data was always collected at 4X sampling, but most
 % parameters had the wrong value saved for center frequency
@@ -96,7 +96,7 @@ bp.compute_stages_count             = numel(shaders);
 kaiser = OGLBeamformerFilter.Kaiser;
 kaiser.beta             = 5.65;
 kaiser.cutoff_frequency = 1.8e6;
-kaiser.filter_length    = 36;
+kaiser.length           = 36;
 
 filter_parameters       = kaiser.Pack();
 filter_kind             = int32(OGLBeamformerFilterKind.Kaiser);
@@ -155,7 +155,10 @@ xlabel(ax, "X [mm]"); ylabel(ax, "Z [mm]");
 
 function load_libraries()
 addpath("matlab");
+% NOTE: these warnings do not provide useful information and are not at
+% all relevant to the functioning of the library.
 warning('off','MATLAB:structOnObject');
+warning('off','MATLAB:loadlibrary:TypeNotFoundForStructure');
 if (~libisloaded('ogl_beamformer_lib'))
     [~, ~] = loadlibrary('ogl_beamformer_lib');
     calllib('ogl_beamformer_lib', 'beamformer_set_global_timeout', 1000);
