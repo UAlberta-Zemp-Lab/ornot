@@ -3,6 +3,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifndef MAP_ANON
+  #define MAP_ANON 0x20
+#endif
+
 static PLATFORM_ALLOC_MEMORY_BLOCK_FN(os_block_alloc)
 {
 	MemoryBlock result = {0};
