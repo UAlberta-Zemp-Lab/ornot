@@ -1,4 +1,5 @@
 out
 build
+build.exe*
 **.mex*
 beamformer-pack*
