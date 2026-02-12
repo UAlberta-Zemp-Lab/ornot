@@ -27,8 +27,8 @@ arguments (Output)
 end
 
 bp.header.magic = ZBP.Constants.HeaderMagic;
-bp.header.Major = 2;
-bp.header.Minor = 0;
+bp.header.major = 2;
+bp.header.minor = 0;
 
 bytes = [];
 
@@ -43,9 +43,9 @@ if isfield(bp, "emission_descriptor")
     offset = increment_offset(offset, bp.emission_parameters.byteSize, offset_alignment);
     switch bp.emission_descriptor.emission_kind
         case ZBP.EmissionKind.Sine
-            assert(isa(bp.emission_parameters, "EmissionSineParameters"));
+            assert(isa(bp.emission_parameters, "ZBP.EmissionSineParameters"));
         case ZBP.EmissionKind.Chirp
-            assert(isa(bp.emission_parameters, "EmissionChirpParameters"));
+            assert(isa(bp.emission_parameters, "ZBP.EmissionChirpParameters"));
         otherwise
             assert(false, "Unsupported Emission Kind");
     end
@@ -59,10 +59,8 @@ end
 
 if isfield(bp, "channel_mapping")
     bp.header.channel_mapping_offset = offset;
-    channel_count = bp.header.raw_data_dimension(2);
-    assert(numel(bp.channel_mapping) == channel_count);
-    assert(isa(bp.channel_count, "uint16"));
-    offset = increment_offset(offset, 2*channel_count, offset_alignment);
+    assert(numel(bp.channel_mapping) == bp.header.channel_count);
+    offset = increment_offset(offset, 2*bp.header.channel_count, offset_alignment);
     bytes = set_bytes(bytes, typecast(bp.channel_mapping, "uint8"), bp.header.channel_mapping_offset);
 end
 
@@ -72,7 +70,7 @@ if isfield(bp, "acquisition_parameters")
     switch bp.header.acquisition_mode
         case ZBP.AcquisitionKind.RCA_VLS
             receive_count = bp.header.receive_event_count;
-            assert(isa(bp.acquisition_parameters, "ZPB.VLSParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
             assert(isscalar(bp.acquisition_parameters));
 
             assert(isfield(bp, "focal_depths"));
@@ -94,7 +92,7 @@ if isfield(bp, "acquisition_parameters")
             bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"));
         case ZBP.AcquisitionKind.RCA_TPW
             receive_count = bp.header.receive_event_count;
-            assert(isa(bp.acquisition_parameters, "ZPB.TPWParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
             assert(isscalar(bp.acquisition_parameters));
 
             assert(isfield(bp, "tilting_angles"));
@@ -115,28 +113,28 @@ if isfield(bp, "acquisition_parameters")
                 offset = increment_offset(offset, 2*numel(bp.sparse_elements(:,i)), offset_alignment);
                 bytes = set_bytes(bytes, typecast(bp.sparse_elements(:,i), "uint8"), bp.acquisition_parameters(i).sparse_elements_offset);
             end
-        otherwise
-            assert(false, "Unsupported Acquisition Kind")
     end
 
     switch bp.header.acquisition_mode
         case ZBP.AcquisitionKind.FORCES
-            assert(isa(bp.acquisition_parameters, "ZPB.FORCESParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.FORCESParameters"));
         case ZBP.AcquisitionKind.UFORCES
-            assert(isa(bp.acquisition_parameters, "ZPB.uFORCESParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.uFORCESParameters"));
         case ZBP.AcquisitionKind.RCA_VLS
-            assert(isa(bp.acquisition_parameters, "ZPB.VLSParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
         case ZBP.AcquisitionKind.RCA_TPW
-            assert(isa(bp.acquisition_parameters, "ZPB.TPWParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
         case ZBP.AcquisitionKind.HERCULES
-            assert(isa(bp.acquisition_parameters, "ZPB.HERCULESParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.HERCULESParameters"));
         case ZBP.AcquisitionKind.UHERCULES
-            assert(isa(bp.acquisition_parameters, "ZPB.uHERCULESParameters"));
+            assert(isa(bp.acquisition_parameters, "ZBP.uHERCULESParameters"));
+        otherwise
+            assert(false, "Unsupported Acquisition Kind")
     end
 
     for i = 1:numel(bp.acquisition_parameters)
-        bytes = set_bytes(bytes, bp.acquisition_parameters(i), offset);
-        parameter_offset = increment_offset(parameter_offset, bp.acquisition_parameters(i).byteSize, 1);
+        bytes = set_bytes(bytes, bp.acquisition_parameters(i).toBytes(), offset);
+        offset = increment_offset(offset, bp.acquisition_parameters(i).byteSize, 1);
     end
 
     offset = increment_offset(offset, 0, offset_alignment);
@@ -165,7 +163,7 @@ end
 arguments (Output)
     bytes uint8
 end
-bytes = [bytes, zeros(1, max(numel(bytes) - offset - size, 0))];
+bytes = [bytes, zeros(1, max(offset + size - numel(bytes), 0))];
 bytes(offset + (1:size)) = value(1:size);
 end
 

@@ -31,6 +31,39 @@ classdef HeaderV1
 		byteSize(1,1) uint32 = 3724
 	end
 
+	methods
+		function bytes = toBytes(obj)
+			arguments (Input)
+				obj(1,1) ZBP.HeaderV1
+			end
+			arguments (Output)
+				bytes uint8
+			end
+			bytes = zeros(1, ZBP.HeaderV1.byteSize);
+			bytes(1:8)       = typecast(obj.magic(:),                       'uint8');
+			bytes(9:12)      = typecast(obj.version(:),                     'uint8');
+			bytes(13:14)     = typecast(obj.decode_mode(:),                 'uint8');
+			bytes(15:16)     = typecast(obj.beamform_mode(:),               'uint8');
+			bytes(17:32)     = typecast(obj.raw_data_dimension(:),          'uint8');
+			bytes(33:36)     = typecast(obj.sample_count(:),                'uint8');
+			bytes(37:40)     = typecast(obj.channel_count(:),               'uint8');
+			bytes(41:44)     = typecast(obj.receive_event_count(:),         'uint8');
+			bytes(45:48)     = typecast(obj.frame_count(:),                 'uint8');
+			bytes(49:56)     = typecast(obj.transducer_element_pitch(:),    'uint8');
+			bytes(57:120)    = typecast(obj.transducer_transform_matrix(:), 'uint8');
+			bytes(121:632)   = typecast(obj.channel_mapping(:),             'uint8');
+			bytes(633:1656)  = typecast(obj.steering_angles(:),             'uint8');
+			bytes(1657:2680) = typecast(obj.focal_depths(:),                'uint8');
+			bytes(2681:3192) = typecast(obj.sparse_elements(:),             'uint8');
+			bytes(3193:3704) = typecast(obj.hadamard_rows(:),               'uint8');
+			bytes(3705:3708) = typecast(obj.speed_of_sound(:),              'uint8');
+			bytes(3709:3712) = typecast(obj.demodulation_frequency(:),      'uint8');
+			bytes(3713:3716) = typecast(obj.sampling_frequency(:),          'uint8');
+			bytes(3717:3720) = typecast(obj.time_offset(:),                 'uint8');
+			bytes(3721:3724) = typecast(obj.transmit_mode(:),               'uint8');
+		end
+	end
+
 	methods (Static)
 		function out = fromBytes(bytes)
 			arguments (Input)
@@ -61,37 +94,6 @@ classdef HeaderV1
 			out.sampling_frequency(:)          = typecast(bytes(3713:3716), 'single');
 			out.time_offset(:)                 = typecast(bytes(3717:3720), 'single');
 			out.transmit_mode(:)               = typecast(bytes(3721:3724), 'uint32');
-		end
-
-		function bytes = toBytes(obj)
-			arguments (Input)
-				obj(1,1) ZBP.HeaderV1
-			end
-			arguments (Output)
-				bytes uint8
-			end
-			bytes = zeros(1, ZBP.HeaderV1.byteSize);
-			bytes(1:8)       = typecast(obj.magic(:),                       'uint8');
-			bytes(9:12)      = typecast(obj.version(:),                     'uint8');
-			bytes(13:14)     = typecast(obj.decode_mode(:),                 'uint8');
-			bytes(15:16)     = typecast(obj.beamform_mode(:),               'uint8');
-			bytes(17:32)     = typecast(obj.raw_data_dimension(:),          'uint8');
-			bytes(33:36)     = typecast(obj.sample_count(:),                'uint8');
-			bytes(37:40)     = typecast(obj.channel_count(:),               'uint8');
-			bytes(41:44)     = typecast(obj.receive_event_count(:),         'uint8');
-			bytes(45:48)     = typecast(obj.frame_count(:),                 'uint8');
-			bytes(49:56)     = typecast(obj.transducer_element_pitch(:),    'uint8');
-			bytes(57:120)    = typecast(obj.transducer_transform_matrix(:), 'uint8');
-			bytes(121:632)   = typecast(obj.channel_mapping(:),             'uint8');
-			bytes(633:1656)  = typecast(obj.steering_angles(:),             'uint8');
-			bytes(1657:2680) = typecast(obj.focal_depths(:),                'uint8');
-			bytes(2681:3192) = typecast(obj.sparse_elements(:),             'uint8');
-			bytes(3193:3704) = typecast(obj.hadamard_rows(:),               'uint8');
-			bytes(3705:3708) = typecast(obj.speed_of_sound(:),              'uint8');
-			bytes(3709:3712) = typecast(obj.demodulation_frequency(:),      'uint8');
-			bytes(3713:3716) = typecast(obj.sampling_frequency(:),          'uint8');
-			bytes(3717:3720) = typecast(obj.time_offset(:),                 'uint8');
-			bytes(3721:3724) = typecast(obj.transmit_mode(:),               'uint8');
 		end
 	end
 end
