@@ -3,7 +3,7 @@ arguments (Input)
     bytes uint8
 end
 arguments (Output)
-    bp(1,1) struct
+    bp(1,1)
 end
 
 assert(len(bytes) >= ZBP.BaseHeader.byteSize);
@@ -12,7 +12,7 @@ assert(baseHeader.magic == ZBP.Constants.HeaderMagic);
 
 switch baseHeader.major
     case 1
-        bp.header = ZBP.HeaderV1.fromBytes(bytes);
+        bp = ZBP.HeaderV1.fromBytes(bytes);
     case 2
         bp = bytesToBPV2(bytes);
 end
@@ -25,7 +25,7 @@ arguments (Input)
     bytes uint8
 end
 arguments (Output)
-    bp(1,1) struct
+    bp(1,1) ZBP.BeamformParametersV2
 end
 
 bp.header = ZBP.HeaderV2.fromBytes(bytes);
