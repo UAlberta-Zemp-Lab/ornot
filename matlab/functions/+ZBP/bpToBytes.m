@@ -1,16 +1,16 @@
 function bytes = bpToBytes(bp)
 arguments (Input)
-    bp(1,1) struct
+    bp(1,1)
 end
 arguments (Output)
     bytes uint8
 end
-switch (class(bp.header))
+switch (class(bp))
     case "ZBP.HeaderV1"
-        bp.header.magic = ZBP.Constants.HeaderMagic;
-        bp.header.Major = 1;
-        bytes = bp.header.toBytes();
-    case "ZBP.HeaderV2"
+        bp.magic = ZBP.Constants.HeaderMagic;
+        bp.Major = 1;
+        bytes = bp.toBytes();
+    case "ZBP.BeamformParametersV2"
         bytes = bpV2ToBytes(bp);
     otherwise
         assert(false, "Unsupported Version");
@@ -20,7 +20,7 @@ end
 
 function bytes = bpV2ToBytes(bp)
 arguments (Input)
-    bp(1,1) struct
+    bp(1,1) ZBP.BeamformParametersV2
 end
 arguments (Output)
     bytes uint8
@@ -35,8 +35,8 @@ bytes = [];
 offset_alignment = ZBP.Constants.OffsetAlignment;
 offset = increment_offset(0, bp.header.byteSize, offset_alignment);
 
-if isfield(bp, "emission_descriptor")
-    assert(isfield(bp, "emission_parameters"));
+if ~isempty(bp.emission_descriptor)
+    assert(~isempty(bp.emission_parameters));
     bp.header.emission_descriptors_offset = offset;
     offset = increment_offset(offset, bp.emission_descriptor.byteSize, offset_alignment);
     bp.emission_descriptor.parameters_offset = offset;
@@ -53,18 +53,18 @@ if isfield(bp, "emission_descriptor")
     bytes = set_bytes(bytes, bp.emission_parameters.toBytes(), bp.emission_descriptor.parameters_offset);
 end
 
-if isfield(bp, "contrast_parameters")
+if ~isempty(bp.contrast_parameters)
     assert(false, "Saving Contrast Parameters not currently supported")
 end
 
-if isfield(bp, "channel_mapping")
+if ~isempty(bp.channel_mapping)
     bp.header.channel_mapping_offset = offset;
     assert(numel(bp.channel_mapping) == bp.header.channel_count);
     offset = increment_offset(offset, 2*bp.header.channel_count, offset_alignment);
     bytes = set_bytes(bytes, typecast(bp.channel_mapping, "uint8"), bp.header.channel_mapping_offset);
 end
 
-if isfield(bp, "acquisition_parameters")
+if ~isempty(bp.acquisition_parameters)
     bp.header.acquisition_parameters_offset = offset;
     section_count = bp.header.raw_data_dimension(3);
     switch bp.header.acquisition_mode
@@ -73,19 +73,19 @@ if isfield(bp, "acquisition_parameters")
             assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
             assert(isscalar(bp.acquisition_parameters));
 
-            assert(isfield(bp, "focal_depths"));
+            assert(~isempty(bp.focal_depths));
             assert(numel(bp.focal_depths) == receive_count);
             bp.acquisition_parameters.focal_depths_offset = offset;
             offset = increment_offset(offset, 4*numel(bp.focal_depths), offset_alignment);
             bytes = set_bytes(bytes, typecast(bp.focal_depths, "uint8"));
 
-            assert(isfield(bp, "origin_offsets"));
+            assert(~isempty(bp.origin_offsets));
             assert(numel(bp.origin_offsets) == receive_count);
             bp.acquisition_parameters.origin_offsets_offset = offset;
             offset = increment_offset(offset, 4*numel(bp.origin_offsets), offset_alignment);
             bytes = set_bytes(bytes, typecast(bp.origin_offsets, "uint8"));
 
-            assert(isfield(bp, "transmit_receive_orientations"));
+            assert(~isempty(bp.transmit_receive_orientations));
             assert(numel(bp.transmit_receive_orientations) == receive_count);
             bp.acquisition_parameters.transmit_receive_orientations_offset = offset;
             offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
@@ -95,19 +95,19 @@ if isfield(bp, "acquisition_parameters")
             assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
             assert(isscalar(bp.acquisition_parameters));
 
-            assert(isfield(bp, "tilting_angles"));
+            assert(~isempty(bp.tilting_angles));
             assert(numel(bp.tilting_angles) == receive_count);
             bp.acquisition_parameters.tilting_angles_offset = offset;
             offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
             bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"));
 
-            assert(isfield(bp, "transmit_receive_orientations"));
+            assert(~isempty(bp.transmit_receive_orientations));
             assert(numel(bp.transmit_receive_orientations) == receive_count);
             bp.acquisition_parameters.origin_offsets_offset = offset;
             offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
             bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"));
         case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
-            assert(isfield(bp, "sparse_elements"));
+            assert(~isempty(bp.sparse_elements));
             for i = 1:section_count
                 bp.acquisition_parameters(i).sparse_elements_offset = offset;
                 offset = increment_offset(offset, 2*numel(bp.sparse_elements(:,i)), offset_alignment);
@@ -140,10 +140,10 @@ if isfield(bp, "acquisition_parameters")
     offset = increment_offset(offset, 0, offset_alignment);
 end
 
-if isfield(bp, "data")
+if ~isempty(bp.data)
     assert(numel(bp.data) == prod(bp.header.raw_data_dimension));
     bp.header.raw_data_offset = offset;
-    offset = increment_offset(offset, numel(typecast(bp.data, 'uint8')), offset_alignment);
+    offset = increment_offset(offset, numel(typecast(bp.data(:), 'uint8')), offset_alignment);
     bytes = set_bytes(bytes, typecast(bp.data, 'uint8'), bp.header.raw_data_offset);
 end
 
