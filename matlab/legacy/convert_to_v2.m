@@ -1,5 +1,3 @@
-addpath("matlab\legacy\");
-
 addpath(genpath("../Verasonics-Biasing-Imaging/src/"));
 addpath(genpath("../Verasonics-Biasing-Imaging/Ultrasound-Beamforming/src"));
 
