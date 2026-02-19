@@ -28,12 +28,12 @@ end
 
 settings = ornot.BeamformSettings;
 region = ornot.XZPlaneRegion;
-region.resolution   = [2048, 2048];
+region.resolution   = [512, 512];
 region.start_corner = [-50e-3, 0e-3];
 region.end_corner   = [50e-3, 100e-3];
 region.y_value      = 0e-3;
 settings.regions    = region;
-settings.interpolation_mode = OGLBeamformerInterpolationMode.Linear;
+settings.interpolation_mode = OGLBeamformerInterpolationMode.Cubic;
 settings.receive_fnumber = 0;
 settings.coherency_weighting = false;
 settings.decimation_rate = 1;
