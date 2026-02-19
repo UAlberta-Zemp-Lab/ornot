@@ -1,5 +1,4 @@
 function LoadLibraries()
-addpath("matlab");
 % NOTE: these warnings do not provide useful information and are not at
 % all relevant to the functioning of the library.
 warning('off','MATLAB:structOnObject');

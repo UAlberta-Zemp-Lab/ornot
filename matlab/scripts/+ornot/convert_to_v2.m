@@ -1,16 +1,8 @@
-rmpath("../Verasonics-Biasing-Imaging/Ultrasound-Beamforming/ogl_beamforming/out/matlab/");
-rmpath("../Verasonics-Biasing-Imaging/Ultrasound-Beamforming/ogl_beamforming/out/");
-
-addpath("submodules/ogl_beamforming/out/matlab/");
-addpath("submodules/ogl_beamforming/out/");
-addpath("out");
-
-addpath("matlab\functions\");
-addpath("matlab\data\");
-addpath("matlab\generated\");
 addpath("matlab\legacy\");
 
-ornot.LoadLibraries();
+addpath(genpath("../Verasonics-Biasing-Imaging/src/"));
+addpath(genpath("../Verasonics-Biasing-Imaging/Ultrasound-Beamforming/src"));
+
 
 directories = [
     "C:\Users\darren\GoogleDrive\Shared drives\Zemp Lab Shared 2025\Ultrasound Data\Darren Dahunsi\251104_MN32-4_test_beamform\";
