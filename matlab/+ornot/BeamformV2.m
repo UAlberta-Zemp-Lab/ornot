@@ -1,6 +1,6 @@
 function images = BeamformV2(bp, settings)
 arguments (Input)
-    bp(1, 1) ZBP.BeamformParametersV2
+    bp(1, 1) ornot.BeamformParametersV2
     settings(1,1) ornot.BeamformSettings
 end
 arguments (Output)
@@ -59,7 +59,7 @@ end
 function bsp = updateBspFromBPV2(bsp, bp)
 arguments (Input)
     bsp(1,1) OGLBeamformerSimpleParameters
-    bp(1,1) ZBP.BeamformParametersV2
+    bp(1,1) ornot.BeamformParametersV2
 end
 arguments (Output)
     bsp(1,1) OGLBeamformerSimpleParameters
@@ -93,7 +93,7 @@ end
 function bsp = updateBspFromBPV2Section(bsp, bp, section_number)
 arguments (Input)
     bsp(1,1) OGLBeamformerSimpleParameters
-    bp(1,1) ZBP.BeamformParametersV2
+    bp(1,1) ornot.BeamformParametersV2
     section_number(1,1) uint16 = 1;
 end
 arguments (Output)

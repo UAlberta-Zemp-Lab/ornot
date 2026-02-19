@@ -17,7 +17,7 @@ fileId = fopen(bp_filename, 'w');
 bytes = fread(fileId);
 fclose(fileId);
 
-bp = ZBP.bytesToBP(bytes);
+bp = ornot.bytesToBP(bytes);
 
 frame_number = 0;
 data_filename = fullfile(data_folder, sprintf("%s_%02d.zst", filename, frame_number));

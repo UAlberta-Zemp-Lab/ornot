@@ -3388,7 +3388,6 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 	b32 result = 1;
 
 	char *out_test = "matlab"          OS_PATH_SEPARATOR
-					 "generated"       OS_PATH_SEPARATOR
 	                 "+" ZBP_NAMESPACE OS_PATH_SEPARATOR
 	                 "HeaderV2.m";
 
@@ -3397,7 +3396,7 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 
 	build_log_generate("MATLAB Bindings");
 
-	str8 base_directory = str8("matlab" OS_PATH_SEPARATOR "generated" OS_PATH_SEPARATOR "+" ZBP_NAMESPACE);
+	str8 base_directory = str8("matlab" OS_PATH_SEPARATOR "+" ZBP_NAMESPACE);
 
 	if (!os_remove_directory((c8 *)base_directory.data))
 		build_fatal("failed to remove directory: %s", base_directory);

@@ -1,10 +1,10 @@
 function bp = GetData(bp, data_filename)
 arguments (Input)
-    bp(1,1) ZBP.BeamformParametersV2
+    bp(1,1) ornot.BeamformParametersV2
     data_filename(1,1) string
 end
 arguments (Output)
-    bp(1,1) ZBP.BeamformParametersV2
+    bp(1,1) ornot.BeamformParametersV2
 end
 
 switch bp.header.raw_data_kind

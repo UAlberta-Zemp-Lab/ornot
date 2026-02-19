@@ -10,7 +10,7 @@ switch (class(bp))
         bp.magic = ZBP.Constants.HeaderMagic;
         bp.Major = 1;
         bytes = bp.toBytes();
-    case "ZBP.BeamformParametersV2"
+    case "ornot.BeamformParametersV2"
         bytes = bpV2ToBytes(bp);
     otherwise
         assert(false, "Unsupported Version");
@@ -20,7 +20,7 @@ end
 
 function bytes = bpV2ToBytes(bp)
 arguments (Input)
-    bp(1,1) ZBP.BeamformParametersV2
+    bp(1,1) ornot.BeamformParametersV2
 end
 arguments (Output)
     bytes uint8

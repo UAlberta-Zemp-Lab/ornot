@@ -229,10 +229,10 @@ classdef BeamformParameterConverter
                 compressionKind(1,1) ZBP.DataCompressionKind
             end
             arguments (Output)
-                bp (1,1) ZBP.BeamformParametersV2
+                bp (1,1) ornot.BeamformParametersV2
             end
 
-            bp = ZBP.BeamformParametersV2;
+            bp = ornot.BeamformParametersV2;
 
             scan = vsx.Scan;
             die = scan.Die;
