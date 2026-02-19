@@ -134,9 +134,8 @@ end
 
 demodulate_shader_index = find(bsp.compute_stages == OGLBeamformerShaderStage.Demodulate);
 
+% These are applied at baseband
 if ~isempty(demodulate_shader_index)
-
-    filter_kind = int32(bsp.emission_kind);
     filter_slot = mod(section_number - 1, 16);
     switch class(bp.emission_parameters)
         case "ZBP.EmissionSineParameters"
@@ -144,7 +143,7 @@ if ~isempty(demodulate_shader_index)
             kaiser                  = OGLBeamformerFilter.Kaiser;
             kaiser.length           = 36;
             kaiser.beta             = 5.65;
-            kaiser.cutoff_frequency = 1.5*bsp.sampling_frequency;
+            kaiser.cutoff_frequency = 0.5*bsp.emission_parameters.frequency;
             filter_parameters       = kaiser.Pack();
             filter_is_complex       = 0;
         case "ZBP.EmissionChirpParameters"
