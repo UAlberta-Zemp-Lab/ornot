@@ -25,7 +25,7 @@ arguments (Input)
     bytes uint8
 end
 arguments (Output)
-    bp(1,1) ZBP.BeamformParametersV2
+    bp(1,1) ornot.BeamformParametersV2
 end
 
 bp.header = ZBP.HeaderV2.fromBytes(bytes);
