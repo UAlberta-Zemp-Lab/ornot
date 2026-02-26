@@ -1,6 +1,7 @@
-classdef BeamformParametersV2
+classdef BeamformParameters
+    %% Depending on the source of this data, some properties may be empty
     properties
-        header(1,1) ZBP.HeaderV2
+        header
         emission_descriptor ZBP.EmissionDescriptor
         emission_parameters
         contrast_parameters

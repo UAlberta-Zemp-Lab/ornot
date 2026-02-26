@@ -9,10 +9,8 @@ arguments (Output)
     transmit_orientation OGLBeamformerRCAOrientation
     receive_orientation OGLBeamformerRCAOrientation
 end
-transmit_orientation(numel(transmit_receive_orientation)) = OGLBeamformerRCAOrientation;
-receive_orientation(numel(transmit_receive_orientation)) = OGLBeamformerRCAOrientation;
-transmit_orientation = reshape(transmit_orientation, size(transmit_receive_orientation));
-receive_orientation = reshape(receive_orientation, size(transmit_receive_orientation));
+transmit_orientation = createArray(size(transmit_receive_orientation), "OGLBeamformerRCAOrientation");
+receive_orientation = createArray(size(transmit_receive_orientation), "OGLBeamformerRCAOrientation");
 for i = 1:numel(transmit_receive_orientation)
     transmit_receive_orientation(i) = ...
         bitshift(uint8(transmit_orientation), 4) ...

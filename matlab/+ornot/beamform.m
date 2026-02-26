@@ -1,6 +1,6 @@
-function images = BeamformV2(bp, settings)
+function images = beamform(bp, settings)
 arguments (Input)
-    bp(1, 1) ornot.BeamformParametersV2
+    bp(1, 1) ornot.BeamformParameter
     settings(1,1) ornot.BeamformSettings
 end
 arguments (Output)

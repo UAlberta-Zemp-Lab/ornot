@@ -9,7 +9,7 @@ end
 arguments (Output)
     transmit_receive_orientation uint8
 end
-assert(size(transmit_orientation) == size(receive_orientation));
+assert(all(size(transmit_orientation) == size(receive_orientation)));
 transmit_receive_orientation = zeros(size(transmit_orientation), 'uint8');
 for i = 1:numel(transmit_orientation)
     transmit_receive_orientation(i) = ...
