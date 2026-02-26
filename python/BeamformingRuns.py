@@ -1,6 +1,7 @@
 # See LICENSE for license details.
 import numpy as np
 import ornot
+import ZBP
 
 class BeamformingRuns:
 	"""
@@ -59,11 +60,17 @@ class BeamformingRuns:
 		ffi   = self.ornot.ffi
 		ogl   = self.ornot.ogl
 
-		zbp, bytes = ornot.zbp_from_file(parameters_file)
-		data, data_size = ornot.data_from_file(zbp, data_file)
-		bp = ornot.beamformer_simple_parameters_from_zbp(zbp)
 
-		bp.f_number = f_number
+		parameters = ornot.Parameters.from_file(params_file)
+		zbp, bytes = ornot.zbp_from_file(parameters_file)
+		if len(parameters.raw_data) == 0:
+			data, data_size = ornot.data_from_file(parameters, data_file)
+		else:
+			data, data_size = ornot.data_from_raw(parameters, parameters.raw_data)
+		bp = ornot.beamformer_simple_parameters_from_parameters(parameters)
+
+		bp.f_number           = f_number
+		bp.interpolation_mode = ogl.BeamformerInterpolationMode_Cubic
 
 		shaders = [
 			ogl.BeamformerShaderKind_Demodulate,
@@ -79,12 +86,18 @@ class BeamformingRuns:
 			demodulate_shader_index = 0
 			# NOTE: bind filter to the parameters of the demodulation shader
 			bp.compute_stage_parameters[demodulate_shader_index] = filter_slot
+			if parameters.emission_kinds[0] == ZBP.EmissionKind_Sine:
+				filter.kind = ogl.BeamformerFilterKind_Kaiser
+				filter.kaiser.cutoff_frequency = 0.5 * parameters.emission_parameters[0].frequency
+				filter.kaiser.beta             = 5.65
+				filter.kaiser.length           = 36
 
-			filter.kind = ogl.BeamformerFilterKind_Kaiser
-			filter.kaiser.cutoff_frequency = 1.8e6
-			filter.kaiser.beta             = 5.65
-			filter.kaiser.length           = 36
-			filter.sampling_frequency      = bp.sampling_frequency / 2
+			if parameters.emission_kinds[0] == ZBP.EmissionKind_Chirp:
+				filter.kind    = ogl.BeamformerFilterKind_MatchedChirp
+				filter.complex = 1
+				filter.matched_chirp.duration      = parameters.emission_parameters[0].duration
+				filter.matched_chirp.min_frequency = parameters.emission_parameters[0].min_frequency - bp.demodulation_frequency
+				filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequency
 
 			self.__must(ogl.beamformer_create_filter(filter.kind, ffi.addressof(filter, "kaiser"), ffi.sizeof(filter.kaiser),
 			                                    filter.sampling_frequency, filter.complex, filter_slot, 0))
