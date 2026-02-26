@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from ornot import ornot
+from ZBP   import ZBP
 
 library_path = '..'
 params_file = 'params.bp'
@@ -26,12 +27,16 @@ ornot = ornot(library_path)
 ogl   = ornot.ogl
 ffi   = ornot.ffi
 
-zbp, bytes = ornot.zbp_from_file(params_file)
-bp         = ornot.beamformer_simple_parameters_from_zbp(zbp)
+parameters = ornot.Parameters.from_file(params_file)
+bp         = ornot.beamformer_simple_parameters_from_parameters(parameters)
 
-data, data_size = ornot.data_from_file(zbp, data_file)
+if len(parameters.raw_data) == 0:
+	data, data_size = ornot.data_from_file(parameters, data_file)
+else:
+	data, data_size = ornot.data_from_raw(parameters, parameters.raw_data)
 
-bp.f_number = f_number
+bp.interpolation_mode = ogl.BeamformerInterpolationMode_Cubic
+bp.f_number           = f_number
 
 shaders = [
 	ogl.BeamformerShaderKind_Demodulate,
@@ -56,17 +61,18 @@ with ffi.new("BeamformerFilterParameters *") as filter:
 	# NOTE: bind filter to the parameters of the demodulation shader
 	bp.compute_stage_parameters[demodulate_shader_index] = filter_slot
 
-	filter.kind = ogl.BeamformerFilterKind_Kaiser
-	filter.kaiser.cutoff_frequency = 1.8e6
-	filter.kaiser.beta             = 5.65
-	filter.kaiser.length           = 36
+	if parameters.emission_kinds[0] == ZBP.EmissionKind_Sine:
+		filter.kind = ogl.BeamformerFilterKind_Kaiser
+		filter.kaiser.cutoff_frequency = 0.5 * parameters.emission_parameters[0].frequency
+		filter.kaiser.beta             = 5.65
+		filter.kaiser.length           = 36
 
-	# filter.kind = ogl.BeamformerFilterKind_Chirp
-	# filter.chirp.duration      = 18e-6
-	# NOTE: you may want to choose something better (ZBP V2 will store the correct values)
-	# filter.chirp.min_frequency = bp.demodulation_frequency - bp.demodulation_frequency / 2
-	# filter.chirp.max_frequency = bp.demodulation_frequency + bp.demodulation_frequency / 2
-	# filter.complex             = 1
+	if parameters.emission_kinds[0] == ZBP.EmissionKind_Chirp:
+		filter.kind    = ogl.BeamformerFilterKind_MatchedChirp
+		filter.complex = 1
+		filter.matched_chirp.duration      = parameters.emission_parameters[0].duration
+		filter.matched_chirp.min_frequency = parameters.emission_parameters[0].min_frequency - bp.demodulation_frequency
+		filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequency
 
 	filter.sampling_frequency = bp.sampling_frequency / 2
 
@@ -106,8 +112,8 @@ output = output.reshape(output_points, order="F").T.squeeze()
 extent = 1e3 * np.array([
 	bp.output_min_coordinate[0],
 	bp.output_max_coordinate[0],
-	bp.output_min_coordinate[2],
 	bp.output_max_coordinate[2],
+	bp.output_min_coordinate[2],
 ])
 
 fig, ax = plt.subplots(1, 1, figsize=(10, 5))
