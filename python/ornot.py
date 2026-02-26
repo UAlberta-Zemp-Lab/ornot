@@ -117,7 +117,7 @@ class ornot:
 		}
 
 		data = self.ffi.new(data_kind_ffi_kind[zbp.raw_data_kind], data_points)
-		if self.ornot.unpack_zstd_compressed_data(self.ffi.from_buffer(file.encode()), data, data_size) == 0:
+		if self.ornot.unpack_zstd_compressed_data_from_file(self.ffi.from_buffer(file.encode()), data, data_size) == 0:
 			raise RuntimeError(f"Invalid Header File: {file}")
 
 		return data, data_size

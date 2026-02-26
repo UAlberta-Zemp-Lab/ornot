@@ -70,26 +70,30 @@ b32 unpack_zemp_bp_v1(c8 *input_name, ZBP_HeaderV1 *output_header)
 }
 #endif
 
-b32 unpack_zstd_compressed_data(c8 *file, void *output, uz output_size)
+b32 unpack_zstd_compressed_data(void *input, uz input_size, void *output, uz output_size)
+{
+	b32 result = 0;
+	uz requested_size = ZSTD_getFrameContentSize(input, input_size);
+	if (requested_size <= output_size) {
+		uz decompressed_size = ZSTD_decompress(output, output_size, input, input_size);
+		result = decompressed_size == requested_size;
+	}
+	return result;
+}
+
+b32 unpack_zstd_compressed_data_from_file(c8 *file, void *output, uz output_size)
 {
 	b32 result = 0;
 	MemoryStream file_data = os_read_whole_file(file);
-	if (file_data.filled > 0) {
-		u8 *input     = file_data.backing.data;
-		uz input_size = file_data.filled;
-		uz requested_size = ZSTD_getFrameContentSize(input, input_size);
-		if (requested_size <= output_size) {
-			uz decompressed_size = ZSTD_decompress(output, output_size, input, input_size);
-			result = decompressed_size == requested_size;
-		}
-	}
+	if (file_data.filled > 0)
+		result = unpack_zstd_compressed_data(file_data.backing.data, file_data.filled, output, output_size);
 	os_block_release(file_data.backing);
 	return result;
 }
 
 b32 unpack_compressed_i16_data(c8 *file, void *output, uz output_size)
 {
-	return unpack_zstd_compressed_data(file, output, output_size);
+	return unpack_zstd_compressed_data_from_file(file, output, output_size);
 }
 
 b32 write_data_with_zstd_compression(c8 *output_name, void *data, u64 data_size)

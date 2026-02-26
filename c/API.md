@@ -7,12 +7,19 @@ Compresses `data` using [zstd][], and writes the result to
 extension as required by their environment. Returns whether the
 operation succeeded.
 
-### `b32 unpack_zstd_compressed_data(char *input_file, void *output, size_t output_size)`
+### `b32 unpack_zstd_compressed_data(void *input, size_t input_size, void *output, size_t output_size)`
+
+Decompresses input (assumed to be zstandard compressed) into
+output. Output size can be determined from the ZBP Header. You
+should not use this from anything other than a MATLAB or Python
+script.
+
+### `b32 unpack_zstd_compressed_data_from_file(char *input_file, void *output, size_t output_size)`
 
 Reads input file (assumed to be zstandard compressed) and
-decompresses it into buffer. Buffer size can be determined from
-the zemp_bp header. You should not use this from anything other
-than a MATLAB or Python script.
+decompresses it into output. Output size can be determined from
+the ZBP Header. You should not use this from anything other than a
+MATLAB or Python script.
 
 ## MATLAB (Mex)
 
