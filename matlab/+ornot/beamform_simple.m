@@ -13,7 +13,7 @@ data_folder = "C:\Users\darren\GoogleDrive\Shared drives\Zemp Lab Shared 2025\Ul
 filename = "260108_MN32-4_optimus_vs_FORCES-Tx-Column-Chirp-2e-05";
 
 bp_filename = fullfile(data_folder, sprintf("%s.bp", filename));
-fileId = fopen(bp_filename, 'w');
+fileId = fopen(bp_filename, 'r');
 bytes = fread(fileId);
 fclose(fileId);
 
