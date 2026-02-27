@@ -1,6 +1,6 @@
-function images = BeamformV2(bp, settings)
+function images = beamform(bp, settings)
 arguments (Input)
-    bp(1, 1) ornot.BeamformParametersV2
+    bp(1, 1) ornot.BeamformParameters
     settings(1,1) ornot.BeamformSettings
 end
 arguments (Output)
@@ -12,10 +12,10 @@ end
     = ornot.RegionToTransform(settings.regions);
 
 % Allocate Section Count x Ensemble Count x Region Count images
-images = cell(bp.header.raw_data_dimension(3), bp.header.raw_data_dimension(4), numel(settings.regions));
+images = cell(bp.raw_data_dimension(3), bp.raw_data_dimension(4), numel(settings.regions));
 
 bsp = OGLBeamformerSimpleParameters;
-bsp = updateBspFromBPV2(bsp, bp);
+bsp = updateBspFromBP(bsp, bp);
 bsp = updateBspFromSettings(bsp, settings);
 % bsp = setupLowPassFilter(bsp, settings);
 
@@ -41,48 +41,48 @@ end
 
 
 for i = 1:numel(images)
-    [section_index, ensemble_index, region_index] = ind2sub([bp.header.raw_data_dimension(3), bp.header.raw_data_dimension(4), numel(settings.regions)], i);
+    [section_index, ensemble_index, region_index] = ind2sub([bp.raw_data_dimension(3), bp.raw_data_dimension(4), numel(settings.regions)], i);
 
-    bsp = updateBspFromBPV2Section(bsp, bp, section_index);
+    bsp = updateBspFromBPSection(bsp, bp, section_index);
 
-    bsp.output_min_coordinate = output_min_coordinates(:, i);
-    bsp.output_max_coordinate = output_max_coordinates(:, i);
-    bsp.output_points(1:3) = output_points(:, i);
-    bsp.beamform_plane = beamform_planes(:, i);
-    bsp.off_axis_pos = off_axis_positions(:, i);
+    bsp.output_min_coordinate = output_min_coordinates(:, region_index);
+    bsp.output_max_coordinate = output_max_coordinates(:, region_index);
+    bsp.output_points(1:3) = output_points(:, region_index);
+    bsp.beamform_plane = beamform_planes(:, region_index);
+    bsp.off_axis_pos = off_axis_positions(:, region_index);
 
     images{section_index, ensemble_index, region_index} = ornot.beamformSimpleParameters(bsp, data);
 end
 
 end
 
-function bsp = updateBspFromBPV2(bsp, bp)
+function bsp = updateBspFromBP(bsp, bp)
 arguments (Input)
     bsp(1,1) OGLBeamformerSimpleParameters
-    bp(1,1) ornot.BeamformParametersV2
+    bp(1,1) ornot.BeamformParameters
 end
 arguments (Output)
     bsp(1,1) OGLBeamformerSimpleParameters
 end
 
-bsp.raw_data_dimensions = bp.header.raw_data_dimension(1:2);
-bsp.decode_mode = bp.header.decode_mode;
-switch bp.header.sampling_mode
+bsp.raw_data_dimensions = bp.raw_data_dimension(1:2);
+bsp.decode_mode = bp.decode_mode;
+switch bp.sampling_mode
     case ZBP.SamplingMode.Standard
         bsp.sampling_mode = OGLBeamformerSamplingMode.m4X;
     case ZBP.SamplingMode.Bandpass
         bsp.sampling_mode = OGLBeamformerSamplingMode.m2X;
 end
-bsp.sampling_frequency = bp.header.sampling_frequency;
-bsp.demodulation_frequency = bp.header.demodulation_frequency;
-bsp.speed_of_sound = bp.header.speed_of_sound;
-bsp.sample_count = bp.header.sample_count;
-bsp.channel_count = bp.header.channel_count;
-bsp.acquisition_count = bp.header.receive_event_count;
-bsp.xdc_transform = bp.header.transducer_transform_matrix;
-bsp.xdc_element_pitch = bp.header.transducer_element_pitch;
-bsp.time_offset = bp.header.time_offset;
-bsp.acquisition_kind = bp.header.acquisition_mode;
+bsp.sampling_frequency = bp.sampling_frequency;
+bsp.demodulation_frequency = bp.demodulation_frequency;
+bsp.speed_of_sound = bp.speed_of_sound;
+bsp.sample_count = bp.sample_count;
+bsp.channel_count = bp.channel_count;
+bsp.acquisition_count = bp.receive_event_count;
+bsp.xdc_transform = bp.transducer_transform_matrix;
+bsp.xdc_element_pitch = bp.transducer_element_pitch;
+bsp.time_offset = bp.time_offset;
+bsp.acquisition_kind = bp.acquisition_kind;
 
 bsp.channel_mapping(1:numel(bp.channel_mapping)) = bp.channel_mapping;
 
@@ -90,10 +90,10 @@ bsp.emission_kind = bp.emission_descriptor.emission_kind;
 bsp.emission_parameters(1:bp.emission_parameters.byteSize) = bp.emission_parameters.toBytes();
 end
 
-function bsp = updateBspFromBPV2Section(bsp, bp, section_number)
+function bsp = updateBspFromBPSection(bsp, bp, section_number)
 arguments (Input)
     bsp(1,1) OGLBeamformerSimpleParameters
-    bp(1,1) ornot.BeamformParametersV2
+    bp(1,1) ornot.BeamformParameters
     section_number(1,1) uint16 = 1;
 end
 arguments (Output)
@@ -102,7 +102,7 @@ end
 
 if ~isempty(bp.sparse_elements)
     sparse_elements = reshape(bp.sparse_elements, ...
-        bp.header.receive_event_count - 1, bp.header.raw_data_dimension(3));
+        bp.receive_event_count - 1, bp.raw_data_dimension(3));
     bsp.sparse_elements(1:size(sparse_elements, 1)) ...
         = sparse_elements(:, section_number);
 end
@@ -112,16 +112,16 @@ switch bsp.acquisition_kind
         bsp.single_focus = 0;
         bsp.single_orientation = 0;
         bsp.focal_depths(1:numel(bp.focal_depths)) ...
-            = vecnorm(bp.focal_depths(:)', bp.origin_offsets(:)');
+            = sign(bp.focal_depths(:)').*sqrt(bp.focal_depths(:)'.^2 + bp.origin_offsets(:)'.^2);
         bsp.steering_angles(1:numel(bp.focal_depths)) ...
-            = atan2d(bp.focal_depths(:)', bp.origin_offsets(:)');
-        bsp.transmit_receive_orientations = bp.transmit_receive_orientations;
+            = atan2d(bp.origin_offsets(:)', -bp.focal_depths(:)');
+        bsp.transmit_receive_orientations(1:numel(bp.transmit_receive_orientations)) = bp.transmit_receive_orientations;
     case ZBP.AcquisitionKind.RCA_TPW
         bsp.single_focus = 0;
         bsp.single_orientation = 0;
         bsp.focal_depths(:) = inf;
-        bsp.steering_angles(1:numel(bp.steering_angles)) = bp.steering_angles;
-        bsp.transmit_receive_orientations = bp.transmit_receive_orientations;
+        bsp.steering_angles(1:numel(bp.tilting_angles)) = bp.tilting_angles;
+        bsp.transmit_receive_orientations(1:numel(bp.transmit_receive_orientations)) = bp.transmit_receive_orientations;
     otherwise
         bsp.single_focus = 1;
         bsp.single_orientation = 1;

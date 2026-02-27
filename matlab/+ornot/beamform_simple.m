@@ -43,4 +43,4 @@ settings.compute_stages = [
     OGLBeamformerShaderStage.DAS
     ];
 
-image = ornot.BeamformV2(bp, settings);
+image = ornot.beamform(bp, settings);

@@ -1,13 +1,13 @@
 function bp = GetData(bp, data_filename)
 arguments (Input)
-    bp(1,1) ornot.BeamformParametersV2
+    bp(1,1) ornot.BeamformParameters
     data_filename(1,1) string
 end
 arguments (Output)
-    bp(1,1) ornot.BeamformParametersV2
+    bp(1,1) ornot.BeamformParameters
 end
 
-switch bp.header.raw_data_kind
+switch bp.raw_data_kind
     case ZBP.DataKind.Int16
         data_size_byte_multiplier = 2;
         lib_pointer_class = 'int16Ptr';
@@ -40,7 +40,7 @@ switch bp.header.raw_data_kind
         is_half = true;
 end
 
-data_point_count = prod(bp.header.raw_data_dimension);
+data_point_count = prod(bp.raw_data_dimension);
 if is_complex
     data_point_count = 2 * data_point_count;
 end
@@ -56,5 +56,5 @@ end
 if is_complex
     data = complex(data(1:2:end), data(2:2:end));
 end
-bp.data = reshape(data, bp.header.raw_data_dimension);
+bp.data = reshape(data, bp.raw_data_dimension);
 end

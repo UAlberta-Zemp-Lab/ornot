@@ -1,43 +1,24 @@
 function bytes = bpToBytes(bp)
 arguments (Input)
-    bp(1,1)
-end
-arguments (Output)
-    bytes uint8
-end
-switch (class(bp))
-    case "ZBP.HeaderV1"
-        bp.magic = ZBP.Constants.HeaderMagic;
-        bp.Major = 1;
-        bytes = bp.toBytes();
-    case "ornot.BeamformParametersV2"
-        bytes = bpV2ToBytes(bp);
-    otherwise
-        assert(false, "Unsupported Version");
-end
-end
-
-
-function bytes = bpV2ToBytes(bp)
-arguments (Input)
-    bp(1,1) ornot.BeamformParametersV2
+    bp(1,1) ornot.BeamformParameters
 end
 arguments (Output)
     bytes uint8
 end
 
-bp.header.magic = ZBP.Constants.HeaderMagic;
-bp.header.major = 2;
-bp.header.minor = 0;
+header = ZBP.HeaderV2;
+header.magic = ZBP.Constants.HeaderMagic;
+header.major = 2;
+header.minor = 0;
 
 bytes = [];
 
 offset_alignment = ZBP.Constants.OffsetAlignment;
-offset = increment_offset(0, bp.header.byteSize, offset_alignment);
+offset = increment_offset(0, header.byteSize, offset_alignment);
 
 if ~isempty(bp.emission_descriptor)
     assert(~isempty(bp.emission_parameters));
-    bp.header.emission_descriptors_offset = offset;
+    header.emission_descriptors_offset = offset;
     offset = increment_offset(offset, bp.emission_descriptor.byteSize, offset_alignment);
     bp.emission_descriptor.parameters_offset = offset;
     offset = increment_offset(offset, bp.emission_parameters.byteSize, offset_alignment);
@@ -49,7 +30,7 @@ if ~isempty(bp.emission_descriptor)
         otherwise
             assert(false, "Unsupported Emission Kind");
     end
-    bytes = set_bytes(bytes, bp.emission_descriptor.toBytes(), bp.header.emission_descriptors_offset);
+    bytes = set_bytes(bytes, bp.emission_descriptor.toBytes(), header.emission_descriptors_offset);
     bytes = set_bytes(bytes, bp.emission_parameters.toBytes(), bp.emission_descriptor.parameters_offset);
 end
 
@@ -58,18 +39,18 @@ if ~isempty(bp.contrast_parameters)
 end
 
 if ~isempty(bp.channel_mapping)
-    bp.header.channel_mapping_offset = offset;
-    assert(numel(bp.channel_mapping) == bp.header.channel_count);
-    offset = increment_offset(offset, 2*bp.header.channel_count, offset_alignment);
-    bytes = set_bytes(bytes, typecast(bp.channel_mapping, "uint8"), bp.header.channel_mapping_offset);
+    header.channel_mapping_offset = offset;
+    assert(numel(bp.channel_mapping) == bp.channel_count);
+    offset = increment_offset(offset, 2*bp.channel_count, offset_alignment);
+    bytes = set_bytes(bytes, typecast(bp.channel_mapping, "uint8"), header.channel_mapping_offset);
 end
 
 if ~isempty(bp.acquisition_parameters)
-    bp.header.acquisition_parameters_offset = offset;
-    section_count = bp.header.raw_data_dimension(3);
-    switch bp.header.acquisition_mode
+    header.acquisition_parameters_offset = offset;
+    section_count = bp.raw_data_dimension(3);
+    switch bp.acquisition_kind
         case ZBP.AcquisitionKind.RCA_VLS
-            receive_count = bp.header.receive_event_count;
+            receive_count = bp.receive_event_count;
             assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
             assert(isscalar(bp.acquisition_parameters));
 
@@ -91,7 +72,7 @@ if ~isempty(bp.acquisition_parameters)
             offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
             bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"));
         case ZBP.AcquisitionKind.RCA_TPW
-            receive_count = bp.header.receive_event_count;
+            receive_count = bp.receive_event_count;
             assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
             assert(isscalar(bp.acquisition_parameters));
 
@@ -103,7 +84,7 @@ if ~isempty(bp.acquisition_parameters)
 
             assert(~isempty(bp.transmit_receive_orientations));
             assert(numel(bp.transmit_receive_orientations) == receive_count);
-            bp.acquisition_parameters.origin_offsets_offset = offset;
+            bp.acquisition_parameters.transmit_receive_orientations_offset = offset;
             offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
             bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"));
         case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
@@ -115,7 +96,7 @@ if ~isempty(bp.acquisition_parameters)
             end
     end
 
-    switch bp.header.acquisition_mode
+    switch bp.acquisition_kind
         case ZBP.AcquisitionKind.FORCES
             assert(isa(bp.acquisition_parameters, "ZBP.FORCESParameters"));
         case ZBP.AcquisitionKind.UFORCES
@@ -141,13 +122,13 @@ if ~isempty(bp.acquisition_parameters)
 end
 
 if ~isempty(bp.data)
-    assert(numel(bp.data) == prod(bp.header.raw_data_dimension));
-    bp.header.raw_data_offset = offset;
+    assert(numel(bp.data) == prod(bp.raw_data_dimension));
+    header.raw_data_offset = offset;
     offset = increment_offset(offset, numel(typecast(bp.data(:), 'uint8')), offset_alignment);
-    bytes = set_bytes(bytes, typecast(bp.data, 'uint8'), bp.header.raw_data_offset);
+    bytes = set_bytes(bytes, typecast(bp.data, 'uint8'), header.raw_data_offset);
 end
 
-bytes = set_bytes(bytes, bp.header.toBytes());
+bytes = set_bytes(bytes, header.toBytes());
 
 file_size = offset;
 assert(file_size == numel(bytes));
