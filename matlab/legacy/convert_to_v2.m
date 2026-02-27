@@ -1,14 +1,21 @@
-addpath(genpath("../Verasonics-Biasing-Imaging/src/"));
-addpath(genpath("../Verasonics-Biasing-Imaging/Ultrasound-Beamforming/src"));
+addpath(genpath("../../../Verasonics-Biasing-Imaging/src/"));
+addpath(genpath("../../../Verasonics-Biasing-Imaging/Ultrasound-Beamforming/src/"));
+addpath("submodules/ogl_beamforming/out/");
+addpath("submodules/ogl_beamforming/out/matlab/");
+addpath("out/");
+
+ornot.LoadLibraries;
 
 
 directories = [
     "C:\Users\darren\GoogleDrive\Shared drives\Zemp Lab Shared 2025\Ultrasound Data\Darren Dahunsi\251104_MN32-4_test_beamform\";
-    "C:\Users\darren\GoogleDrive\Shared drives\Zemp Lab Shared 2025\Ultrasound Data\Darren Dahunsi\260108_MN32-4_optimus_vs\"
+    "C:\Users\darren\GoogleDrive\Shared drives\Zemp Lab Shared 2025\Ultrasound Data\Darren Dahunsi\260108_MN32-4_optimus_vs\";
+    "C:\Users\darren\GoogleDrive\Shared drives\Zemp Lab Shared 2025\Ultrasound Data\Darren Dahunsi\250831_MN32-4_IUS2025_OPTIMUS_UHERCULES\";
     ];
 filesets = [
     % directories(1), "251104_MN32-4_ats539_cysts_HERCULES-Tx-Column";
-    directories(2), "260108_MN32-4_optimus_vs_FORCES-Tx-Column-Chirp-2e-05"
+    % get_toml_filesets(directories(2));
+    get_bpr_filesets(directories(3));
     ];
 
 for i = 1:size(filesets, 1)
@@ -47,9 +54,9 @@ settings.compute_stages = [
     ];
 
 for transmitGroup = 1:numel(vsx_mat.vsx.Scan.TransmitGroups)
-    bp = BeamformParameterConverter.VsxToBpV2(vsx_mat.vsx, vsx_mat.vsx.Scan.TransmitGroups(transmitGroup), compression_mode);
+    bp = BeamformParameterConverter.VsxToBp(vsx_mat.vsx, vsx_mat.vsx.Scan.TransmitGroups(transmitGroup), compression_mode);
     bp = ornot.GetData(bp, data_filename);
-    image = ornot.BeamformV2(bp, settings);
+    image = ornot.beamform(bp, settings);
     bp.data = [];
 
     bytes = ornot.bpToBytes(bp);
@@ -68,8 +75,10 @@ end
 function [oldFilename, oldBP] = create_old_file(directory, filesetName)
 filename = fullfile(directory, sprintf("%s.bp", filesetName));
 targetOldFilename = fullfile(directory, sprintf("%s_old.bp", filesetName));
-preReleaseFilename = fullfile(directory, sprintf("%s.bpr", filesetName));
+preRelease1Filename = fullfile(directory, sprintf("%s.bpr", filesetName));
 preRelease2Filename = fullfile(directory, sprintf("%s.bpr2", filesetName));
+newRelease1Filename = fullfile(directory, sprintf("%s.bp1", filesetName));
+newPreRelease1Filename = fullfile(directory, sprintf("%s.bpr1", filesetName));
 
 oldFilename = [];
 
@@ -84,19 +93,72 @@ if isempty(oldFilename) && isfile(filename)
     fclose(fileID);
     baseHeader = ZBP.BaseHeader.fromBytes(fileBytes);
     if baseHeader.major == 1
-        copyfile(filename, targetOldFilename);
-        oldFilename = targetOldFilename;
+        copyfile(filename, newRelease1Filename);
+        oldFilename = newRelease1Filename;
         oldBP = ornot.bytesToBP(fileBytes);
     end
 end
 
 if isempty(oldFilename) && isfile(preRelease2Filename)
-    oldBP = BeamformParametersV2.ReadFromFile(preRelease2Filename, 2);
+    try
+        oldBP = BeamformParametersV2.ReadFromFile(preRelease2Filename, 2);
+    catch
+        oldBP = [];
+        fprintf("Failed to read %s\n", preRelease2Filename);
+    end
     oldFilename = preRelease2Filename;
 end
 
-if isempty(oldFilename) && isfile(preReleaseFilename)
-    oldBP = BeamformParametersV2.ReadFromFile(preReleaseFilename, 1);
-    oldFilename = preReleaseFilename;
+if isempty(oldFilename) && isfile(preRelease1Filename)
+    try
+        copyfile(preRelease1Filename, newPreRelease1Filename);
+        oldBP = BeamformParametersV2.ReadFromFile(preRelease1Filename, 1);
+    catch
+        oldBP = [];
+        fprintf("Failed to read %s\n", preRelease1Filename);
+    end
+    oldFilename = newPreRelease1Filename;
+end
+end
+
+function filesets = get_toml_filesets(directory)
+listing = dir(directory);
+filesets = string.empty();
+for i = 1:numel(listing)
+    [~, name, ext] = fileparts(listing(i).name);
+    if strcmpi(ext, ".toml")
+        filesets = [
+            filesets;
+            directory, name;
+            ];
+    end
+end
+end
+
+function filesets = get_bpr2_filesets(directory)
+listing = dir(directory);
+filesets = string.empty();
+for i = 1:numel(listing)
+    [~, name, ext] = fileparts(listing(i).name);
+    if strcmpi(ext, ".bpr2")
+        filesets = [
+            filesets;
+            directory, name;
+            ];
+    end
+end
+end
+
+function filesets = get_bpr_filesets(directory)
+listing = dir(directory);
+filesets = string.empty();
+for i = 1:numel(listing)
+    [~, name, ext] = fileparts(listing(i).name);
+    if strcmpi(ext, ".bpr")
+        filesets = [
+            filesets;
+            directory, name;
+            ];
+    end
 end
 end
