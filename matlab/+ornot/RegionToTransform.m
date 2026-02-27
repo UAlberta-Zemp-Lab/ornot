@@ -14,7 +14,7 @@ output_points = zeros(3, numel(regions), "single");
 output_min_coordinates = zeros(3, numel(regions), "single");
 output_max_coordinates = zeros(3, numel(regions), "single");
 beamform_planes = zeros(1, numel(regions), "uint8");
-off_axis_positions = zeros(3, numel(regions), "single");
+off_axis_positions = zeros(1, numel(regions), "single");
 
 for i = 1:numel(regions)
     region = regions(i);
