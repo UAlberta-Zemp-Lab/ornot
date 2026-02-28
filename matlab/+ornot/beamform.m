@@ -51,7 +51,7 @@ for i = 1:numel(images)
     bsp.beamform_plane = beamform_planes(:, region_index);
     bsp.off_axis_pos = off_axis_positions(:, region_index);
 
-    images{section_index, ensemble_index, region_index} = ornot.beamformSimpleParameters(bsp, data);
+    images{section_index, ensemble_index, region_index} = ornot.beamformSimpleParameters(bsp, data(:, :, section_index));
 end
 
 end
@@ -136,14 +136,14 @@ demodulate_shader_index = find(bsp.compute_stages == OGLBeamformerShaderStage.De
 
 % These are applied at baseband
 if ~isempty(demodulate_shader_index)
-    filter_slot = mod(section_number - 1, 16);
+    filter_slot = mod(section_number - 1, 4);
     switch class(bp.emission_parameters)
         case "ZBP.EmissionSineParameters"
             filter_kind             = int32(OGLBeamformerFilterKind.Kaiser);
             kaiser                  = OGLBeamformerFilter.Kaiser;
             kaiser.length           = 36;
             kaiser.beta             = 5.65;
-            kaiser.cutoff_frequency = 0.5*bsp.emission_parameters.frequency;
+            kaiser.cutoff_frequency = 0.5*bp.emission_parameters.frequency;
             filter_parameters       = kaiser.Pack();
             filter_is_complex       = 0;
         case "ZBP.EmissionChirpParameters"

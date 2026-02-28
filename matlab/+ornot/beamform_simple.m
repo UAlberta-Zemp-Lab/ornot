@@ -2,10 +2,6 @@ addpath("submodules/ogl_beamforming/out/matlab/");
 addpath("submodules/ogl_beamforming/out/");
 addpath("out");
 
-addpath("matlab\functions\");
-addpath("matlab\data\");
-addpath("matlab\generated\");
-addpath("matlab\legacy\");
 
 ornot.LoadLibraries();
 

@@ -6,7 +6,7 @@ arguments (Output)
     bp(1,1) ornot.BeamformParameters
 end
 
-assert(len(bytes) >= ZBP.BaseHeader.byteSize);
+assert(numel(bytes) >= ZBP.BaseHeader.byteSize);
 baseHeader = ZBP.BaseHeader.fromBytes(bytes);
 assert(baseHeader.magic == ZBP.Constants.HeaderMagic);
 
@@ -98,6 +98,7 @@ arguments (Output)
 end
 
 header = ZBP.HeaderV2.fromBytes(bytes);
+bp = ornot.BeamformParameters;
 bp.raw_data_dimension = header.raw_data_dimension;
 bp.raw_data_kind = header.raw_data_kind;
 bp.raw_data_compression_kind = header.raw_data_compression_kind;
@@ -118,12 +119,12 @@ bp.acquisition_kind = header.acquisition_mode;
 bp.contrast_mode = header.contrast_mode;
 
 if header.emission_descriptors_offset >= 0
-    bp.emission_descriptor = ZBP.EmissionDescriptor.fromBytes(bytes(header.emission_descriptors_offset + (1:ZBP.EmissionDescriptor.byteSize)));
+    bp.emission_descriptor = ZBP.EmissionDescriptor.fromBytes(bytes(uint32(header.emission_descriptors_offset) + (1:ZBP.EmissionDescriptor.byteSize)));
     switch bp.emission_descriptor.emission_kind
         case ZBP.EmissionKind.Sine
-            bp.emission_parameters = ZBP.EmissionSineParameters.fromBytes(bytes(header.emission_descriptor.parameters_offset + (1:ZBP.EmissionSineParameters.byteSize)));
+            bp.emission_parameters = ZBP.EmissionSineParameters.fromBytes(bytes(uint32(bp.emission_descriptor.parameters_offset) + (1:ZBP.EmissionSineParameters.byteSize)));
         case ZBP.EmissionKind.Chirp
-            bp.emission_parameters = ZBP.EmissionChirpParameters.fromBytes(bytes(header.emission_descriptor.parameters_offset + (1:ZBP.EmissionChirpParameters.byteSize)));
+            bp.emission_parameters = ZBP.EmissionChirpParameters.fromBytes(bytes(uint32(bp.emission_descriptor.parameters_offset) + (1:ZBP.EmissionChirpParameters.byteSize)));
     end
 end
 
@@ -133,65 +134,65 @@ end
 
 if header.channel_mapping_offset >= 0
     channel_count = header.raw_data_dimension(2);
-    bp.channel_mapping = typecast(bytes(header.channel_mapping_offset + (1:(2*channel_count))), 'uint16');
+    bp.channel_mapping = typecast(bytes(uint32(header.channel_mapping_offset) + (1:(2*channel_count))), 'uint16');
 end
 
 if header.acquisition_parameters_offset >= 0
     switch header.acquisition_mode
         case ZBP.AcquisitionKind.FORCES
             section_count = header.raw_data_dimension(3);
-            offset = header.acquisition_parameters_offset;
-            bp.acquisition_parameters(section_count) = ZPB.FORCESParameters;
+            offset = uint32(header.acquisition_parameters_offset);
+            bp.acquisition_parameters = createArray([section_count, 1], "ZBP.FORCESParameters");
             for i = 1:section_count
+                bp.acquisition_parameters(i) = ZBP.FORCESParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.FORCESParameters.byteSize)));
                 offset = offset + ZBP.FORCESParameters.byteSize;
-                bp.acquisition_parameters(section_count) = ZBP.FORCESParameters.fromBytes(bytes(offset + (1:ZBP.FORCESParameters.byteSize)));
             end
         case ZBP.AcquisitionKind.UFORCES
             section_count = header.raw_data_dimension(3);
             sparse_element_count = header.receive_event_count - 1;
-            offset = header.acquisition_parameters_offset;
-            bp.acquisition_parameters(section_count) = ZPB.UFORCESParameters;
+            offset = uint32(header.acquisition_parameters_offset);
+            bp.acquisition_parameters = createArray([section_count, 1], "ZBP.uFORCESParameters");
             bp.sparse_elements = zeros(sparse_element_count, section_count);
             for i = 1:section_count
-                offset = offset + ZBP.UFORCESParameters.byteSize;
-                bp.acquisition_parameters(section_count) = ZBP.UFORCESParameters.fromBytes(bytes(offset + (1:ZBP.FORCESParameters.byteSize)));
-                sparse_elements_offset = bp.acquisition_parameters(section_count).sparse_elements_offset;
+                bp.acquisition_parameters(i) = ZBP.uFORCESParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.uFORCESParameters.byteSize)));
+                offset = offset + ZBP.uFORCESParameters.byteSize;
+                sparse_elements_offset = bp.acquisition_parameters(i).sparse_elements_offset;
                 if sparse_elements_offset >= 0
-                    bp.sparse_elements(:,i) = typecast(bytes(sparse_elements_offset + (1:(2*sparse_element_count))), 'uint16');
+                    bp.sparse_elements(:,i) = typecast(bytes(uint32(sparse_elements_offset) + (1:(2*sparse_element_count))), 'uint16');
                 else
                 end
             end
         case ZBP.AcquisitionKind.HERCULES
             section_count = header.raw_data_dimension(3);
-            offset = header.acquisition_parameters_offset;
-            bp.acquisition_parameters(section_count) = ZPB.HERCULESParameters;
+            offset = uint32(header.acquisition_parameters_offset);
+            bp.acquisition_parameters = createArray([section_count, 1], "ZBP.HERCULESParameters");
             for i = 1:section_count
+                bp.acquisition_parameters(i) = ZBP.HERCULESParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.FORCESParameters.byteSize)));
                 offset = offset + ZBP.HERCULESParameters.byteSize;
-                bp.acquisition_parameters(section_count) = ZBP.HERCULESParameters.fromBytes(bytes(offset + (1:ZBP.FORCESParameters.byteSize)));
             end
         case ZBP.AcquisitionKind.RCA_VLS
             receive_count = header.receive_event_count;
-            bp.acquisition_parameters = ZBP.VLSParameters.fromBytes(bytes(header.acquisition_parameters_offset + (1:ZBP.VLSParameters.byteSize)));
-            bp.focal_depths = typecast(bytes(bp.acquisition_parameters.focal_depths_offset + (1:(4*receive_count))), "single");
-            bp.origins = typecast(bytes(bp.acquisition_parameters.origin_offsets_offset + (1:(4*receive_count))), "single");
-            bp.transmit_receive_orientation = typecast(bytes(bp.acquisition_parameters.transmit_receive_orientations_offset + (1:receive_count)), "uint8");
+            bp.acquisition_parameters = ZBP.VLSParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.VLSParameters.byteSize)));
+            bp.focal_depths = typecast(bytes(uint32(bp.acquisition_parameters.focal_depths_offset) + (1:(4*receive_count))), "single");
+            bp.origin_offsets = typecast(bytes(uint32(bp.acquisition_parameters.origin_offsets_offset) + (1:(4*receive_count))), "single");
+            bp.transmit_receive_orientations = typecast(bytes(uint32(bp.acquisition_parameters.transmit_receive_orientations_offset) + (1:receive_count)), "uint8");
         case ZBP.AcquisitionKind.RCA_TPW
             receive_count = header.receive_event_count;
-            bp.acquisition_parameters = ZBP.TPWParameters.fromBytes(bytes(header.acquisition_parameters_offset + (1:ZBP.TPWParameters.byteSize)));
-            bp.tilting_angles = typecast(bytes(bp.acquisition_parameters.tilting_angles_offset + (1:(4*receive_count))), "single");
-            bp.transmit_receive_orientation = typecast(bytes(bp.acquisition_parameters.transmit_receive_orientations_offset + (1:receive_count)), "uint8");
+            bp.acquisition_parameters = ZBP.TPWParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.TPWParameters.byteSize)));
+            bp.tilting_angles = typecast(bytes(uint32(bp.acquisition_parameters.tilting_angles_offset) + (1:(4*receive_count))), "single");
+            bp.transmit_receive_orientations = typecast(bytes(uint32(bp.acquisition_parameters.transmit_receive_orientations_offset) + (1:receive_count)), "uint8");
         case ZBP.AcquisitionKind.UHERCULES
             section_count = header.raw_data_dimension(3);
             sparse_element_count = header.receive_event_count - 1;
-            offset = header.acquisition_parameters_offset;
-            acquisition_parameters(section_count) = ZPB.UHERCULESParameters;
+            offset = uint32(header.acquisition_parameters_offset);
+            bp.acquisition_parameters = createArray([section_count, 1], "ZBP.uHERCULESParameters");
             bp.sparse_elements = zeros(sparse_element_count, section_count);
             for i = 1:section_count
-                offset = offset + ZBP.UHERCULESParameters.byteSize;
-                acquisition_parameters(section_count) = ZBP.UHERCULESParameters.fromBytes(bytes(offset + (1:ZBP.HERCULESParameters.byteSize)));
-                sparse_elements_offset = acquisition_parameters(section_count).sparse_elements_offset;
+                bp.acquisition_parameters(i) = ZBP.uHERCULESParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.uHERCULESParameters.byteSize)));
+                offset = offset + ZBP.uHERCULESParameters.byteSize;
+                sparse_elements_offset = acquisition_parameters(i).sparse_elements_offset;
                 if sparse_elements_offset >= 0
-                    bp.sparse_elements(:,i) = typecast(bytes(sparse_elements_offset + (1:(2*sparse_element_count))), 'uint16');
+                    bp.sparse_elements(:,i) = typecast(bytes(uint32(sparse_elements_offset) + (1:(2*sparse_element_count))), 'uint16');
                 else
                 end
             end

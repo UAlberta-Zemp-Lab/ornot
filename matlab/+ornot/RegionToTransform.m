@@ -26,9 +26,9 @@ for i = 1:numel(regions)
             beamform_planes(i) = 0;
             off_axis_positions(i) = region.y_value;
         case "ornot.YZPlaneRegion"
-            output_points([2,3,1], i) = [region.resolution, 1];
-            output_min_coordinates([2,3,1], i) = [region.start_corner, region.x_value];
-            output_max_coordinates([2,3,1], i) = [region.end_corner, region.x_value];
+            output_points([1,3,2], i) = [region.resolution, 1];
+            output_min_coordinates([1,3,2], i) = [region.start_corner, region.x_value];
+            output_max_coordinates([1,3,2], i) = [region.end_corner, region.x_value];
             beamform_planes(i) = 1;
             off_axis_positions(i) = region.x_value;
         case "ornot.AxisAlignedVolumeRegion"
