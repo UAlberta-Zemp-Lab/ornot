@@ -7,10 +7,6 @@ arguments (Output)
     images(:,:,:) cell
 end
 
-[output_points, output_min_coordinates, ...
-    output_max_coordinates, beamform_planes, off_axis_positions] ...
-    = ornot.RegionToTransform(settings.regions);
-
 % Allocate Section Count x Ensemble Count x Region Count images
 images = cell(bp.raw_data_dimension(3), bp.raw_data_dimension(4), numel(settings.regions));
 
@@ -45,11 +41,8 @@ for i = 1:numel(images)
 
     bsp = updateBspFromBPSection(bsp, bp, section_index);
 
-    bsp.output_min_coordinate = output_min_coordinates(:, region_index);
-    bsp.output_max_coordinate = output_max_coordinates(:, region_index);
-    bsp.output_points(1:3) = output_points(:, region_index);
-    bsp.beamform_plane = beamform_planes(:, region_index);
-    bsp.off_axis_pos = off_axis_positions(:, region_index);
+    bsp.output_points(1:3) = settings.regions(region_index).output_points;
+    bsp.das_voxel_transform = settings.regions(region_index).das_voxel_transform(:);
 
     images{section_index, ensemble_index, region_index} = ornot.beamformSimpleParameters(bsp, data(:, :, section_index));
 end
@@ -122,6 +115,13 @@ switch bsp.acquisition_kind
         bsp.focal_depths(:) = inf;
         bsp.steering_angles(1:numel(bp.tilting_angles)) = bp.tilting_angles;
         bsp.transmit_receive_orientations(1:numel(bp.transmit_receive_orientations)) = bp.transmit_receive_orientations;
+    case {ZBP.AcquisitionKind.FORCES, ZBP.AcquisitionKind.UFORCES}
+        transducer_transform_matrix = reshape(bp.transducer_transform_matrix, 4, 4);
+        [~, receive_orientation] = ornot.unpackTransmitReceiveOrientation(bp.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation);
+        if receive_orientation == ZBP.RCAOrientation.Rows
+            transducer_transform_matrix(1:2,:) = transducer_transform_matrix(2:-1:1,:);
+        end
+        bsp.xdc_transform = transducer_transform_matrix(:);
     otherwise
         bsp.single_focus = 1;
         bsp.single_orientation = 1;
