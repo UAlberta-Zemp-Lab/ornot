@@ -45,9 +45,15 @@ if is_complex
     data_point_count = 2 * data_point_count;
 end
 data_byte_size = data_size_byte_multiplier * data_point_count;
+
+fid = fopen(data_filename);
+bytes = fread(fid, "*uint8");
+fclose(fid);
+bytes_size = uint64(numel(bytes));
+
 data = libpointer(lib_pointer_class, zeros(1, data_point_count, lib_pointer_class(1:(end-3))));
-if ~calllib('ornot', 'unpack_zstd_compressed_data', char(data_filename), data, data_byte_size)
-    error(strcat('ornot: failed to unpack file: ', char(data_filename)));
+if ~calllib('ornot', 'unpack_zstd_compressed_data', bytes, bytes_size, data, data_byte_size)
+    error('ornot: failed to unpack file: %s', data_filename);
 end
 data = data.Value;
 if is_half
