@@ -59,7 +59,7 @@ for transmitGroup = 1:numel(vsx_mat.vsx.Scan.TransmitGroups)
     image = ornot.beamform(bp, settings);
     bp.data = [];
 
-    bytes = ornot.bpToBytes(bp);
+    bytes = bp.ToBytes();
     if transmitGroup > 1
         newFilename = fullfile(directory, sprintf("%s_%d.bp", fileset_name, transmitGroup));
     else
@@ -95,7 +95,6 @@ if isempty(oldFilename) && isfile(filename)
     if baseHeader.major == 1
         copyfile(filename, newRelease1Filename);
         oldFilename = newRelease1Filename;
-        oldBP = ornot.bytesToBP(fileBytes);
     end
 end
 

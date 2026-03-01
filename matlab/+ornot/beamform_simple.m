@@ -7,7 +7,7 @@ ornot.LoadLibraries();
 
 data_folder = "C:\Users\darren\Source\Data\260227_MN32-4_Example_Data\";
 filename = "260227_MN32-4_Example_Filename_FORCES-Tx-Column";
-% filename = "260227_MN32-4_Example_Filename_HERCULES-Diverging-DepthRatio-0.5-Tx-Column-Chirp-2e-05";  
+% filename = "260227_MN32-4_Example_Filename_HERCULES-Diverging-DepthRatio-0.5-Tx-Column-Chirp-2e-05";
 % filename = "260227_MN32-4_Example_Filename_VLS-128-Tx-Column-Chirp-2e-05";
 % filename = "260227_MN32-4_Example_Filename_TPW-128-Tx-Column-Chirp-2e-05";
 % filename = "260227_MN32-4_Example_Filename_OPTIMUS-9Angles-TxRow-Chirp-2e-05";
@@ -18,7 +18,7 @@ fileId = fopen(bp_filename, 'r');
 bytes = fread(fileId);
 fclose(fileId);
 
-bp = ornot.bytesToBP(bytes);
+bp = ornot.BeamformParameters.FromBytes(bytes);
 
 frame_number = 0;
 data_filename = fullfile(data_folder, sprintf("%s_%02d.zst", filename, frame_number));
