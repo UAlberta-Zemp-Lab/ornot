@@ -5,8 +5,8 @@ addpath("out");
 
 ornot.LoadLibraries();
 
-data_folder = "C:\Users\darren\GoogleDrive\Shared drives\Zemp Lab Shared 2025\Ultrasound Data\Darren Dahunsi\260108_MN32-4_optimus_vs\";
-filename = "260108_MN32-4_optimus_vs_FORCES-Tx-Column-Chirp-2e-05";
+data_folder = "C:\Users\darren\Source\Data\260227_MN32-4_Example_Data\";
+filename = "260227_MN32-4_Example_Filename_FORCES-Tx-Column";
 
 bp_filename = fullfile(data_folder, sprintf("%s.bp", filename));
 fileId = fopen(bp_filename, 'r');
@@ -40,3 +40,19 @@ settings.compute_stages = [
     ];
 
 image = ornot.beamform(bp, settings);
+
+% Intensity Transform Image
+image = squeeze(image{1});
+image = image/max(abs(image), [], "all");
+image = 20*log10(abs(image));
+
+% Display the beamformed image
+figure;
+imagesc(linspace(-50,50, size(image, 2)), linspace(0,100, size(image, 1)), image);
+axis equal;
+colorbar;
+colormap("gray");
+clim([-60, 0]);
+title('Beamformed Image');
+xlabel('X Position (mm)');
+ylabel('Z Position (mm)');
