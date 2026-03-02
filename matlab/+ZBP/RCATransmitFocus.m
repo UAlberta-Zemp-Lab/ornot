@@ -14,6 +14,22 @@ classdef RCATransmitFocus
 		byteSize(1,1) uint32 = 16
 	end
 
+	methods
+		function bytes = toBytes(obj)
+			arguments (Input)
+				obj(1,1) ZBP.RCATransmitFocus
+			end
+			arguments (Output)
+				bytes uint8
+			end
+			bytes = zeros(1, ZBP.RCATransmitFocus.byteSize);
+			bytes(1:4)   = typecast(obj.focal_depth(:),                  'uint8');
+			bytes(5:8)   = typecast(obj.steering_angle(:),               'uint8');
+			bytes(9:12)  = typecast(obj.origin_offset(:),                'uint8');
+			bytes(13:16) = typecast(obj.transmit_receive_orientation(:), 'uint8');
+		end
+	end
+
 	methods (Static)
 		function out = fromBytes(bytes)
 			arguments (Input)
@@ -27,20 +43,6 @@ classdef RCATransmitFocus
 			out.steering_angle(:)               = typecast(bytes(5:8),   'single');
 			out.origin_offset(:)                = typecast(bytes(9:12),  'single');
 			out.transmit_receive_orientation(:) = typecast(bytes(13:16), 'uint32');
-		end
-
-		function bytes = toBytes(obj)
-			arguments (Input)
-				obj(1,1) ZBP.RCATransmitFocus
-			end
-			arguments (Output)
-				bytes uint8
-			end
-			bytes = zeros(1, ZBP.RCATransmitFocus.byteSize);
-			bytes(1:4)   = typecast(obj.focal_depth(:),                  'uint8');
-			bytes(5:8)   = typecast(obj.steering_angle(:),               'uint8');
-			bytes(9:12)  = typecast(obj.origin_offset(:),                'uint8');
-			bytes(13:16) = typecast(obj.transmit_receive_orientation(:), 'uint8');
 		end
 	end
 end
