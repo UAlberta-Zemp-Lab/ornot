@@ -67,6 +67,13 @@ class ZBP:
 		def byte_size():
 			return 16
 
+		def to_bytes(self):
+			result = bytearray(ZBP.BaseHeader.byte_size())
+			struct.pack_into('<1Q', result, 0,   self.magic)
+			struct.pack_into('<1L', result, 8,   self.major)
+			struct.pack_into('<1L', result, 12,  self.minor)
+			return result
+
 	class HeaderV1:
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -97,6 +104,31 @@ class ZBP:
 		@staticmethod
 		def byte_size():
 			return 3724
+
+		def to_bytes(self):
+			result = bytearray(ZBP.HeaderV1.byte_size())
+			struct.pack_into('<1Q',   result, 0,     self.magic)
+			struct.pack_into('<1L',   result, 8,     self.version)
+			struct.pack_into('<1h',   result, 12,    self.decode_mode)
+			struct.pack_into('<1h',   result, 14,    self.beamform_mode)
+			struct.pack_into('<4L',   result, 16,   *self.raw_data_dimension)
+			struct.pack_into('<1L',   result, 32,    self.sample_count)
+			struct.pack_into('<1L',   result, 36,    self.channel_count)
+			struct.pack_into('<1L',   result, 40,    self.receive_event_count)
+			struct.pack_into('<1L',   result, 44,    self.frame_count)
+			struct.pack_into('<2f',   result, 48,   *self.transducer_element_pitch)
+			struct.pack_into('<16f',  result, 56,   *self.transducer_transform_matrix)
+			struct.pack_into('<256h', result, 120,  *self.channel_mapping)
+			struct.pack_into('<256f', result, 632,  *self.steering_angles)
+			struct.pack_into('<256f', result, 1656, *self.focal_depths)
+			struct.pack_into('<256h', result, 2680, *self.sparse_elements)
+			struct.pack_into('<256h', result, 3192, *self.hadamard_rows)
+			struct.pack_into('<1f',   result, 3704,  self.speed_of_sound)
+			struct.pack_into('<1f',   result, 3708,  self.demodulation_frequency)
+			struct.pack_into('<1f',   result, 3712,  self.sampling_frequency)
+			struct.pack_into('<1f',   result, 3716,  self.time_offset)
+			struct.pack_into('<1L',   result, 3720,  self.transmit_mode)
+			return result
 
 	class HeaderV2:
 		@classmethod
@@ -134,6 +166,36 @@ class ZBP:
 		def byte_size():
 			return 184
 
+		def to_bytes(self):
+			result = bytearray(ZBP.HeaderV2.byte_size())
+			struct.pack_into('<1Q',  result, 0,    self.magic)
+			struct.pack_into('<1L',  result, 8,    self.major)
+			struct.pack_into('<1L',  result, 12,   self.minor)
+			struct.pack_into('<4L',  result, 16,  *self.raw_data_dimension)
+			struct.pack_into('<1l',  result, 32,   self.raw_data_kind)
+			struct.pack_into('<1l',  result, 36,   self.raw_data_offset)
+			struct.pack_into('<1l',  result, 40,   self.raw_data_compression_kind)
+			struct.pack_into('<1l',  result, 44,   self.decode_mode)
+			struct.pack_into('<1l',  result, 48,   self.sampling_mode)
+			struct.pack_into('<1f',  result, 52,   self.sampling_frequency)
+			struct.pack_into('<1f',  result, 56,   self.demodulation_frequency)
+			struct.pack_into('<1f',  result, 60,   self.speed_of_sound)
+			struct.pack_into('<1l',  result, 64,   self.channel_mapping_offset)
+			struct.pack_into('<1L',  result, 68,   self.sample_count)
+			struct.pack_into('<1L',  result, 72,   self.channel_count)
+			struct.pack_into('<1L',  result, 76,   self.receive_event_count)
+			struct.pack_into('<16f', result, 80,  *self.transducer_transform_matrix)
+			struct.pack_into('<2f',  result, 144, *self.transducer_element_pitch)
+			struct.pack_into('<1f',  result, 152,  self.time_offset)
+			struct.pack_into('<1f',  result, 156,  self.group_acquisition_time)
+			struct.pack_into('<1f',  result, 160,  self.ensemble_repitition_interval)
+			struct.pack_into('<1l',  result, 164,  self.acquisition_mode)
+			struct.pack_into('<1l',  result, 168,  self.acquisition_parameters_offset)
+			struct.pack_into('<1l',  result, 172,  self.contrast_mode)
+			struct.pack_into('<1l',  result, 176,  self.contrast_parameters_offset)
+			struct.pack_into('<1l',  result, 180,  self.emission_descriptors_offset)
+			return result
+
 	class EmissionDescriptor:
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -145,6 +207,12 @@ class ZBP:
 		@staticmethod
 		def byte_size():
 			return 8
+
+		def to_bytes(self):
+			result = bytearray(ZBP.EmissionDescriptor.byte_size())
+			struct.pack_into('<1l', result, 0,  self.emission_kind)
+			struct.pack_into('<1l', result, 4,  self.parameters_offset)
+			return result
 
 	class EmissionSineParameters:
 		@classmethod
@@ -158,6 +226,12 @@ class ZBP:
 		def byte_size():
 			return 8
 
+		def to_bytes(self):
+			result = bytearray(ZBP.EmissionSineParameters.byte_size())
+			struct.pack_into('<1f', result, 0,  self.cycles)
+			struct.pack_into('<1f', result, 4,  self.frequency)
+			return result
+
 	class EmissionChirpParameters:
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -170,6 +244,13 @@ class ZBP:
 		@staticmethod
 		def byte_size():
 			return 12
+
+		def to_bytes(self):
+			result = bytearray(ZBP.EmissionChirpParameters.byte_size())
+			struct.pack_into('<1f', result, 0,  self.duration)
+			struct.pack_into('<1f', result, 4,  self.min_frequency)
+			struct.pack_into('<1f', result, 8,  self.max_frequency)
+			return result
 
 	class RCATransmitFocus:
 		@classmethod
@@ -185,6 +266,14 @@ class ZBP:
 		def byte_size():
 			return 16
 
+		def to_bytes(self):
+			result = bytearray(ZBP.RCATransmitFocus.byte_size())
+			struct.pack_into('<1f', result, 0,   self.focal_depth)
+			struct.pack_into('<1f', result, 4,   self.steering_angle)
+			struct.pack_into('<1f', result, 8,   self.origin_offset)
+			struct.pack_into('<1L', result, 12,  self.transmit_receive_orientation)
+			return result
+
 	class FORCESParameters:
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -195,6 +284,11 @@ class ZBP:
 		@staticmethod
 		def byte_size():
 			return 16
+
+		def to_bytes(self):
+			result = bytearray(ZBP.FORCESParameters.byte_size())
+			struct.pack_into('<1', result, 0,  self.transmit_focus)
+			return result
 
 	class uFORCESParameters:
 		@classmethod
@@ -208,6 +302,12 @@ class ZBP:
 		def byte_size():
 			return 20
 
+		def to_bytes(self):
+			result = bytearray(ZBP.uFORCESParameters.byte_size())
+			struct.pack_into('<1',  result, 0,   self.transmit_focus)
+			struct.pack_into('<1l', result, 16,  self.sparse_elements_offset)
+			return result
+
 	class HERCULESParameters:
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -218,6 +318,11 @@ class ZBP:
 		@staticmethod
 		def byte_size():
 			return 16
+
+		def to_bytes(self):
+			result = bytearray(ZBP.HERCULESParameters.byte_size())
+			struct.pack_into('<1', result, 0,  self.transmit_focus)
+			return result
 
 	class uHERCULESParameters:
 		@classmethod
@@ -231,6 +336,12 @@ class ZBP:
 		def byte_size():
 			return 20
 
+		def to_bytes(self):
+			result = bytearray(ZBP.uHERCULESParameters.byte_size())
+			struct.pack_into('<1',  result, 0,   self.transmit_focus)
+			struct.pack_into('<1l', result, 16,  self.sparse_elements_offset)
+			return result
+
 	class TPWParameters:
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -242,6 +353,12 @@ class ZBP:
 		@staticmethod
 		def byte_size():
 			return 8
+
+		def to_bytes(self):
+			result = bytearray(ZBP.TPWParameters.byte_size())
+			struct.pack_into('<1l', result, 0,  self.tilting_angles_offset)
+			struct.pack_into('<1l', result, 4,  self.transmit_receive_orientations_offset)
+			return result
 
 	class VLSParameters:
 		@classmethod
@@ -255,3 +372,10 @@ class ZBP:
 		@staticmethod
 		def byte_size():
 			return 12
+
+		def to_bytes(self):
+			result = bytearray(ZBP.VLSParameters.byte_size())
+			struct.pack_into('<1l', result, 0,  self.focal_depths_offset)
+			struct.pack_into('<1l', result, 4,  self.origin_offsets_offset)
+			struct.pack_into('<1l', result, 8,  self.transmit_receive_orientations_offset)
+			return result

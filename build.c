@@ -3524,10 +3524,8 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 								stream_append_u64(&sb, offset - 1);
 								stream_append_str8(&sb, str8(")"));
 								columns[0][row] = arena_stream_commit_and_reset(&m->scratch, &sb);
-
-								columns[1][row] = push_str8_from_parts(&m->scratch, str8(""), str8("= typecast(obj."), 
-																		s->members[member], str8("(:),"));
-								
+								columns[1][row] = push_str8_from_parts(&m->scratch, str8(""), str8("= typecast(obj."),
+								                                       s->members[member], str8("(:),"));
 								columns[2][row] = push_str8_from_parts(&m->scratch, str8(""), str8("'uint8');"));
 							} else {
 								offset += ctx->structs.data[s->sub_struct_ids[member]].byte_size;
@@ -3557,8 +3555,8 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 								stream_append_str8(&sb, str8(")"));
 								columns[0][row] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
-								columns[1][row] = push_str8_from_parts(&m->scratch, str8(""), str8("= obj."), s->members[member],
-																		str8(".toBytes();"));
+								columns[1][row] = push_str8_from_parts(&m->scratch, str8(""), str8("= obj."),
+								                                       s->members[member], str8(".toBytes();"));
 							} else {
 								offset += s->elements[member] * meta_kind_bytes[type_id];
 							}
@@ -3567,6 +3565,7 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 					}
 				} meta_end_scope(m, str8("end"));
 			} meta_end_scope(m, str8("end"));
+
 			meta_push(m, str8("\n"));
 			meta_begin_scope(m, str8("methods (Static)")); {
 				meta_begin_scope(m, str8("function out = fromBytes(bytes)")); {
@@ -3626,7 +3625,7 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena arena)
 							if (type_id < 0) {
 								u32 row = members++;
 								columns[0][row] = push_str8_from_parts(&m->scratch, str8(""), str8("out."),
-								                                          s->members[member]);
+								                                       s->members[member]);
 
 								Stream sb = arena_stream(m->scratch);
 								stream_append_str8s(&sb, str8("= " ZBP_NAMESPACE "."), s->types[member],
@@ -3768,6 +3767,35 @@ metagen_emit_python_code(MetaContext *ctx, Arena arena)
 				meta_push_u64(m, s->byte_size);
 				meta_end_line(m);
 			} m->indentation_level--;
+
+			meta_push(m, str8("\n"));
+			meta_begin_scope(m, str8("def to_bytes(self):")); {
+				u32 offset = 0;
+				meta_push_line(m, str8("result = bytearray(ZBP."), s->name, str8(".byte_size())"));
+				for (u32 entry = 0; entry < s->member_count; entry++) {
+					s32 id = s->type_ids[entry];
+
+					Stream sb = arena_stream(m->scratch);
+					stream_append_u64(&sb, s->elements[entry]);
+					stream_append_str8s(&sb, meta_kind_python_struct_types[id], str8("',"));
+					columns[0][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+
+					stream_append_str8(&sb, str8("result, "));
+					stream_append_u64(&sb, offset);
+					stream_append_str8(&sb, str8(","));
+					columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+
+					stream_append_str8s(&sb, s->elements[entry] > 1 ? str8("*") : str8(" "), str8("self."), s->members[entry]);
+					columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+
+					if (id >= 0) offset += meta_kind_bytes[id] * s->elements[entry];
+					else         offset += ctx->structs.data[s->sub_struct_ids[entry]].byte_size;
+				}
+				metagen_push_table(m, m->scratch, str8("struct.pack_into('<"), str8(")"), columns, s->member_count, 3);
+				meta_push_line(m, str8("return result"));
+			} m->indentation_level--;
+
+
 		} m->indentation_level--;
 		m->scratch = scratch;
 	}
