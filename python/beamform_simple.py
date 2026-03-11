@@ -61,13 +61,16 @@ with ffi.new("BeamformerFilterParameters *") as filter:
 	# NOTE: bind filter to the parameters of the demodulation shader
 	bp.compute_stage_parameters[demodulate_shader_index] = filter_slot
 
+	filter_size = 0
 	if parameters.emission_kinds[0] == ZBP.EmissionKind_Sine:
+		filter_size = ffi.sizeof(filter.kaiser)
 		filter.kind = ogl.BeamformerFilterKind_Kaiser
 		filter.kaiser.cutoff_frequency = 0.5 * parameters.emission_parameters[0].frequency
 		filter.kaiser.beta             = 5.65
 		filter.kaiser.length           = 36
 
 	if parameters.emission_kinds[0] == ZBP.EmissionKind_Chirp:
+		filter_size    = ffi.sizeof(filter.matched_chirp)
 		filter.kind    = ogl.BeamformerFilterKind_MatchedChirp
 		filter.complex = 1
 		filter.matched_chirp.duration      = parameters.emission_parameters[0].duration
@@ -76,7 +79,8 @@ with ffi.new("BeamformerFilterParameters *") as filter:
 
 	filter.sampling_frequency = bp.sampling_frequency / 2
 
-	must(ogl.beamformer_create_filter(filter.kind, ffi.addressof(filter, "kaiser"), ffi.sizeof(filter.kaiser),
+	# NOTE: filters overlap so any subfilter has the same offset as "kaiser"
+	must(ogl.beamformer_create_filter(filter.kind, ffi.addressof(filter, "kaiser"), filter_size,
 	                                  filter.sampling_frequency, filter.complex, filter_slot, 0))
 
 ##
@@ -88,13 +92,9 @@ output_count = points * 2 # complex output
 output_data = ffi.new("float []", output_count)
 
 bp.output_points[0] = output_points[0]
-bp.output_points[2] = output_points[1]
-bp.output_min_coordinate[0] = lateral_extent[0]
-bp.output_min_coordinate[1] = 0
-bp.output_min_coordinate[2] = axial_extent[0]
-bp.output_max_coordinate[0] = lateral_extent[1]
-bp.output_max_coordinate[1] = 0
-bp.output_max_coordinate[2] = axial_extent[1]
+bp.output_points[1] = output_points[1]
+bp.das_voxel_transform = ornot.Affine.XZ(lateral_extent[0], axial_extent[0],
+                                         lateral_extent[1], axial_extent[1], 0)
 
 must(ogl.beamformer_beamform_data(bp, data, data_size, output_data, timeout_ms))
 
@@ -110,10 +110,10 @@ output = output.reshape(output_points, order="F").T.squeeze()
 ##
 
 extent = 1e3 * np.array([
-	bp.output_min_coordinate[0],
-	bp.output_max_coordinate[0],
-	bp.output_max_coordinate[2],
-	bp.output_min_coordinate[2],
+	lateral_extent[0],
+	lateral_extent[1],
+	axial_extent[1],
+	axial_extent[0],
 ])
 
 fig, ax = plt.subplots(1, 1, figsize=(10, 5))
@@ -122,4 +122,3 @@ ax.set_ylabel("Z [mm]")
 ax.set_xlabel("X [mm]")
 
 plt.show()
-

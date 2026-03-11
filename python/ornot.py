@@ -445,3 +445,68 @@ class ornot:
 						result.raw_data = bytes[header.raw_data_offset:]
 
 				return result
+
+	class Affine:
+		"""
+		Helpers for generating standard affine transformations in column major order.
+		"""
+		@staticmethod
+		def Line(min_x, min_y, min_z, max_x, max_y, max_z):
+			extent_x = max_x - min_x
+			extent_y = max_y - min_y
+			extent_z = max_z - min_z
+
+			return [
+				extent_x, extent_y, extent_z, 0,
+				0,        0,        0,        0,
+				0,        0,        0,        0,
+				min_x,    min_y,    min_z,    1,
+			]
+
+		@staticmethod
+		def XY(min_x, min_y, max_x, max_y, z_off):
+			extent_x = max_x - min_x
+			extent_y = max_y - min_y
+
+			return [
+				extent_x, 0,        0,     0,
+				0,        extent_y, 0,     0,
+				0,        0,        1,     0,
+				min_x,    min_y,    z_off, 1,
+			]
+
+		@staticmethod
+		def XZ(min_x, min_z, max_x, max_z, y_off):
+			extent_x = max_x - min_x
+			extent_z = max_z - min_z
+
+			return [
+				extent_x, 0,     0,        0,
+				0,        0,     extent_z, 0,
+				0,        1,     0,        0,
+				min_x,    y_off, min_z,    1,
+			]
+
+		@staticmethod
+		def YZ(min_y, min_z, max_y, max_z, x_off):
+			extent_y = max_y - min_y
+			extent_z = max_z - min_z
+			return [
+				0,        extent_y, 0,        0,
+				0,        0,        extent_z, 0,
+				1,        0,        0,        0,
+				x_off,    min_y,    min_z,    1,
+			]
+
+		@staticmethod
+		def Cube(min_x, min_y, min_z, max_x, max_y, max_z):
+			extent_x = max_x - min_x
+			extent_y = max_y - min_y
+			extent_z = max_z - min_z
+
+			return [
+				extent_x, 0,        0,        0,
+				0,        extent_y, 0,        0,
+				0,        0,        extent_z, 0,
+				min_x,    min_y,    min_z,    1,
+			]
