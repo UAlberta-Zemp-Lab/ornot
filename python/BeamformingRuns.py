@@ -2,6 +2,8 @@
 import numpy as np
 import ornot
 
+from ZBP import ZBP
+
 class BeamformingRuns:
 	"""
 	A collection of basic beamforming runs.
@@ -59,11 +61,16 @@ class BeamformingRuns:
 		ffi   = self.ornot.ffi
 		ogl   = self.ornot.ogl
 
-		zbp, bytes = ornot.zbp_from_file(parameters_file)
-		data, data_size = ornot.data_from_file(zbp, data_file)
-		bp = ornot.beamformer_simple_parameters_from_zbp(zbp)
+		parameters = ornot.Parameters.from_file(parameters_file)
+		bp = ornot.beamformer_simple_parameters_from_parameters(parameters)
 
-		bp.f_number = f_number
+		if len(parameters.raw_data) == 0:
+			data, data_size = ornot.data_from_file(parameters, data_file)
+		else:
+			data, data_size = ornot.data_from_raw(parameters, parameters.raw_data)
+
+		bp.interpolation_mode = ogl.BeamformerInterpolationMode_Cubic
+		bp.f_number           = f_number
 
 		shaders = [
 			ogl.BeamformerShaderKind_Demodulate,
@@ -80,74 +87,71 @@ class BeamformingRuns:
 			# NOTE: bind filter to the parameters of the demodulation shader
 			bp.compute_stage_parameters[demodulate_shader_index] = filter_slot
 
-			filter.kind = ogl.BeamformerFilterKind_Kaiser
-			filter.kaiser.cutoff_frequency = 1.8e6
-			filter.kaiser.beta             = 5.65
-			filter.kaiser.length           = 36
-			filter.sampling_frequency      = bp.sampling_frequency / 2
+			filter_size = 0
+			if parameters.emission_kinds[0] == ZBP.EmissionKind_Sine:
+				filter_size = ffi.sizeof(filter.kaiser)
+				filter.kind = ogl.BeamformerFilterKind_Kaiser
+				filter.kaiser.cutoff_frequency = 0.5 * parameters.emission_parameters[0].frequency
+				filter.kaiser.beta             = 5.65
+				filter.kaiser.length           = 36
 
-			self.__must(ogl.beamformer_create_filter(filter.kind, ffi.addressof(filter, "kaiser"), ffi.sizeof(filter.kaiser),
-			                                    filter.sampling_frequency, filter.complex, filter_slot, 0))
+			if parameters.emission_kinds[0] == ZBP.EmissionKind_Chirp:
+				filter_size    = ffi.sizeof(filter.matched_chirp)
+				filter.kind    = ogl.BeamformerFilterKind_MatchedChirp
+				filter.complex = 1
+				filter.matched_chirp.duration      = parameters.emission_parameters[0].duration
+				filter.matched_chirp.min_frequency = parameters.emission_parameters[0].min_frequency - bp.demodulation_frequency
+				filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequency
+
+			filter.sampling_frequency = bp.sampling_frequency / 2
+			self.__must(ogl.beamformer_create_filter(filter.kind, ffi.addressof(filter, "kaiser"), filter_size,
+			                                         filter.sampling_frequency, filter.complex, filter_slot, 0))
 
 		output = {}
 		output_count = points * 2 # complex output
 
 		# NOTE: axial image
 		axial_data = ffi.new("float []", output_count)
-		bp.output_points[0] = 0
-		bp.output_points[2] = points
-		bp.output_min_coordinate[0] = location_x
-		bp.output_min_coordinate[1] = 0
-		bp.output_min_coordinate[2] = location_z - region_width / 2
-		bp.output_max_coordinate[0] = location_x
-		bp.output_max_coordinate[1] = 0
-		bp.output_max_coordinate[2] = location_z + region_width / 2
+		bp.output_points[0] = points
+		bp.das_voxel_transform = ornot.Affine.Line(location_x, 0, location_z - region_width / 2,
+		                                           location_x, 0, location_z + region_width / 2)
 
 		self.__must(ogl.beamformer_beamform_data(bp, data, data_size, axial_data, timeout_ms))
 		axial = np.frombuffer(ffi.buffer(axial_data), dtype=np.complex64)
 
 		output['axial']      = axial
-		output['axial_axis'] = np.linspace(bp.output_min_coordinate[2], bp.output_max_coordinate[2], points)
+		output['axial_axis'] = np.linspace(location_z - region_width / 2, location_z + region_width / 2, points)
 
 		# NOTE: lateral image
 		lateral_data = ffi.new("float []", output_count)
 		bp.output_points[0] = points
-		bp.output_points[2] = 0
-		bp.output_min_coordinate[0] = location_x - region_width / 2
-		bp.output_min_coordinate[1] = 0
-		bp.output_min_coordinate[2] = location_z
-		bp.output_max_coordinate[0] = location_x + region_width / 2
-		bp.output_max_coordinate[1] = 0
-		bp.output_max_coordinate[2] = location_z
+		bp.das_voxel_transform = ornot.Affine.Line(location_x - region_width / 2, 0, location_z,
+		                                           location_x + region_width / 2, 0, location_z)
 
 		self.__must(ogl.beamformer_beamform_data(bp, data, data_size, lateral_data, timeout_ms))
 		lateral = np.frombuffer(ffi.buffer(lateral_data), dtype=np.complex64)
 
 		output['lateral']      = lateral
-		output['lateral_axis'] = np.linspace(bp.output_min_coordinate[0], bp.output_max_coordinate[0], points)
+		output['lateral_axis'] = np.linspace(location_x - region_width / 2, location_x + region_width / 2, points)
 
 		if not skip_2d:
 			output_2d_points = [256, 256]
 			output_count     = output_2d_points[0] * output_2d_points[1] * 2
-			lateral_data = ffi.new("float []", output_count)
+			output_data      = ffi.new("float []", output_count)
 			bp.output_points[0] = output_2d_points[0]
-			bp.output_points[2] = output_2d_points[1]
-			bp.output_min_coordinate[0] = location_x - region_width / 2
-			bp.output_min_coordinate[1] = 0
-			bp.output_min_coordinate[2] = location_z - region_width / 2
-			bp.output_max_coordinate[0] = location_x + region_width / 2
-			bp.output_max_coordinate[1] = 0
-			bp.output_max_coordinate[2] = location_z + region_width / 2
+			bp.output_points[1] = output_2d_points[1]
+			bp.das_voxel_transform = ornot.Affine.XZ(location_x - region_width / 2, location_z - region_width / 2,
+			                                         location_x + region_width / 2, location_z + region_width / 2, 0)
 
 			extent = np.array([
-				bp.output_min_coordinate[0],
-				bp.output_max_coordinate[0],
-				bp.output_max_coordinate[2],
-				bp.output_min_coordinate[2],
+				location_x - region_width / 2,
+				location_x + region_width / 2,
+				location_z + region_width / 2,
+				location_z - region_width / 2,
 			])
 
-			self.__must(ogl.beamformer_beamform_data(bp, data, data_size, lateral_data, timeout_ms))
-			image = np.frombuffer(ffi.buffer(lateral_data), dtype=np.complex64)
+			self.__must(ogl.beamformer_beamform_data(bp, data, data_size, output_data, timeout_ms))
+			image = np.frombuffer(ffi.buffer(output_data), dtype=np.complex64)
 			image = image.reshape(output_2d_points, order="F").T.squeeze()
 			output['image']        = image
 			output['image_extent'] = extent
