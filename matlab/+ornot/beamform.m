@@ -130,6 +130,13 @@ switch bsp.acquisition_kind
             transducer_transform_matrix(1:2,:) = transducer_transform_matrix(2:-1:1,:);
         end
         bsp.xdc_transform = transducer_transform_matrix(:);
+        bsp.single_focus = 1;
+        bsp.single_orientation = 1;
+        bsp.focal_vector = [...
+            bp.acquisition_parameters(section_number).transmit_focus.steering_angle, ...
+            bp.acquisition_parameters(section_number).transmit_focus.focal_depth];
+        bsp.transmit_receive_orientation = ...
+            bp.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
     otherwise
         bsp.single_focus = 1;
         bsp.single_orientation = 1;

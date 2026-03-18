@@ -25,7 +25,7 @@ if nargout ~= 0
     output_count = prod(bsp.output_points(1:3)) * 2; % complex singles
     output_data  = libpointer('singlePtr', zeros(1, output_count, 'single'));
 else
-    output_data = 0;
+    output_data = libpointer('singlePtr');
 end
 
 try
