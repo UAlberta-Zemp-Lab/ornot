@@ -233,6 +233,7 @@ classdef BeamformParameters
 
             bpV1 = ZBP.HeaderV1.fromBytes(bytes);
 
+            bp = ornot.BeamformParameters;
             bp.raw_data_dimension = bpV1.raw_data_dimension;
             bp.raw_data_kind = ZBP.DataKind.Int16;
             bp.decode_mode = bpV1.decode_mode;
@@ -262,7 +263,7 @@ classdef BeamformParameters
                     acquisition_parameters = ZBP.FORCESParameters;
                     acquisition_parameters.transmit_focus.focal_depth = bpV1.focal_depths(1);
                     acquisition_parameters.transmit_focus.steering_angle = bpV1.steering_angles(1);
-                    acquisition_parameters.transmit_receive_orientation = bpV1.transmit_mode;
+                    acquisition_parameters.transmit_focus.transmit_receive_orientation = bpV1.transmit_mode;
                     bp.acquisition_parameters = acquisition_parameters;
                 case {ZBP.AcquisitionKind.UFORCES}
                     acquisition_parameters = ZBP.uFORCESParameters;
@@ -336,7 +337,7 @@ classdef BeamformParameters
             end
 
             if header.channel_mapping_offset >= 0
-                channel_count = header.raw_data_dimension(2);
+                channel_count = header.channel_count;
                 bp.channel_mapping = typecast(bytes(uint32(header.channel_mapping_offset) + (1:(2*channel_count))), 'uint16');
             end
 
