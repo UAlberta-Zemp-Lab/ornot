@@ -48,6 +48,7 @@ for i = 1:prod(images_size)
     bsp = updateBspFromBPSection(bsp, bp, section_index);
 
     bsp.output_points(1:3) = settings.regions(region_index).output_points;
+    bsp.output_points(4) = settings.average_frame;
     bsp.das_voxel_transform = settings.regions(region_index).das_voxel_transform(:);
 
     if nargout ~= 0
