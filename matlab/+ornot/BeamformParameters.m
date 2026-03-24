@@ -186,10 +186,15 @@ classdef BeamformParameters
             end
 
             if ~isempty(bp.data)
-                assert(numel(bp.data) == prod(bp.raw_data_dimension));
+                assert(numel(bp.data) == prod(max(bp.raw_data_dimension, 1)));
                 header.raw_data_offset = offset;
-                offset = increment_offset(offset, numel(typecast(bp.data(:), 'uint8')), offset_alignment);
-                bytes = set_bytes(bytes, typecast(bp.data, 'uint8'), header.raw_data_offset);
+                d = bp.data;
+                if ~isreal(d)
+                    d = [real(d(:)), imag(d(:))]';
+                end
+                d = typecast(d(:), 'uint8');
+                offset = increment_offset(offset, numel(d), offset_alignment);
+                bytes = set_bytes(bytes, d, header.raw_data_offset);
             else
                 header.raw_data_offset = -1;
             end
@@ -404,7 +409,27 @@ classdef BeamformParameters
             end
 
             if header.raw_data_offset >= 0
-                bp.data = bytes(header.raw_data_offset + (1:prod(min(header.raw_data_dimension, 1))));
+                bp.data = bytes(double(header.raw_data_offset) + ...
+                    (1:ornot.dataKindByteCount(header.raw_data_kind)*prod(max(header.raw_data_dimension, 1))));
+
+                switch header.raw_data_kind
+                    case ZBP.DataKind.Int16
+                        bp.data = typecast(bp.data, 'int16');
+                    case ZBP.DataKind.Int16Complex
+                        bp.data = typecast(bp.data, 'int16');
+                        bp.data = complex(bp.data(1:2:end), bp.data(2:2:end));
+                    case ZBP.DataKind.Float32
+                        bp.data = typecast(bp.data, 'single');
+                    case ZBP.DataKind.Float32Complex
+                        bp.data = typecast(bp.data, 'single');
+                        bp.data = complex(bp.data(1:2:end), bp.data(2:2:end));
+                    case ZBP.DataKind.Float16
+                        bp.data = typecast(typecast(bp.data, 'uint16'), 'half');
+                    case ZBP.DataKind.Float16Complex
+                        bp.data = typecast(typecast(bp.data, 'uint16'), 'half');
+                        bp.data = complex(bp.data(1:2:end), bp.data(2:2:end));
+                end
+                bp.data = reshape(bp.data, bp.raw_data_dimension);
             end
 
         end

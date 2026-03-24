@@ -57,7 +57,7 @@ if ~calllib('ornot', 'unpack_zstd_compressed_data', bytes, bytes_size, data, dat
 end
 data = data.Value;
 if is_half
-    data = typecast(data, 'half');
+    data = typecast(typecast(data, 'uint16'), 'half');
 end
 if is_complex
     data = complex(data(1:2:end), data(2:2:end));

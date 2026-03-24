@@ -26,6 +26,7 @@ switch class(data)
             bsp.data_kind = int32(OGLBeamformerDataKind.Int16);
         else
             bsp.data_kind = int32(OGLBeamformerDataKind.Int16Complex);
+            data = reshape([real(data);imag(data)],[],1);
         end
     case {'single', 'double'}
         if isa(data, 'double')
@@ -35,6 +36,7 @@ switch class(data)
             bsp.data_kind = int32(OGLBeamformerDataKind.Float32);
         else
             bsp.data_kind = int32(OGLBeamformerDataKind.Float32Complex);
+            data = reshape([real(data);imag(data)],[],1);
         end
 end
 

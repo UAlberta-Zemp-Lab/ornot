@@ -11,13 +11,13 @@ end
 
 switch bsp.data_kind
     case OGLBeamformerDataKind.Int16
-        data_size_multiplier = 2;
+        data_size_multiplier = uint32(2);
     case OGLBeamformerDataKind.Int16Complex
-        data_size_multiplier = 4;
+        data_size_multiplier = uint32(4);
     case OGLBeamformerDataKind.Float32
-        data_size_multiplier = 4;
+        data_size_multiplier = uint32(4);
     case OGLBeamformerDataKind.Float32Complex
-        data_size_multiplier = 8;
+        data_size_multiplier = uint32(8);
 end
 data_size = data_size_multiplier*prod(bsp.raw_data_dimensions);
 
