@@ -18,7 +18,9 @@ filename = "260305_MN32-4_Example_Filename_FORCES-Tx-Row";
 % filename = "260305_MN32-4_Example_Filename_HERCULES-Diverging-DepthRatio-0.5-Tx-Row-Chirp-2e-05";
 % filename = "260305_MN32-4_Example_Filename_HERCULES-Diverging-DepthRatio-0.5-Tx-Column-Chirp-2e-05";
 
-
+lateral_extent = 50e-3 * [-1, 1];
+axial_extent   = 1e-3  * [20, 100];
+resolution     = [512, 512];
 
 bp_filename = fullfile(data_folder, sprintf("%s.bp", filename));
 fileId = fopen(bp_filename, 'r');
@@ -35,7 +37,7 @@ if isempty(bp.data)
 end
 
 settings = ornot.BeamformSettings;
-settings.regions = ornot.Region.CreateXZPlane([512, 512], 50e-3*[-1, 1], [20, 100]*1e-3);
+settings.regions = ornot.Region.CreateXZPlane(resolution, lateral_extent, axial_extent);
 settings.interpolation_mode = OGLBeamformerInterpolationMode.Cubic;
 settings.receive_fnumber = 0;
 settings.coherency_weighting = false;
@@ -56,7 +58,7 @@ for i = 1:numel(imageCells)
 
     % Display the beamformed image
     figure;
-    imagesc(linspace(-50,50, size(image, 2)), linspace(20, 100, size(image, 1)), image);
+    imagesc(1e3 * linspace(lateral_extent(1), lateral_extent(2), size(image, 2)), 1e3 * linspace(axial_extent(1), axial_extent(2), size(image, 1)), image);
     axis equal;
     colorbar;
     colormap("gray");
