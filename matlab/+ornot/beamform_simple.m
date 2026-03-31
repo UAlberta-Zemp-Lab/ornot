@@ -52,7 +52,7 @@ imageCells = ornot.beamform(bp, settings);
 
 %% Intensity Transform Image
 for i = 1:numel(imageCells)
-    image = squeeze(imageCells{i});
+    image = squeeze(imageCells{i})';
     image = image/max(abs(image), [], "all");
     image = 20*log10(abs(image));
 

@@ -39,7 +39,7 @@ end
 
 if nargout ~= 0
     beamformed = complex(output_data.Value(1:2:end), output_data.Value(2:2:end));
-    beamformed = squeeze(reshape(beamformed, bsp.output_points(1:3)))';
+    beamformed = squeeze(reshape(beamformed, bsp.output_points(1:3)));
 else
     beamformed = [];
 end
