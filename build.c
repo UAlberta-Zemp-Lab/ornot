@@ -1801,7 +1801,7 @@ read_only global char *meta_entry_kind_strings[] = {META_ENTRY_KIND_LIST};
 	X(U64, uint64_t, uint64, Q,  8,  1) \
 	X(U32, uint32_t, uint32, L,  4,  1) \
 	X(U16, uint16_t, uint16, H,  2,  1) \
-	X(U8,  uint8_t,  uint8,  B,  1,  1)
+	X(U8,  uint8_t,  uint8,  B,  1,  1) \
 
 typedef enum {
 	#define X(k, ...) MetaKind_## k,
@@ -3775,9 +3775,13 @@ metagen_emit_python_code(MetaContext *ctx, Arena arena)
 				for (u32 entry = 0; entry < s->member_count; entry++) {
 					s32 id = s->type_ids[entry];
 
+					u64  elements = id >= 0 ? s->elements[entry]
+					                        : ctx->structs.data[s->sub_struct_ids[entry]].byte_size;
+					str8 type     = id >= 0 ? meta_kind_python_struct_types[id]
+					                        : meta_kind_python_struct_types[MetaKind_U8];
 					Stream sb = arena_stream(m->scratch);
-					stream_append_u64(&sb, s->elements[entry]);
-					stream_append_str8s(&sb, meta_kind_python_struct_types[id], str8("',"));
+					stream_append_u64(&sb, elements);
+					stream_append_str8s(&sb, type, str8("',"));
 					columns[0][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
 					stream_append_str8(&sb, str8("result, "));
@@ -3785,7 +3789,9 @@ metagen_emit_python_code(MetaContext *ctx, Arena arena)
 					stream_append_str8(&sb, str8(","));
 					columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
-					stream_append_str8s(&sb, s->elements[entry] > 1 ? str8("*") : str8(" "), str8("self."), s->members[entry]);
+					stream_append_str8s(&sb, (id < 0 || s->elements[entry] > 1) ? str8("*") : str8(" "),
+					                    str8("self."), s->members[entry]);
+					if (id < 0) stream_append_str8(&sb, str8(".to_bytes()"));
 					columns[2][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
 
 					if (id >= 0) offset += meta_kind_bytes[id] * s->elements[entry];

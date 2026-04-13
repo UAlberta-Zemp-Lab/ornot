@@ -287,7 +287,7 @@ class ZBP:
 
 		def to_bytes(self):
 			result = bytearray(ZBP.FORCESParameters.byte_size())
-			struct.pack_into('<1', result, 0,  self.transmit_focus)
+			struct.pack_into('<16B', result, 0, *self.transmit_focus.to_bytes())
 			return result
 
 	class uFORCESParameters:
@@ -304,8 +304,8 @@ class ZBP:
 
 		def to_bytes(self):
 			result = bytearray(ZBP.uFORCESParameters.byte_size())
-			struct.pack_into('<1',  result, 0,   self.transmit_focus)
-			struct.pack_into('<1l', result, 16,  self.sparse_elements_offset)
+			struct.pack_into('<16B', result, 0,  *self.transmit_focus.to_bytes())
+			struct.pack_into('<1l',  result, 16,  self.sparse_elements_offset)
 			return result
 
 	class HERCULESParameters:
@@ -321,7 +321,7 @@ class ZBP:
 
 		def to_bytes(self):
 			result = bytearray(ZBP.HERCULESParameters.byte_size())
-			struct.pack_into('<1', result, 0,  self.transmit_focus)
+			struct.pack_into('<16B', result, 0, *self.transmit_focus.to_bytes())
 			return result
 
 	class uHERCULESParameters:
@@ -338,8 +338,8 @@ class ZBP:
 
 		def to_bytes(self):
 			result = bytearray(ZBP.uHERCULESParameters.byte_size())
-			struct.pack_into('<1',  result, 0,   self.transmit_focus)
-			struct.pack_into('<1l', result, 16,  self.sparse_elements_offset)
+			struct.pack_into('<16B', result, 0,  *self.transmit_focus.to_bytes())
+			struct.pack_into('<1l',  result, 16,  self.sparse_elements_offset)
 			return result
 
 	class TPWParameters:
