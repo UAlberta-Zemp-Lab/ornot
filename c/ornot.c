@@ -95,17 +95,33 @@ b32 unpack_compressed_i16_data(c8 *file, void *output, u64 output_size)
 	return unpack_zstd_compressed_data_from_file(file, output, output_size);
 }
 
+u64 zstd_compress_bound(u64 input_size)
+{
+	u64 result = ZSTD_COMPRESSBOUND(input_size);
+	return result;
+}
+
+b32 zstd_compress(void *output, u64 *output_size, void *input, u64 input_size)
+{
+	b32 result = ZSTD_COMPRESSBOUND(input_size) <= *output_size;
+	if (result) {
+		u64 written = ZSTD_compress(output, *output_size, input, input_size, ZSTD_CLEVEL_DEFAULT);
+		result      = !ZSTD_isError(written);
+		if (result) *output_size = written;
+	}
+	return result;
+}
+
 b32 write_data_with_zstd_compression(c8 *output_name, void *data, u64 data_size)
 {
 	b32 result   = 0;
 	u64 buf_size = ZSTD_COMPRESSBOUND(data_size);
 	MemoryBlock buf = os_block_alloc(buf_size);
-	if (buf.size) {
-		iz written = ZSTD_compress(buf.data, buf.size, data, data_size, ZSTD_CLEVEL_DEFAULT);
-		result     = !ZSTD_isError(written);
-		if (result)
-			result = os_write_new_file(output_name, (s8){.data = buf.data, .len = written});
-	}
+	buf_size = buf.size;
+
+	if (zstd_compress(buf.data, &buf_size, data, data_size))
+		result = os_write_new_file(output_name, (s8){.data = buf.data, .len = buf_size});
+
 	os_block_release(buf);
 
 	return result;

@@ -7,6 +7,18 @@ Compresses `data` using [zstd][], and writes the result to
 extension as required by their environment. Returns whether the
 operation succeeded.
 
+### `u64 zstd_compress_bound(u64 input_size)`
+
+Calculates an upper bound on the amount of space needed to
+compress `input_size` bytes.
+
+### `b32 zstd_compress(void *output, u64 *output_size, void *input, u64 input_size)`
+
+Compresses `input` using [zstd][] into `output`. `output_size`
+must be initialized to the size of `output` and will be
+overwritten with the amount of bytes written to `output`. Returns
+whether the operation succeeded.
+
 ### `b32 unpack_zstd_compressed_data(void *input, size_t input_size, void *output, size_t output_size)`
 
 Decompresses input (assumed to be zstandard compressed) into
