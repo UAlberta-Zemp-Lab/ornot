@@ -55,6 +55,11 @@ class ZBP:
 	DataCompressionKind_ZSTD = 1
 
 	class BaseHeader:
+		def __init__(self, magic=0, major=0, minor=0):
+			self.magic = magic
+			self.major = major
+			self.minor = minor
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -75,6 +80,29 @@ class ZBP:
 			return result
 
 	class HeaderV1:
+		def __init__(self, magic=0, version=0, decode_mode=0, beamform_mode=0, raw_data_dimension=[0] * 4, sample_count=0, channel_count=0, receive_event_count=0, frame_count=0, transducer_element_pitch=[0] * 2, transducer_transform_matrix=[0] * 16, channel_mapping=[0] * 256, steering_angles=[0] * 256, focal_depths=[0] * 256, sparse_elements=[0] * 256, hadamard_rows=[0] * 256, speed_of_sound=0, demodulation_frequency=0, sampling_frequency=0, time_offset=0, transmit_mode=0):
+			self.magic                       = magic
+			self.version                     = version
+			self.decode_mode                 = decode_mode
+			self.beamform_mode               = beamform_mode
+			self.raw_data_dimension          = raw_data_dimension
+			self.sample_count                = sample_count
+			self.channel_count               = channel_count
+			self.receive_event_count         = receive_event_count
+			self.frame_count                 = frame_count
+			self.transducer_element_pitch    = transducer_element_pitch
+			self.transducer_transform_matrix = transducer_transform_matrix
+			self.channel_mapping             = channel_mapping
+			self.steering_angles             = steering_angles
+			self.focal_depths                = focal_depths
+			self.sparse_elements             = sparse_elements
+			self.hadamard_rows               = hadamard_rows
+			self.speed_of_sound              = speed_of_sound
+			self.demodulation_frequency      = demodulation_frequency
+			self.sampling_frequency          = sampling_frequency
+			self.time_offset                 = time_offset
+			self.transmit_mode               = transmit_mode
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -131,6 +159,34 @@ class ZBP:
 			return result
 
 	class HeaderV2:
+		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_kind=0, raw_data_offset=0, raw_data_compression_kind=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, demodulation_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_transform_matrix=[0] * 16, transducer_element_pitch=[0] * 2, time_offset=0, group_acquisition_time=0, ensemble_repitition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_parameters_offset=0, emission_descriptors_offset=0):
+			self.magic                         = magic
+			self.major                         = major
+			self.minor                         = minor
+			self.raw_data_dimension            = raw_data_dimension
+			self.raw_data_kind                 = raw_data_kind
+			self.raw_data_offset               = raw_data_offset
+			self.raw_data_compression_kind     = raw_data_compression_kind
+			self.decode_mode                   = decode_mode
+			self.sampling_mode                 = sampling_mode
+			self.sampling_frequency            = sampling_frequency
+			self.demodulation_frequency        = demodulation_frequency
+			self.speed_of_sound                = speed_of_sound
+			self.channel_mapping_offset        = channel_mapping_offset
+			self.sample_count                  = sample_count
+			self.channel_count                 = channel_count
+			self.receive_event_count           = receive_event_count
+			self.transducer_transform_matrix   = transducer_transform_matrix
+			self.transducer_element_pitch      = transducer_element_pitch
+			self.time_offset                   = time_offset
+			self.group_acquisition_time        = group_acquisition_time
+			self.ensemble_repitition_interval  = ensemble_repitition_interval
+			self.acquisition_mode              = acquisition_mode
+			self.acquisition_parameters_offset = acquisition_parameters_offset
+			self.contrast_mode                 = contrast_mode
+			self.contrast_parameters_offset    = contrast_parameters_offset
+			self.emission_descriptors_offset   = emission_descriptors_offset
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -197,6 +253,10 @@ class ZBP:
 			return result
 
 	class EmissionDescriptor:
+		def __init__(self, emission_kind=0, parameters_offset=0):
+			self.emission_kind     = emission_kind
+			self.parameters_offset = parameters_offset
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -215,6 +275,10 @@ class ZBP:
 			return result
 
 	class EmissionSineParameters:
+		def __init__(self, cycles=0, frequency=0):
+			self.cycles    = cycles
+			self.frequency = frequency
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -233,6 +297,11 @@ class ZBP:
 			return result
 
 	class EmissionChirpParameters:
+		def __init__(self, duration=0, min_frequency=0, max_frequency=0):
+			self.duration      = duration
+			self.min_frequency = min_frequency
+			self.max_frequency = max_frequency
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -253,6 +322,12 @@ class ZBP:
 			return result
 
 	class RCATransmitFocus:
+		def __init__(self, focal_depth=0, steering_angle=0, origin_offset=0, transmit_receive_orientation=0):
+			self.focal_depth                  = focal_depth
+			self.steering_angle               = steering_angle
+			self.origin_offset                = origin_offset
+			self.transmit_receive_orientation = transmit_receive_orientation
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -275,6 +350,9 @@ class ZBP:
 			return result
 
 	class FORCESParameters:
+		def __init__(self, transmit_focus=None):
+			self.transmit_focus = transmit_focus if isinstance(transmit_focus, ZBP.RCATransmitFocus) else ZBP.RCATransmitFocus()
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -291,6 +369,10 @@ class ZBP:
 			return result
 
 	class uFORCESParameters:
+		def __init__(self, transmit_focus=None, sparse_elements_offset=0):
+			self.transmit_focus         = transmit_focus if isinstance(transmit_focus, ZBP.RCATransmitFocus) else ZBP.RCATransmitFocus()
+			self.sparse_elements_offset = sparse_elements_offset
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -309,6 +391,9 @@ class ZBP:
 			return result
 
 	class HERCULESParameters:
+		def __init__(self, transmit_focus=None):
+			self.transmit_focus = transmit_focus if isinstance(transmit_focus, ZBP.RCATransmitFocus) else ZBP.RCATransmitFocus()
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -325,6 +410,10 @@ class ZBP:
 			return result
 
 	class uHERCULESParameters:
+		def __init__(self, transmit_focus=None, sparse_elements_offset=0):
+			self.transmit_focus         = transmit_focus if isinstance(transmit_focus, ZBP.RCATransmitFocus) else ZBP.RCATransmitFocus()
+			self.sparse_elements_offset = sparse_elements_offset
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -343,6 +432,10 @@ class ZBP:
 			return result
 
 	class TPWParameters:
+		def __init__(self, tilting_angles_offset=0, transmit_receive_orientations_offset=0):
+			self.tilting_angles_offset                = tilting_angles_offset
+			self.transmit_receive_orientations_offset = transmit_receive_orientations_offset
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
@@ -361,6 +454,11 @@ class ZBP:
 			return result
 
 	class VLSParameters:
+		def __init__(self, focal_depths_offset=0, origin_offsets_offset=0, transmit_receive_orientations_offset=0):
+			self.focal_depths_offset                  = focal_depths_offset
+			self.origin_offsets_offset                = origin_offsets_offset
+			self.transmit_receive_orientations_offset = transmit_receive_orientations_offset
+
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()

@@ -3718,6 +3718,38 @@ metagen_emit_python_code(MetaContext *ctx, Arena arena)
 
 		meta_push(m, str8("\n"));
 		meta_begin_scope(m, str8("class "), s->name, str8(":")); {
+			meta_begin_line(m, str8("def __init__(self"));
+			for (u32 entry = 0; entry < s->member_count; entry++) {
+				meta_push(m, str8(", "));
+				meta_push(m, s->members[entry], str8("="));
+				if (s->elements[entry] > 1) meta_push(m, str8("["));
+				meta_push(m, s->type_ids[entry] < 0 ? str8("None") : str8("0"));
+				if (s->elements[entry] > 1) {
+					// wtf is this syntax
+					meta_push(m, str8("] * "));
+					meta_push_u64(m, s->elements[entry]);
+				}
+			}
+			meta_end_line(m, str8("):"));
+			DeferLoop(m->indentation_level++, m->indentation_level--) {
+				for (u32 entry = 0; entry < s->member_count; entry++) {
+					columns[0][entry] = s->members[entry];
+
+					Stream sb = arena_stream(m->scratch);
+					stream_append_str8(&sb, str8("= "));
+					if (s->type_ids[entry] >= 0) {
+						stream_append_str8(&sb, s->members[entry]);
+					} else {
+						stream_append_str8s(&sb, s->members[entry], str8(" if isinstance("), s->members[entry],
+						                    str8(", " ZBP_NAMESPACE "."), s->types[entry],
+						                    str8(") else " ZBP_NAMESPACE "."), s->types[entry], str8("()"));
+					}
+					columns[1][entry] = arena_stream_commit_and_reset(&m->scratch, &sb);
+				}
+				metagen_push_table(m, m->scratch, str8("self."), str8(""), columns, s->member_count, 2);
+			}
+			meta_push(m, str8("\n"));
+
 			meta_push_line(m, str8("@classmethod"));
 			meta_begin_scope(m, str8("def from_bytes(cls, bytes):")); {
 				u32 offset = 0;
