@@ -28,6 +28,8 @@ else
     output_data = libpointer('singlePtr');
 end
 
+assert(data_size <= whos('data').bytes);
+
 try
     assert(calllib('ogl_beamformer_lib', 'beamformer_beamform_data', ...
         struct(bsp), data, data_size, output_data, timeout_milliseconds));

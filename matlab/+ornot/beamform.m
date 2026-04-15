@@ -52,7 +52,7 @@ for i = 1:prod(images_size)
     bsp.das_voxel_transform = settings.regions(region_index).das_voxel_transform(:);
 
     if nargout ~= 0
-        images{section_index, ensemble_index, region_index} = ornot.beamformSimpleParameters(bsp, data(:, :, section_index));
+        images{section_index, ensemble_index, region_index} = ornot.beamformSimpleParameters(bsp, data(:, :, section_index, ensemble_index));
     else
         ornot.beamformSimpleParameters(bsp, data(:, :, section_index));
     end
