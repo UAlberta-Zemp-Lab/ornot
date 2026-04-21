@@ -12,7 +12,7 @@ jobs:
     env:
       CC: ${{matrix.cc}}
     steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v6
           with:
             submodules: 'true'
         - name: Build
@@ -21,7 +21,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v6
           with:
             submodules: 'true'
         - name: Build
@@ -48,7 +48,7 @@ jobs:
             msystem: ${{matrix.sys}}
             update: true
             install: zip git mingw-w64-${{matrix.env}}-clang
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v6
           with:
             submodules: 'true'
         - name: Build
