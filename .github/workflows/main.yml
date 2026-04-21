@@ -55,7 +55,7 @@ jobs:
           run: ./ci/build.sh
         - name: Build Release
           if: github.ref_type == 'tag'
-          run: ./ci/release.sh
+          run: ./ci/release.sh generic
         - name: Upload Release
           if: github.ref_type == 'tag'
           uses: softprops/action-gh-release@v2

@@ -3,6 +3,12 @@
 cc=${CC:-cc}
 wd=${PWD}
 
+for arg; do
+	case ${arg} in
+	generic) build_c_flags="--generic"
+	esac
+done
+
 machine=$(uname -m)
 case ${machine} in
 aarch64) target="armv8"     ;;
@@ -25,12 +31,12 @@ esac
 
 # NOTE: build ornot
 ${cc} -march=native -O3 -fms-extensions -o build build.c
-./build --generic
+./build ${build_c_flags}
 
 # NOTE: build beamformer
 cd "submodules/ogl_beamforming"
 ${cc} -march=native -O3 -fms-extensions build.c -o build
-./build --generic --bake-shaders
+./build ${build_c_flags} --bake-shaders
 cd "${wd}"
 
 # NOTE: finalize
@@ -40,6 +46,8 @@ cp "scripts/beamform_simple.m" "${outname}/"
 cp "${ornotlib}" "out/ornot.h" "${outname}/"
 cp "${beamformerlib}" "${beamformer}" "${outname}/"
 cp "submodules/ogl_beamforming/out/ogl_beamformer_lib.h" "${outname}/"
+
+cp -r "docs" "${outname}/"
 
 cp -r "matlab" "${outname}/"
 cp -r "submodules/ogl_beamforming/out/matlab" "${outname}/"
