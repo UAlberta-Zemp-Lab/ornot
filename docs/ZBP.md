@@ -273,6 +273,8 @@ binary data associated with this parameters file.
 #### `raw_data_offset` (Optional)
 
 An offset from the start of the file to an attached raw data blob.
+See [Limitations](#attached-raw-data) for additional constraints
+when attaching compressed raw data.
 
 #### `raw_data_compression_kind`
 
@@ -810,12 +812,12 @@ uint8_t transmit_mode_to_version_2_encoding[] = {
 
 #### Attached Raw Data
 
-If the attached raw data is compressed with ZSTD there is no way
-to determine how many bytes are present. This can be handled by
-enforcing that ZSTD compressed data attached to the parameters
-file must be only attached at the end. Then the size can be
-calculated by subtracting the raw data offset from total file
-size.
+Since the format lacks metadata about the size of attached raw
+data when it is compressed, the size must be calculated
+indirectly. This can be handled by requiring that compressed data
+be attached as the final section in the parameters file-this way,
+the size can be calculated by subtracting the `raw_data_offset`
+from the total file size.
 
 #### Tiled Arrays
 
