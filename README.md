@@ -6,9 +6,9 @@ Arrays
 
 # Releases
 
-The [Releases][] tab provides a portable release suitable for
-running on any system running Windows. Releases are built using
-the [`release.sh`](./ci/release.sh) script. To build a packaged
+The [Releases][] tab provides portable releases suitable for
+running on any Windows system. They are built using the
+[`release.sh`](./ci/release.sh) script. To build a packaged
 version optimized for your local system (Windows or Linux) the
 script may be run directly:
 
@@ -16,7 +16,7 @@ script may be run directly:
 ./ci/release.sh
 ```
 
-The resulting `beamformerk-pack-*` folder can be copied elsewhere
+The resulting `beamformer-pack-*` folder can be copied elsewhere
 and used directly.
 
 ## Dependencies
