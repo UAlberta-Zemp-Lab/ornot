@@ -87,6 +87,7 @@ bsp.xdc_transform = bp.transducer_transform_matrix;
 bsp.xdc_element_pitch = bp.transducer_element_pitch;
 bsp.time_offset = bp.time_offset;
 bsp.acquisition_kind = bp.acquisition_kind;
+bsp.contrast_mode = bp.contrast_mode;
 
 bsp.channel_mapping(1:numel(bp.channel_mapping)) = bp.channel_mapping;
 
@@ -110,6 +111,8 @@ if ~isempty(bp.sparse_elements)
     bsp.sparse_elements(1:size(sparse_elements, 1)) ...
         = sparse_elements(:, section_number);
 end
+
+bsp.contrast_mode = bp.contrast_mode;
 
 switch bsp.acquisition_kind
     case ZBP.AcquisitionKind.RCA_VLS
