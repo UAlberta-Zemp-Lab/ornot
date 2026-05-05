@@ -187,6 +187,7 @@ classdef BeamformParameters
 
             if ~isempty(bp.data)
                 assert(numel(bp.data) == prod(max(bp.raw_data_dimension, 1)));
+                assert(bp.raw_data_compression_kind == ZBP.DataCompressionKind.None); % TODO: Use unpack_compressed to read attached compressed data
                 header.raw_data_offset = offset;
                 d = bp.data;
                 if ~isreal(d)
