@@ -128,6 +128,7 @@ class ornot:
 		bp.xdc_element_pitch      = parameters.transducer_element_pitch
 		bp.raw_data_dimensions    = parameters.raw_data_dimension[0:2]
 		bp.data_kind              = parameters.raw_data_kind
+		bp.contrast_mode          = parameters.contrast_mode
 
 		sampling_mode_map = {
 			ZBP.SamplingMode_Standard: ogl.BeamformerSamplingMode_4X,

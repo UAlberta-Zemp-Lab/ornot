@@ -87,16 +87,13 @@ class BeamformingRuns:
 			# NOTE: bind filter to the parameters of the demodulation shader
 			bp.compute_stage_parameters[demodulate_shader_index] = filter_slot
 
-			filter_size = 0
 			if parameters.emission_kinds[0] == ZBP.EmissionKind_Sine:
-				filter_size = ffi.sizeof(filter.kaiser)
 				filter.kind = ogl.BeamformerFilterKind_Kaiser
 				filter.kaiser.cutoff_frequency = 0.5 * parameters.emission_parameters[0].frequency
 				filter.kaiser.beta             = 5.65
 				filter.kaiser.length           = 36
 
 			if parameters.emission_kinds[0] == ZBP.EmissionKind_Chirp:
-				filter_size    = ffi.sizeof(filter.matched_chirp)
 				filter.kind    = ogl.BeamformerFilterKind_MatchedChirp
 				filter.complex = 1
 				filter.matched_chirp.duration      = parameters.emission_parameters[0].duration
@@ -104,8 +101,7 @@ class BeamformingRuns:
 				filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequency
 
 			filter.sampling_frequency = bp.sampling_frequency / 2
-			self.__must(ogl.beamformer_create_filter(filter.kind, ffi.addressof(filter, "kaiser"), filter_size,
-			                                         filter.sampling_frequency, filter.complex, filter_slot, 0))
+			self.__must(ogl.beamformer_create_filter(filter, filter_slot, 0))
 
 		output = {}
 		output_count = points * 2 # complex output

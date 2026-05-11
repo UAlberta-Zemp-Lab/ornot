@@ -1,4 +1,4 @@
-#include <stddef.h>
+#include <stdint.h>
 
 #ifndef ORNOT_EXPORT
   #ifdef _WIN32
