@@ -10,7 +10,6 @@ typedef int32_t   i32;
 typedef uint32_t  u32;
 typedef uint32_t  b32;
 typedef uint64_t  u64;
-typedef size_t    uz;
 typedef ptrdiff_t iz;
 typedef ptrdiff_t iptr;
 
@@ -34,7 +33,7 @@ typedef struct {
 
 #include "platform.h"
 
-function void *mem_copy(void *restrict dst, void *restrict src, uz n)
+function void *mem_copy(void *restrict dst, void *restrict src, u64 n)
 {
 	u8 *d = dst, *s = src;
 	for (; n; n--) *d++ = *s++;
@@ -70,18 +69,18 @@ b32 unpack_zemp_bp_v1(c8 *input_name, ZBP_HeaderV1 *output_header)
 }
 #endif
 
-b32 unpack_zstd_compressed_data(void *input, uz input_size, void *output, uz output_size)
+b32 unpack_zstd_compressed_data(void *input, u64 input_size, void *output, u64 output_size)
 {
 	b32 result = 0;
-	uz requested_size = ZSTD_getFrameContentSize(input, input_size);
+	u64 requested_size = ZSTD_getFrameContentSize(input, input_size);
 	if (requested_size <= output_size) {
-		uz decompressed_size = ZSTD_decompress(output, output_size, input, input_size);
+		u64 decompressed_size = ZSTD_decompress(output, output_size, input, input_size);
 		result = decompressed_size == requested_size;
 	}
 	return result;
 }
 
-b32 unpack_zstd_compressed_data_from_file(c8 *file, void *output, uz output_size)
+b32 unpack_zstd_compressed_data_from_file(c8 *file, void *output, u64 output_size)
 {
 	b32 result = 0;
 	MemoryStream file_data = os_read_whole_file(file);
@@ -91,7 +90,7 @@ b32 unpack_zstd_compressed_data_from_file(c8 *file, void *output, uz output_size
 	return result;
 }
 
-b32 unpack_compressed_i16_data(c8 *file, void *output, uz output_size)
+b32 unpack_compressed_i16_data(c8 *file, void *output, u64 output_size)
 {
 	return unpack_zstd_compressed_data_from_file(file, output, output_size);
 }
