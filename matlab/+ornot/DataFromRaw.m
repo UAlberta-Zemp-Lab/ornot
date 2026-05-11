@@ -18,7 +18,7 @@ switch bp.raw_data_compression_kind
 		end
 	case ZBP.DataCompressionKind.None
 	otherwise
-    error('ornot: unsuppored data compression kind');
+		error('ornot: unsuppored data compression kind');
 end
 
 data = data.Value;
