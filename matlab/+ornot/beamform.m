@@ -91,8 +91,8 @@ bsp.contrast_mode = bp.contrast_mode;
 
 bsp.channel_mapping(1:numel(bp.channel_mapping)) = bp.channel_mapping;
 
-bsp.emission_kind = bp.emission_descriptor.emission_kind;
-bsp.emission_parameters(1:bp.emission_parameters.byteSize) = bp.emission_parameters.toBytes();
+bsp.emission_parameters.kind = bp.emission_descriptor.emission_kind;
+bsp.emission_parameters.data = bp.emission_parameters.toBytes();
 end
 
 function bsp = updateBspFromBPSection(bsp, bp, section_number)
@@ -158,28 +158,30 @@ demodulate_shader_index = find(bsp.compute_stages == OGLBeamformerShaderStage.De
 % These are applied at baseband
 if ~isempty(demodulate_shader_index)
     filter_slot = mod(section_number - 1, 4);
+    filter = OGLBeamformerFilter;
+    filter.sampling_frequency = bsp.sampling_frequency / 2;
     switch class(bp.emission_parameters)
         case "ZBP.EmissionSineParameters"
-            filter_kind             = int32(OGLBeamformerFilterKind.Kaiser);
-            kaiser                  = OGLBeamformerFilter.Kaiser;
+            kaiser                  = OGLBeamformerFilterParameters.Kaiser;
             kaiser.length           = 36;
             kaiser.beta             = 5.65;
             kaiser.cutoff_frequency = 0.5*bp.emission_parameters.frequency;
-            filter_parameters       = kaiser.Pack();
-            filter_is_complex       = 0;
+
+            filter.kind = OGLBeamformerFilterKind.Kaiser;
+            filter.data = kaiser.toBytes();
         case "ZBP.EmissionChirpParameters"
-            filter_kind             = int32(OGLBeamformerFilterKind.MatchedChirp);
-            chirp                   = OGLBeamformerFilter.MatchedChirp;
+            chirp                   = OGLBeamformerFilterParameters.MatchedChirp;
             chirp.duration          = bp.emission_parameters.duration;
             chirp.min_frequency     = bp.emission_parameters.min_frequency - bsp.demodulation_frequency;
             chirp.max_frequency     = bp.emission_parameters.max_frequency - bsp.demodulation_frequency;
-            filter_parameters       = chirp.Pack();
-            filter_is_complex       = 1;
+
+            filter.kind    = OGLBeamformerFilterKind.MatchedChirp;
+            filter.data    = chirp.toBytes();
+            filter.complex = 1;
     end
 
     try
-        assert(calllib('ogl_beamformer_lib', 'beamformer_create_filter', filter_kind, filter_parameters, ...
-            numel(filter_parameters), bsp.sampling_frequency / 2, filter_is_complex, filter_slot, 0));
+        assert(calllib('ogl_beamformer_lib', 'beamformer_create_filter', struct(filter), filter_slot, 0));
     catch ME
         errmsg = calllib('ogl_beamformer_lib', 'beamformer_get_last_error_string');
         warning(strcat('beamformer error: ', errmsg));

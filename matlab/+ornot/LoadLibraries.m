@@ -7,9 +7,8 @@ addpath(fullfile(ornotFolderPath, "../../submodules/ogl_beamforming/out/matlab")
 % NOTE: these warnings do not provide useful information and are not at
 % all relevant to the functioning of the library.
 warning('off','MATLAB:structOnObject');
-warning('off','MATLAB:loadlibrary:TypeNotFoundForStructure');
 if (~libisloaded('ogl_beamformer_lib'))
-    [~, ~] = loadlibrary('ogl_beamformer_lib');
+    [~, ~] = loadlibrary('ogl_beamformer_lib', 'ogl_beamformer_lib_matlab.h');
     api = calllib('ogl_beamformer_lib', 'beamformer_get_api_version');
     fprintf("Loading Ogl Beamformer Library Version %d \n", api);
     calllib('ogl_beamformer_lib', 'beamformer_set_global_timeout', 1000);

@@ -51,6 +51,7 @@ cp -r "docs" "${outname}/"
 
 cp -r "matlab" "${outname}/"
 cp -r "submodules/ogl_beamforming/out/matlab" "${outname}/"
+cp "submodules/ogl_beamforming/out/ogl_beamformer_lib_matlab.h" "${outname}/"
 
 cp -r "python" "${outname}/"
 cp "submodules/ogl_beamforming/out/ogl_beamformer_lib_python_ffi.h" "${outname}/python"
