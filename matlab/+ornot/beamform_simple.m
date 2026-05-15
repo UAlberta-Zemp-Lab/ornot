@@ -23,11 +23,7 @@ axial_extent   = 1e-3  * [20, 100];
 resolution     = [512, 512];
 
 bp_filename = fullfile(data_folder, sprintf("%s.bp", filename));
-fileId = fopen(bp_filename, 'r');
-bytes = fread(fileId);
-fclose(fileId);
-
-bp = ornot.BeamformParameters.FromBytes(bytes);
+bp = ornot.BeamformParameters.FromFile(bp_filename);
 
 frame_number = 0;
 data_filename = fullfile(data_folder, sprintf("%s_%02d.zst", filename, frame_number));

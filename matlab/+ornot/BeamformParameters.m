@@ -33,6 +33,20 @@ classdef BeamformParameters
     end
 
     methods
+        function ToFile(bp, filename)
+            arguments (Input)
+                bp(1,1) ornot.BeamformParameters
+                filename(1,1) string
+            end
+            arguments (Output)
+            end
+
+            bytes = bp.ToBytes();
+            fileId = fopen(filename, 'w');
+            fwrite(fileId, bytes);
+            fclose(fileId);
+        end
+
         function bytes = ToBytes(bp)
             arguments (Input)
                 bp(1,1) ornot.BeamformParameters
@@ -203,6 +217,19 @@ classdef BeamformParameters
     end
 
     methods (Static)
+        function bp = FromFile(filename)
+            arguments (Input)
+                filename(1,1) string
+            end
+            arguments (Output)
+                bp(1,1) ornot.BeamformParameters
+            end
+            fileId = fopen(filename, 'r');
+            bytes = fread(fileId);
+            fclose(fileId);
+            bp = ornot.BeamformParameters.FromBytes(bytes);
+        end
+
         function bp = FromBytes(bytes)
             arguments (Input)
                 bytes uint8
