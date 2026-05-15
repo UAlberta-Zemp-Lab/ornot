@@ -11,5 +11,5 @@ fid = fopen(data_filename);
 bytes = fread(fid, "*uint8");
 fclose(fid);
 
-bp = ornot.DataFromRaw(bp, bytes)
+bp = ornot.DataFromRaw(bp, bytes);
 end

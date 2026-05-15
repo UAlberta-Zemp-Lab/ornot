@@ -187,13 +187,8 @@ classdef BeamformParameters
 
             if ~isempty(bp.data)
                 assert(numel(bp.data) == prod(max(bp.raw_data_dimension, 1)));
-                assert(bp.raw_data_compression_kind == ZBP.DataCompressionKind.None); % TODO: Use unpack_compressed to read attached compressed data
+                d = ornot.DataToRaw(bp.data, bp.raw_data_compression_kind);
                 header.raw_data_offset = offset;
-                d = bp.data;
-                if ~isreal(d)
-                    d = [real(d(:)), imag(d(:))]';
-                end
-                d = typecast(d(:), 'uint8');
                 offset = increment_offset(offset, numel(d), offset_alignment);
                 bytes = set_bytes(bytes, d, header.raw_data_offset);
             else
@@ -202,8 +197,8 @@ classdef BeamformParameters
 
             bytes = set_bytes(bytes, header.toBytes());
 
-            file_size = offset;
-            assert(file_size == numel(bytes));
+            file_size = bitand((numel(bytes) + uint64(offset_alignment) - 1), bitcmp(uint64(offset_alignment) - 1));;
+            assert(file_size == offset);
         end
     end
 
