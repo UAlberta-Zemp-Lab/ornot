@@ -15,37 +15,33 @@ else
     images = {};
 end
 
-bsp = OGLBeamformerSimpleParameters;
-bsp = updateBspFromBP(bsp, bp);
-bsp = updateBspFromSettings(bsp, settings);
-
-data = bp.data;
-switch class(data)
-    case 'int16'
-        if isreal(data)
-            bsp.data_kind = int32(OGLBeamformerDataKind.Int16);
-        else
-            bsp.data_kind = int32(OGLBeamformerDataKind.Int16Complex);
-            data = reshape([real(data);imag(data)],[],1);
-        end
-    case {'single', 'double'}
-        if isa(data, 'double')
-            data = single(data);
-        end
-        if isreal(data)
-            bsp.data_kind = int32(OGLBeamformerDataKind.Float32);
-        else
-            bsp.data_kind = int32(OGLBeamformerDataKind.Float32Complex);
-            data = reshape([real(data);imag(data)],[],1);
-        end
-end
-
-
-
 for i = 1:prod(images_size)
     [section_index, ensemble_index, region_index] = ind2sub(images_size, i);
 
-    bsp = updateBspFromBPSection(bsp, bp, section_index);
+    bsp = ornot.OGLBeamformerSimpleParametersFromParameters(bp, section_index);
+    bsp = updateBspFromSettings(bsp, settings);
+    bsp = updateBspFilter(bsp, bp, section_index);
+
+    data = bp.data;
+    switch class(data)
+        case 'int16'
+            if isreal(data)
+                bsp.data_kind = int32(OGLBeamformerDataKind.Int16);
+            else
+                bsp.data_kind = int32(OGLBeamformerDataKind.Int16Complex);
+                data = reshape([real(data);imag(data)],[],1);
+            end
+        case {'single', 'double'}
+            if isa(data, 'double')
+                data = single(data);
+            end
+            if isreal(data)
+                bsp.data_kind = int32(OGLBeamformerDataKind.Float32);
+            else
+                bsp.data_kind = int32(OGLBeamformerDataKind.Float32Complex);
+                data = reshape([real(data);imag(data)],[],1);
+            end
+    end
 
     bsp.output_points(1:3) = settings.regions(region_index).output_points;
     bsp.output_points(4) = settings.average_frame;
@@ -60,42 +56,7 @@ end
 
 end
 
-function bsp = updateBspFromBP(bsp, bp)
-arguments (Input)
-    bsp(1,1) OGLBeamformerSimpleParameters
-    bp(1,1) ornot.BeamformParameters
-end
-arguments (Output)
-    bsp(1,1) OGLBeamformerSimpleParameters
-end
-
-bsp.raw_data_dimensions = bp.raw_data_dimension(1:2);
-bsp.decode_mode = bp.decode_mode;
-switch bp.sampling_mode
-    case ZBP.SamplingMode.Standard
-        bsp.sampling_mode = OGLBeamformerSamplingMode.m4X;
-    case ZBP.SamplingMode.Bandpass
-        bsp.sampling_mode = OGLBeamformerSamplingMode.m2X;
-end
-bsp.sampling_frequency = bp.sampling_frequency;
-bsp.demodulation_frequency = bp.demodulation_frequency;
-bsp.speed_of_sound = bp.speed_of_sound;
-bsp.sample_count = bp.sample_count;
-bsp.channel_count = bp.channel_count;
-bsp.acquisition_count = bp.receive_event_count;
-bsp.xdc_transform = bp.transducer_transform_matrix;
-bsp.xdc_element_pitch = bp.transducer_element_pitch;
-bsp.time_offset = bp.time_offset;
-bsp.acquisition_kind = bp.acquisition_kind;
-bsp.contrast_mode = bp.contrast_mode;
-
-bsp.channel_mapping(1:numel(bp.channel_mapping)) = bp.channel_mapping;
-
-bsp.emission_parameters.kind = bp.emission_descriptor.emission_kind;
-bsp.emission_parameters.data = bp.emission_parameters.toBytes();
-end
-
-function bsp = updateBspFromBPSection(bsp, bp, section_number)
+function bsp = updateBspFilter(bsp, bp, section_number)
 arguments (Input)
     bsp(1,1) OGLBeamformerSimpleParameters
     bp(1,1) ornot.BeamformParameters
@@ -105,81 +66,11 @@ arguments (Output)
     bsp(1,1) OGLBeamformerSimpleParameters
 end
 
-if ~isempty(bp.sparse_elements)
-    sparse_elements = reshape(bp.sparse_elements, ...
-        bp.receive_event_count - 1, bp.raw_data_dimension(3));
-    bsp.sparse_elements(1:size(sparse_elements, 1)) ...
-        = sparse_elements(:, section_number);
-end
-
-bsp.contrast_mode = bp.contrast_mode;
-
-switch bsp.acquisition_kind
-    case ZBP.AcquisitionKind.RCA_VLS
-        bsp.single_focus = 0;
-        bsp.single_orientation = 0;
-        bsp.focal_depths(1:numel(bp.focal_depths)) ...
-            = sign(bp.focal_depths(:)').*sqrt(bp.focal_depths(:)'.^2 + bp.origin_offsets(:)'.^2);
-        bsp.steering_angles(1:numel(bp.focal_depths)) ...
-            = atan2d(bp.origin_offsets(:)', -bp.focal_depths(:)');
-        bsp.transmit_receive_orientations(1:numel(bp.transmit_receive_orientations)) = bp.transmit_receive_orientations;
-    case ZBP.AcquisitionKind.RCA_TPW
-        bsp.single_focus = 0;
-        bsp.single_orientation = 0;
-        bsp.focal_depths(:) = inf;
-        bsp.steering_angles(1:numel(bp.tilting_angles)) = bp.tilting_angles;
-        bsp.transmit_receive_orientations(1:numel(bp.transmit_receive_orientations)) = bp.transmit_receive_orientations;
-    case {ZBP.AcquisitionKind.FORCES, ZBP.AcquisitionKind.UFORCES}
-        transducer_transform_matrix = reshape(bp.transducer_transform_matrix, 4, 4);
-        [~, receive_orientation] = ornot.unpackTransmitReceiveOrientation(bp.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation);
-        if receive_orientation == ZBP.RCAOrientation.Rows
-            transducer_transform_matrix(1:2,:) = transducer_transform_matrix(2:-1:1,:);
-        end
-        bsp.xdc_transform = transducer_transform_matrix(:);
-        bsp.single_focus = 1;
-        bsp.single_orientation = 1;
-        bsp.focal_vector = [...
-            bp.acquisition_parameters(section_number).transmit_focus.steering_angle, ...
-            bp.acquisition_parameters(section_number).transmit_focus.focal_depth];
-        bsp.transmit_receive_orientation = ...
-            bp.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
-    otherwise
-        bsp.single_focus = 1;
-        bsp.single_orientation = 1;
-        bsp.focal_vector = [...
-            bp.acquisition_parameters(section_number).transmit_focus.steering_angle, ...
-            bp.acquisition_parameters(section_number).transmit_focus.focal_depth];
-        bsp.transmit_receive_orientation = ...
-            bp.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
-end
-
 demodulate_shader_index = find(bsp.compute_stages == OGLBeamformerShaderStage.Demodulate);
 
-% These are applied at baseband
 if ~isempty(demodulate_shader_index)
     filter_slot = mod(section_number - 1, 4);
-    filter = OGLBeamformerFilter;
-    filter.sampling_frequency = bsp.sampling_frequency / 2;
-    switch class(bp.emission_parameters)
-        case "ZBP.EmissionSineParameters"
-            kaiser                  = OGLBeamformerFilterParameters.Kaiser;
-            kaiser.length           = 36;
-            kaiser.beta             = 5.65;
-            kaiser.cutoff_frequency = 0.5*bp.emission_parameters.frequency;
-
-            filter.kind = OGLBeamformerFilterKind.Kaiser;
-            filter.data = kaiser.toBytes();
-        case "ZBP.EmissionChirpParameters"
-            chirp                   = OGLBeamformerFilterParameters.MatchedChirp;
-            chirp.duration          = bp.emission_parameters.duration;
-            chirp.min_frequency     = bp.emission_parameters.min_frequency - bsp.demodulation_frequency;
-            chirp.max_frequency     = bp.emission_parameters.max_frequency - bsp.demodulation_frequency;
-
-            filter.kind    = OGLBeamformerFilterKind.MatchedChirp;
-            filter.data    = chirp.toBytes();
-            filter.complex = 1;
-    end
-
+    filter      = ornot.OGLBeamformerFilterForParameters(bp);
     try
         assert(calllib('ogl_beamformer_lib', 'beamformer_create_filter', struct(filter), filter_slot, 0));
     catch ME
