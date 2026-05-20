@@ -31,7 +31,7 @@ frame_number = 0;
 data_filename = fullfile(data_folder, sprintf("%s_%02d.zst", filename, frame_number));
 
 if isempty(bp.data)
-    bp = ornot.GetData(bp, data_filename);
+    bp = ornot.DataFromFile(bp, data_filename);
 end
 
 settings = ornot.BeamformSettings;
