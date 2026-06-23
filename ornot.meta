@@ -28,6 +28,8 @@
 	EPIC_UHERCULES
 	Flash
 	HERO_PA
+	HEXDoppler
+	XDoppler
 ])
 
 @Enumeration(ContrastMode [
@@ -186,4 +188,16 @@
 @Struct HERO_PAParameters
 {
 	[transmit_receive_orientation U32 1]
+}
+
+@Struct HEXDopplerParameters
+{
+	[bin_count S32 2]
+	[bin_size  S32 2]
+}
+
+@Struct XDopplerParameters
+{
+	[angle_count           S32 2]
+	[tilting_angles_offset S32 1]
 }

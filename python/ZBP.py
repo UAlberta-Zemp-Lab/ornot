@@ -34,6 +34,8 @@ class ZBP:
 	AcquisitionKind_EPIC_UHERCULES = 9
 	AcquisitionKind_Flash          = 10
 	AcquisitionKind_HERO_PA        = 11
+	AcquisitionKind_HEXDoppler     = 12
+	AcquisitionKind_XDoppler       = 13
 
 	# ContrastMode
 	ContrastMode_None = 0
@@ -496,4 +498,48 @@ class ZBP:
 		def to_bytes(self):
 			result = bytearray(ZBP.HERO_PAParameters.byte_size())
 			struct.pack_into('<1L', result, 0,  self.transmit_receive_orientation)
+			return result
+
+	class HEXDopplerParameters:
+		def __init__(self, bin_count=[0] * 2, bin_size=[0] * 2):
+			self.bin_count = bin_count
+			self.bin_size  = bin_size
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.bin_count  = struct.unpack_from('<2l', bytes, 0)
+			result.bin_size   = struct.unpack_from('<2l', bytes, 8)
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 16
+
+		def to_bytes(self):
+			result = bytearray(ZBP.HEXDopplerParameters.byte_size())
+			struct.pack_into('<2l', result, 0, *self.bin_count)
+			struct.pack_into('<2l', result, 8, *self.bin_size)
+			return result
+
+	class XDopplerParameters:
+		def __init__(self, angle_count=[0] * 2, tilting_angles_offset=0):
+			self.angle_count           = angle_count
+			self.tilting_angles_offset = tilting_angles_offset
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.angle_count            = struct.unpack_from('<2l', bytes, 0)
+			result.tilting_angles_offset  = struct.unpack_from('<1l', bytes, 8)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 12
+
+		def to_bytes(self):
+			result = bytearray(ZBP.XDopplerParameters.byte_size())
+			struct.pack_into('<2l', result, 0, *self.angle_count)
+			struct.pack_into('<1l', result, 8,  self.tilting_angles_offset)
 			return result

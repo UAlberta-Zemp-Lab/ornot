@@ -40,6 +40,8 @@ typedef enum {
 	ZBP_AcquisitionKind_EPIC_UHERCULES = 9,
 	ZBP_AcquisitionKind_Flash          = 10,
 	ZBP_AcquisitionKind_HERO_PA        = 11,
+	ZBP_AcquisitionKind_HEXDoppler     = 12,
+	ZBP_AcquisitionKind_XDoppler       = 13,
 	ZBP_AcquisitionKind_Count,
 } ZBP_AcquisitionKind;
 
@@ -185,3 +187,13 @@ typedef struct ZBP_VLSParameters {
 typedef struct ZBP_HERO_PAParameters {
 	uint32_t transmit_receive_orientation;
 } ZBP_HERO_PAParameters;
+
+typedef struct ZBP_HEXDopplerParameters {
+	int32_t bin_count[2];
+	int32_t bin_size[2];
+} ZBP_HEXDopplerParameters;
+
+typedef struct ZBP_XDopplerParameters {
+	int32_t angle_count[2];
+	int32_t tilting_angles_offset;
+} ZBP_XDopplerParameters;

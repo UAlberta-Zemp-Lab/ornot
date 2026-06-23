@@ -155,7 +155,7 @@ classdef BeamformParameters
                         assert(numel(bp.tilting_angles) == receive_count);
                         bp.acquisition_parameters.tilting_angles_offset = offset;
                         offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters.tilting_angles_offset  );
+                        bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters.tilting_angles_offset);
 
                         assert(~isempty(bp.transmit_receive_orientations));
                         assert(numel(bp.transmit_receive_orientations) == receive_count);
@@ -172,6 +172,23 @@ classdef BeamformParameters
                     case ZBP.AcquisitionKind.HERO_PA
                         assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
                         assert(isscalar(bp.acquisition_parameters));
+                    case ZBP.AcquisitionKind.HEXDoppler
+                        assert(isa(bp.acquisition_parameters, "ZBP.HEXDopplerParameters"));
+                        assert(isscalar(bp.acquisition_parameters));
+
+                        assert(sum(bp.acquisition_parameters.bin_count) == bp.receive_event_count);
+                    case ZBP.AcquisitionKind.XDoppler
+                        assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
+                        assert(isscalar(bp.acquisition_parameters));
+
+                        receive_count = bp.receive_event_count;
+                        assert(sum(bp.acquisition_parameters.angle_count) == receive_count);
+
+                        assert(~isempty(bp.tilting_angles));
+                        assert(numel(bp.tilting_angles) == receive_count);
+                        bp.acquisition_parameters.tilting_angles_offset = offset;
+                        offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters.tilting_angles_offset);
                 end
 
                 switch bp.acquisition_kind
@@ -189,6 +206,10 @@ classdef BeamformParameters
                         assert(isa(bp.acquisition_parameters, "ZBP.uHERCULESParameters"));
                     case ZBP.AcquisitionKind.HERO_PA
                         assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
+                    case ZBP.AcquisitionKind.HEXDoppler
+                        assert(isa(bp.acquisition_parameters, "ZBP.HEXDopplerParameters"));
+                    case ZBP.AcquisitionKind.XDoppler
+                        assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
                     otherwise
                         assert(false, "Unsupported Acquisition Kind")
                 end
@@ -441,6 +462,12 @@ classdef BeamformParameters
                             bp.acquisition_parameters(i) = ZBP.HERO_PAParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.HERO_PAParameters.byteSize)));
                             offset = offset + ZBP.HERO_PAParameters.byteSize;
                         end
+                    case ZBP.AcquisitionKind.HEXDoppler
+                        bp.acquisition_parameters = ZBP.HEXDopplerParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.HEXDopplerParameters.byteSize)));
+                    case ZBP.AcquisitionKind.XDoppler
+                        bp.acquisition_parameters = ZBP.XDopplerParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.XDopplerParameters.byteSize)));
+                        receive_count = header.receive_event_count;
+                        bp.tilting_angles = typecast(bytes(uint32(bp.acquisition_parameters.tilting_angles_offset) + (1:(4*receive_count))), "single");
                 end
             end
 

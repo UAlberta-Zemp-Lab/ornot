@@ -16,5 +16,7 @@ classdef AcquisitionKind < int32
 		EPIC_UHERCULES (9)
 		Flash          (10)
 		HERO_PA        (11)
+		HEXDoppler     (12)
+		XDoppler       (13)
 	end
 end

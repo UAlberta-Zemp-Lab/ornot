@@ -44,6 +44,8 @@ typedef enum {
 	ZBP_AcquisitionKind_EPIC_UHERCULES = 9,
 	ZBP_AcquisitionKind_Flash          = 10,
 	ZBP_AcquisitionKind_HERO_PA        = 11,
+	ZBP_AcquisitionKind_HEXDoppler     = 12,
+	ZBP_AcquisitionKind_XDoppler       = 13,
 	ZBP_AcquisitionKind_Count,
 } ZBP_AcquisitionKind;
 ```
@@ -662,6 +664,48 @@ receive phase of an emission. Bits 0-3 contain the Receive
 Orientation. Bits 4-7 contain the Transmit Orientation. The value
 of each 4 bit number corresponds to a [RCA Orientation](#rca-orientation).
 The upper 24 bits are currently unused padding bits.
+
+### HEXDoppler Parameters
+
+```c
+typedef struct ZBP_HEXDopplerParameters {
+	int32_t bin_count[2];
+	int32_t bin_size[2];
+} ZBP_HEXDopplerParameters;
+```
+
+A structure containing the acquisition parameters when the
+[`acquisition_mode`](#acquisition_mode) is [HEXDoppler](#acquisition-kind).
+
+#### `bin_count`
+
+The number of bins in each orientation. Rows first, then Columns. Must add up to [`receive_event_count`](#receive_event_count).
+
+#### `bin_size`
+
+The number elements in a bin in each orientation. Rows transmits first, then Columns.
+
+### XDoppler Parameters
+
+```c
+typedef struct ZBP_XDopplerParameters {
+	int32_t angle_count[2];
+	int32_t tilting_angles_offset;
+} ZBP_XDopplerParameters;
+```
+
+A structure containing the acquisition parameters when the
+[`acquisition_mode`](#acquisition_mode) is
+[XDoppler](#acquisition-kind).
+
+#### `angle_count`
+
+The number of angle transmits in each orientation. Rows transmits first, then Columns. Must add up to [`receive_event_count`](#receive_event_count).
+
+#### `tilting_angles_offset`
+
+An offset to an array of `float32_t` floats describing the tilting
+angles in degrees for each emission.
 
 ### Header Version 1
 
