@@ -68,11 +68,7 @@ switch bsp.acquisition_kind
             xdc_transform(1:2,:) = xdc_transform(2:-1:1,:);
         end
         bsp.xdc_transform      = xdc_transform(:);
-        bsp.single_focus       = 1;
         bsp.single_orientation = 1;
-        bsp.focal_vector = [...
-            parameters.acquisition_parameters(section_number).transmit_focus.steering_angle, ...
-            parameters.acquisition_parameters(section_number).transmit_focus.focal_depth];
         bsp.transmit_receive_orientation = ...
             parameters.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
     otherwise
