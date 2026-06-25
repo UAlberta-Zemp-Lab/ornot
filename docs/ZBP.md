@@ -643,6 +643,26 @@ the integer contain the Receive Orientation. Bits 4-7 contain the
 Transmit Orientation. The value of each 4 bit number corresponds
 to a [RCA Orientation](#rca-orientation).
 
+### HERO PA Parameters
+
+```c
+typedef struct ZBP_HERO_PAParameters {
+	uint32_t transmit_receive_orientation;
+} ZBP_HERO_PAParameters;
+```
+
+A structure containing the acquisition parameters when the
+[`acquisition_mode`](#acquisition_mode) is
+[HERO_PA](#acquisition-kind).
+
+#### `transmit_receive_orientation`
+
+A field encoding the orientation of both the transmit and the
+receive phase of an emission. Bits 0-3 contain the Receive
+Orientation. Bits 4-7 contain the Transmit Orientation. The value
+of each 4 bit number corresponds to a [RCA Orientation](#rca-orientation).
+The upper 24 bits are currently unused padding bits.
+
 ### Header Version 1
 
 ```c

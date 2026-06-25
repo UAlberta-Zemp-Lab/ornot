@@ -478,3 +478,22 @@ class ZBP:
 			struct.pack_into('<1l', result, 4,  self.origin_offsets_offset)
 			struct.pack_into('<1l', result, 8,  self.transmit_receive_orientations_offset)
 			return result
+
+	class HERO_PAParameters:
+		def __init__(self, transmit_receive_orientation=0):
+			self.transmit_receive_orientation = transmit_receive_orientation
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.transmit_receive_orientation  = struct.unpack_from('<1L', bytes, 0)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 4
+
+		def to_bytes(self):
+			result = bytearray(ZBP.HERO_PAParameters.byte_size())
+			struct.pack_into('<1L', result, 0,  self.transmit_receive_orientation)
+			return result

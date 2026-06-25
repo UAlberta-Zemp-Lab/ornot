@@ -71,6 +71,10 @@ switch bsp.acquisition_kind
         bsp.single_orientation = 1;
         bsp.transmit_receive_orientation = ...
             parameters.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
+    case ZBP.AcquisitionKind.HERO_PA
+        bsp.single_orientation = 1;
+        bsp.transmit_receive_orientation = ...
+            parameters.acquisition_parameters(section_number).transmit_receive_orientation;
     otherwise
         bsp.single_focus       = 1;
         bsp.single_orientation = 1;

@@ -182,3 +182,8 @@
 	[origin_offsets_offset                S32]
 	[transmit_receive_orientations_offset S32]
 }
+
+@Struct HERO_PAParameters
+{
+	[transmit_receive_orientation U32 1]
+}

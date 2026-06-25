@@ -181,3 +181,7 @@ typedef struct ZBP_VLSParameters {
 	int32_t origin_offsets_offset;
 	int32_t transmit_receive_orientations_offset;
 } ZBP_VLSParameters;
+
+typedef struct ZBP_HERO_PAParameters {
+	uint32_t transmit_receive_orientation;
+} ZBP_HERO_PAParameters;

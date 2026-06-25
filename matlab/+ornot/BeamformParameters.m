@@ -169,6 +169,9 @@ classdef BeamformParameters
                             offset = increment_offset(offset, 2*numel(bp.sparse_elements(:,i)), offset_alignment);
                             bytes = set_bytes(bytes, typecast(bp.sparse_elements(:,i), "uint8"), bp.acquisition_parameters(i).sparse_elements_offset);
                         end
+                    case ZBP.AcquisitionKind.HERO_PA
+                        assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
+                        assert(isscalar(bp.acquisition_parameters));
                 end
 
                 switch bp.acquisition_kind
@@ -184,6 +187,8 @@ classdef BeamformParameters
                         assert(isa(bp.acquisition_parameters, "ZBP.HERCULESParameters"));
                     case ZBP.AcquisitionKind.UHERCULES
                         assert(isa(bp.acquisition_parameters, "ZBP.uHERCULESParameters"));
+                    case ZBP.AcquisitionKind.HERO_PA
+                        assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
                     otherwise
                         assert(false, "Unsupported Acquisition Kind")
                 end
@@ -427,6 +432,14 @@ classdef BeamformParameters
                                 bp.sparse_elements(:,i) = typecast(bytes(uint32(sparse_elements_offset) + (1:(2*sparse_element_count))), 'uint16');
                             else
                             end
+                        end
+                    case ZBP.AcquisitionKind.HERO_PA
+                        section_count = header.raw_data_dimension(3);
+                        offset = uint32(header.acquisition_parameters_offset);
+                        bp.acquisition_parameters = createArray([section_count, 1], "ZBP.HERO_PAParameters");
+                        for i = 1:section_count
+                            bp.acquisition_parameters(i) = ZBP.HERO_PAParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.HERO_PAParameters.byteSize)));
+                            offset = offset + ZBP.HERO_PAParameters.byteSize;
                         end
                 end
             end
