@@ -113,7 +113,7 @@
 	[transducer_element_pitch      F32  2]
 	[time_offset                   F32  1]
 	[group_acquisition_time        F32  1]
-	[ensemble_repitition_interval  F32  1]
+	[ensemble_repetition_interval  F32  1]
 	[acquisition_mode              S32  1]
 	[acquisition_parameters_offset S32  1]
 	[contrast_mode                 S32  1]

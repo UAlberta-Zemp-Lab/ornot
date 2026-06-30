@@ -24,7 +24,7 @@ classdef HeaderV2
 		transducer_element_pitch(1,2)      single
 		time_offset(1,1)                   single
 		group_acquisition_time(1,1)        single
-		ensemble_repitition_interval(1,1)  single
+		ensemble_repetition_interval(1,1)  single
 		acquisition_mode(1,1)              int32
 		acquisition_parameters_offset(1,1) int32
 		contrast_mode(1,1)                 int32
@@ -65,7 +65,7 @@ classdef HeaderV2
 			bytes(145:152) = typecast(obj.transducer_element_pitch(:),      'uint8');
 			bytes(153:156) = typecast(obj.time_offset(:),                   'uint8');
 			bytes(157:160) = typecast(obj.group_acquisition_time(:),        'uint8');
-			bytes(161:164) = typecast(obj.ensemble_repitition_interval(:),  'uint8');
+			bytes(161:164) = typecast(obj.ensemble_repetition_interval(:),  'uint8');
 			bytes(165:168) = typecast(obj.acquisition_mode(:),              'uint8');
 			bytes(169:172) = typecast(obj.acquisition_parameters_offset(:), 'uint8');
 			bytes(173:176) = typecast(obj.contrast_mode(:),                 'uint8');
@@ -103,7 +103,7 @@ classdef HeaderV2
 			out.transducer_element_pitch(:)      = typecast(bytes(145:152), 'single');
 			out.time_offset(:)                   = typecast(bytes(153:156), 'single');
 			out.group_acquisition_time(:)        = typecast(bytes(157:160), 'single');
-			out.ensemble_repitition_interval(:)  = typecast(bytes(161:164), 'single');
+			out.ensemble_repetition_interval(:)  = typecast(bytes(161:164), 'single');
 			out.acquisition_mode(:)              = typecast(bytes(165:168), 'int32');
 			out.acquisition_parameters_offset(:) = typecast(bytes(169:172), 'int32');
 			out.contrast_mode(:)                 = typecast(bytes(173:176), 'int32');

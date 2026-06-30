@@ -122,7 +122,7 @@ typedef struct ZBP_HeaderV2 {
 	float    transducer_element_pitch[2];
 	float    time_offset;
 	float    group_acquisition_time;
-	float    ensemble_repitition_interval;
+	float    ensemble_repetition_interval;
 	int32_t  acquisition_mode;
 	int32_t  acquisition_parameters_offset;
 	int32_t  contrast_mode;

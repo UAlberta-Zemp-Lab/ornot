@@ -160,7 +160,7 @@ class ZBP:
 			return result
 
 	class HeaderV2:
-		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_kind=0, raw_data_offset=0, raw_data_compression_kind=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, demodulation_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_transform_matrix=[0] * 16, transducer_element_pitch=[0] * 2, time_offset=0, group_acquisition_time=0, ensemble_repitition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_parameters_offset=0, emission_descriptors_offset=0):
+		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_kind=0, raw_data_offset=0, raw_data_compression_kind=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, demodulation_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_transform_matrix=[0] * 16, transducer_element_pitch=[0] * 2, time_offset=0, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_parameters_offset=0, emission_descriptors_offset=0):
 			self.magic                         = magic
 			self.major                         = major
 			self.minor                         = minor
@@ -181,7 +181,7 @@ class ZBP:
 			self.transducer_element_pitch      = transducer_element_pitch
 			self.time_offset                   = time_offset
 			self.group_acquisition_time        = group_acquisition_time
-			self.ensemble_repitition_interval  = ensemble_repitition_interval
+			self.ensemble_repetition_interval  = ensemble_repetition_interval
 			self.acquisition_mode              = acquisition_mode
 			self.acquisition_parameters_offset = acquisition_parameters_offset
 			self.contrast_mode                 = contrast_mode
@@ -211,7 +211,7 @@ class ZBP:
 			result.transducer_element_pitch       = struct.unpack_from('<2f',  bytes, 144)
 			result.time_offset                    = struct.unpack_from('<1f',  bytes, 152)[0]
 			result.group_acquisition_time         = struct.unpack_from('<1f',  bytes, 156)[0]
-			result.ensemble_repitition_interval   = struct.unpack_from('<1f',  bytes, 160)[0]
+			result.ensemble_repetition_interval   = struct.unpack_from('<1f',  bytes, 160)[0]
 			result.acquisition_mode               = struct.unpack_from('<1l',  bytes, 164)[0]
 			result.acquisition_parameters_offset  = struct.unpack_from('<1l',  bytes, 168)[0]
 			result.contrast_mode                  = struct.unpack_from('<1l',  bytes, 172)[0]
@@ -245,7 +245,7 @@ class ZBP:
 			struct.pack_into('<2f',  result, 144, *self.transducer_element_pitch)
 			struct.pack_into('<1f',  result, 152,  self.time_offset)
 			struct.pack_into('<1f',  result, 156,  self.group_acquisition_time)
-			struct.pack_into('<1f',  result, 160,  self.ensemble_repitition_interval)
+			struct.pack_into('<1f',  result, 160,  self.ensemble_repetition_interval)
 			struct.pack_into('<1l',  result, 164,  self.acquisition_mode)
 			struct.pack_into('<1l',  result, 168,  self.acquisition_parameters_offset)
 			struct.pack_into('<1l',  result, 172,  self.contrast_mode)

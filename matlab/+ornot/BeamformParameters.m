@@ -16,7 +16,7 @@ classdef BeamformParameters
         transducer_element_pitch(1,2)      single
         time_offset(1,1)                   single
         group_acquisition_time(1,1)        single
-        ensemble_repitition_interval(1,1)  single
+        ensemble_repetition_interval(1,1)  single
         acquisition_kind(1,1)              ZBP.AcquisitionKind
         contrast_mode(1,1)                 ZBP.ContrastMode
         emission_descriptor ZBP.EmissionDescriptor
@@ -77,7 +77,7 @@ classdef BeamformParameters
             header.transducer_element_pitch = bp.transducer_element_pitch;
             header.time_offset = bp.time_offset;
             header.group_acquisition_time = bp.group_acquisition_time;
-            header.ensemble_repitition_interval = bp.ensemble_repitition_interval;
+            header.ensemble_repetition_interval = bp.ensemble_repetition_interval;
             header.acquisition_mode = int32(bp.acquisition_kind);
             header.contrast_mode = int32(bp.contrast_mode);
 
@@ -346,7 +346,7 @@ classdef BeamformParameters
             bp.transducer_element_pitch = header.transducer_element_pitch;
             bp.time_offset = header.time_offset;
             bp.group_acquisition_time = header.group_acquisition_time;
-            bp.ensemble_repitition_interval = header.ensemble_repitition_interval;
+            bp.ensemble_repetition_interval = header.ensemble_repetition_interval;
             bp.acquisition_kind = header.acquisition_mode;
             bp.contrast_mode = header.contrast_mode;
 

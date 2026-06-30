@@ -219,7 +219,7 @@ class ornot:
 
 			    group_acquisition_time       (float)      [s] time between each acquisition group
 			                                              (if raw_data_dimension[2] > 0)
-			    ensemble_repitition_interval (float)      [s] time between ensembles
+			    ensemble_repetition_interval (float)      [s] time between ensembles
 			                                              (if raw_data_dimension[3] > 0)
 
 			    acquisition_kind             (uint32)     ZBP.AcquisitionKind
@@ -372,7 +372,7 @@ class ornot:
 					result.sampling_mode                = header.sampling_mode
 
 					result.group_acquisition_time       = header.group_acquisition_time
-					result.ensemble_repitition_interval = header.ensemble_repitition_interval
+					result.ensemble_repetition_interval = header.ensemble_repetition_interval
 
 					result.acquisition_kind             = header.acquisition_mode
 					result.contrast_mode                = header.contrast_mode
