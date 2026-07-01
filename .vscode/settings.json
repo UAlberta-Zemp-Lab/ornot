@@ -1,0 +1,12 @@
+{
+    "[c]": {
+        "editor.formatOnSave": false,
+        "editor.formatOnType": false,
+        "editor.formatOnPaste": false
+    },
+    "[markdown]": {
+        "editor.formatOnSave": false,
+        "editor.formatOnType": false,
+        "editor.formatOnPaste": false
+    }
+}
