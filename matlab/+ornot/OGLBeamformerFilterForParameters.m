@@ -20,8 +20,8 @@ switch class(bp.emission_parameters)
     case "ZBP.EmissionChirpParameters"
         chirp                   = OGLBeamformerFilterParameters.MatchedChirp;
         chirp.duration          = bp.emission_parameters.duration;
-        chirp.min_frequency     = bp.emission_parameters.min_frequency - bsp.demodulation_frequency;
-        chirp.max_frequency     = bp.emission_parameters.max_frequency - bsp.demodulation_frequency;
+        chirp.min_frequency     = bp.emission_parameters.min_frequency - bp.demodulation_frequency;
+        chirp.max_frequency     = bp.emission_parameters.max_frequency - bp.demodulation_frequency;
 
         filter.kind    = OGLBeamformerFilterKind.MatchedChirp;
         filter.data    = chirp.toBytes();
