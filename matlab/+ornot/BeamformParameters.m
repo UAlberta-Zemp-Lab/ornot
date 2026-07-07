@@ -19,8 +19,10 @@ classdef BeamformParameters
         ensemble_repetition_interval(1,1)  single
         acquisition_kind(1,1)              ZBP.AcquisitionKind
         contrast_mode(1,1)                 ZBP.ContrastMode
-        emission_descriptor ZBP.EmissionDescriptor
-        emission_parameters
+        emission_descriptors uint8
+        % NOTE (DD): MATLAB won't allow for heterogenous arrays, without the classes being specifically defined as subclasses of a common superclass.
+        % This means that we can't load emission parameters of different types into a single array, so we will load them into a cell array instead.
+        emission_parameters cell
         contrast_parameters
         channel_mapping uint16
         acquisition_parameters
@@ -86,22 +88,32 @@ classdef BeamformParameters
             offset_alignment = ZBP.Constants.OffsetAlignment;
             offset = increment_offset(0, header.byteSize, offset_alignment);
 
-            if ~isempty(bp.emission_descriptor)
-                assert(~isempty(bp.emission_parameters));
-                header.emission_descriptors_offset = offset;
-                offset = increment_offset(offset, bp.emission_descriptor.byteSize, offset_alignment);
-                bp.emission_descriptor.parameters_offset = offset;
-                offset = increment_offset(offset, bp.emission_parameters.byteSize, offset_alignment);
-                switch bp.emission_descriptor.emission_kind
-                    case ZBP.EmissionKind.Sine
-                        assert(isa(bp.emission_parameters, "ZBP.EmissionSineParameters"));
-                    case ZBP.EmissionKind.Chirp
-                        assert(isa(bp.emission_parameters, "ZBP.EmissionChirpParameters"));
-                    otherwise
-                        assert(false, "Unsupported Emission Kind");
+            if ~isempty(bp.emission_descriptors)
+                parameterOffsets = zeros(1, numel(bp.emission_parameters), 'uint32');
+                parameterOffset = offset;
+                for i = 1:numel(bp.emission_parameters)
+                    parameterOffsets(i) = parameterOffset;
+                    parameterOffset = increment_offset(parameterOffset, bp.emission_parameters{i}.byteSize, offset_alignment);
+                    bytes = set_bytes(bytes, bp.emission_parameters{i}.toBytes(), parameterOffsets(i));
                 end
-                bytes = set_bytes(bytes, bp.emission_descriptor.toBytes(), header.emission_descriptors_offset);
-                bytes = set_bytes(bytes, bp.emission_parameters.toBytes(), bp.emission_descriptor.parameters_offset);
+                offset = parameterOffset;
+                header.emission_descriptors_offset = offset;
+                for i = 1:numel(bp.emission_descriptors)
+                    emissionDescriptor = ZBP.EmissionDescriptor();
+                    assert(bp.emission_descriptors(i) <= numel(bp.emission_parameters), "Emission Descriptor Index Out of Range");
+                    emissionParameter = bp.emission_parameters{bp.emission_descriptors(i)};
+                    switch class(emissionParameter)
+                        case ZBP.EmissionSineParameters
+                            emissionDescriptor.emission_kind = ZBP.EmissionKind.Sine;
+                        case ZBP.EmissionChirpParameters
+                            emissionDescriptor.emission_kind = ZBP.EmissionKind.Chirp;
+                        otherwise
+                            assert(false, "Unsupported Emission");
+                    end
+                    emissionDescriptor.parameters_offset = parameterOffsets(bp.emission_descriptors(i));
+                    bytes = set_bytes(bytes, emissionDescriptor.toBytes(), offset);
+                    offset = increment_offset(offset, bp.emission_descriptors(i).byteSize, offset_alignment);
+                end
             else
                 header.emission_descriptors_offset = -1;
             end
@@ -317,7 +329,7 @@ classdef BeamformParameters
             emission_parameters = ZBP.EmissionSineParameters;
             emission_parameters.frequency = bp.demodulation_frequency;
             emission_parameters.cycles = 1;
-            bp.emission_parameters = emission_parameters;
+            bp.emission_parameters = {emission_parameters};
             bp.channel_mapping = bpV1.channel_mapping;
 
             switch bp.acquisition_kind
@@ -385,12 +397,25 @@ classdef BeamformParameters
             bp.contrast_mode = header.contrast_mode;
 
             if header.emission_descriptors_offset >= 0
-                bp.emission_descriptor = ZBP.EmissionDescriptor.fromBytes(bytes(uint32(header.emission_descriptors_offset) + (1:ZBP.EmissionDescriptor.byteSize)));
-                switch bp.emission_descriptor.emission_kind
-                    case ZBP.EmissionKind.Sine
-                        bp.emission_parameters = ZBP.EmissionSineParameters.fromBytes(bytes(uint32(bp.emission_descriptor.parameters_offset) + (1:ZBP.EmissionSineParameters.byteSize)));
-                    case ZBP.EmissionKind.Chirp
-                        bp.emission_parameters = ZBP.EmissionChirpParameters.fromBytes(bytes(uint32(bp.emission_descriptor.parameters_offset) + (1:ZBP.EmissionChirpParameters.byteSize)));
+                section_count = header.raw_data_dimension(3);
+                emissionDescriptors = createArray([section_count, 1], "ZBP.EmissionDescriptor");
+                offset = header.emission_descriptors_offset;
+                for i = 1:section_count
+                    emissionDescriptors(i) = ZBP.EmissionDescriptor.fromBytes(bytes(offset + (1:ZBP.EmissionDescriptor.byteSize)));
+                    offset = offset + ZBP.EmissionDescriptor.byteSize;
+                end
+                [uniqueParameterOffsets, descriptorIndices, bp.emission_descriptors] = unique([emissionDescriptors.parameters_offset]);
+                parameterKinds = [emissionDescriptors(descriptorIndices).emission_kind];
+                bp.emission_parameters = cell(numel(uniqueParameterOffsets), 1);
+                for i = 1:numel(uniqueParameterOffsets)
+                    switch parameterKinds(i)
+                        case ZBP.EmissionKind.Sine
+                            bp.emission_parameters{i} = ZBP.EmissionSineParameters.fromBytes(...
+                                bytes(uint32(uniqueParameterOffsets(i)) + (1:ZBP.EmissionSineParameters.byteSize)));
+                        case ZBP.EmissionKind.Chirp
+                            bp.emission_parameters{i} = ZBP.EmissionChirpParameters.fromBytes(...
+                                bytes(uint32(uniqueParameterOffsets(i)) + (1:ZBP.EmissionChirpParameters.byteSize)));
+                    end
                 end
             end
 

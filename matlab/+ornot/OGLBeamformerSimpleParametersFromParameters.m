@@ -23,8 +23,22 @@ bsp.sample_count           = parameters.sample_count;
 bsp.channel_count          = parameters.channel_count;
 bsp.acquisition_count      = parameters.receive_event_count;
 
-bsp.emission_parameters.kind = parameters.emission_descriptor.emission_kind;
-bsp.emission_parameters.data = parameters.emission_parameters.toBytes();
+if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_parameters)
+    emissionDescriptor = parameters.emission_descriptors(section_number);
+    emissionParameters = parameters.emission_parameters{emissionDescriptor};
+    switch class(emissionParameters)
+        case 'ZBP.EmissionSineParameters'
+            bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Sine);
+            bsp.time_offset = bsp.time_offset + emissionParameters.cycles / emissionParameters.frequency / 2;
+        case 'ZBP.EmissionChirpParameters'
+            bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Chirp);
+            bsp.time_offset = bsp.time_offset + emissionParameters.duration / 2;
+        otherwise
+            error('ornot:OGLBeamformerSimpleParametersFromParameters:InvalidParameter', ...
+                "Unsupported EmissionType!");
+    end
+    bsp.emission_parameters.data = emissionParameters.toBytes();
+end
 
 switch parameters.sampling_mode
     case ZBP.SamplingMode.Standard
