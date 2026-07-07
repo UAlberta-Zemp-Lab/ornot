@@ -13,15 +13,16 @@ switch bp.raw_data_compression_kind
 		data_byte_size = ornot.dataKindByteCount(bp.raw_data_kind) * data_point_count;
 
 		data = libpointer('uint8Ptr', zeros(1, data_byte_size, 'uint8'));
-		if ~calllib('ornot', 'unpack_zstd_compressed_data', bytes, numel(bytes), data, data_byte_size)
+        if ~calllib('ornot', 'unpack_zstd_compressed_data', bytes, numel(bytes), data, data_byte_size)
 			error('ornot: failed to decompress data');
-		end
-	case ZBP.DataCompressionKind.None
+        end
+        data = data.Value;
+    case ZBP.DataCompressionKind.None
+        data = bytes;
 	otherwise
 		error('ornot: unsupported data compression kind');
 end
 
-data = data.Value;
 switch bp.raw_data_kind
 	case ZBP.DataKind.Int16
 		bp.data = typecast(data, 'int16');
