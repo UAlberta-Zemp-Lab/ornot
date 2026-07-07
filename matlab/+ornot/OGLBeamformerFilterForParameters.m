@@ -1,27 +1,29 @@
-function filter = OGLBeamformerFilterForParameters(bp)
+function filter = OGLBeamformerFilterForParameters(samplingFrequency, demodulationFrequency, emissionParameters)
 arguments (Input)
-    bp(1,1) ornot.BeamformParameters
+    samplingFrequency(1,1) single {mustBePositive}
+    demodulationFrequency(1,1) single {mustBeNonnegative}
+    emissionParameters(1,1) {mustBeA(emissionParameters, ["ZBP.EmissionSineParameters", "ZBP.EmissionChirpParameters"])}
 end
 arguments (Output)
     filter(1,1) OGLBeamformerFilter
 end
 
 filter = OGLBeamformerFilter;
-filter.sampling_frequency = bp.sampling_frequency / 2;
-switch class(bp.emission_parameters)
+filter.sampling_frequency = samplingFrequency / 2;
+switch class(emissionParameters)
     case "ZBP.EmissionSineParameters"
         kaiser                  = OGLBeamformerFilterParameters.Kaiser;
         kaiser.length           = 36;
         kaiser.beta             = 5.65;
-        kaiser.cutoff_frequency = 0.5*bp.emission_parameters.frequency;
+        kaiser.cutoff_frequency = 0.5*emissionParameters.frequency;
 
         filter.kind = OGLBeamformerFilterKind.Kaiser;
         filter.data = kaiser.toBytes();
     case "ZBP.EmissionChirpParameters"
         chirp                   = OGLBeamformerFilterParameters.MatchedChirp;
-        chirp.duration          = bp.emission_parameters.duration;
-        chirp.min_frequency     = bp.emission_parameters.min_frequency - bp.demodulation_frequency;
-        chirp.max_frequency     = bp.emission_parameters.max_frequency - bp.demodulation_frequency;
+        chirp.duration          = emissionParameters.duration;
+        chirp.min_frequency     = emissionParameters.min_frequency - demodulationFrequency;
+        chirp.max_frequency     = emissionParameters.max_frequency - demodulationFrequency;
 
         filter.kind    = OGLBeamformerFilterKind.MatchedChirp;
         filter.data    = chirp.toBytes();
