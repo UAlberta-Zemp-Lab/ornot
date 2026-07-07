@@ -399,9 +399,9 @@ is `None` this offset can be -1.
 #### `emission_descriptors_offset`
 
 An offset to an array of [Emission Descriptor](#emission-descriptor)
-structures. The number of emission descriptors present is
+structures. If not -1, the number of emission descriptors present is
 determined by the number of [Data Frames](#raw_data_dimension)
-present. This offset is required to always be valid.
+present. 
 
 ### Emission Descriptor
 
