@@ -61,7 +61,7 @@ classdef BeamformParameters
             header = ZBP.HeaderV2;
             header.magic = ZBP.Constants.HeaderMagic;
             header.major = 2;
-            header.minor = 0;
+            header.minor = 1;
             header.raw_data_dimension = bp.raw_data_dimension;
             header.raw_data_kind = int32(bp.raw_data_kind);
             header.raw_data_compression_kind = int32(bp.raw_data_compression_kind);
