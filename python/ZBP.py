@@ -543,3 +543,22 @@ class ZBP:
 			struct.pack_into('<2l', result, 0, *self.angle_count)
 			struct.pack_into('<1l', result, 8,  self.tilting_angles_offset)
 			return result
+
+	class EPIC_FORCESParameters:
+		def __init__(self, transmit_foci_offset=0):
+			self.transmit_foci_offset = transmit_foci_offset
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.transmit_foci_offset  = struct.unpack_from('<1l', bytes, 0)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 4
+
+		def to_bytes(self):
+			result = bytearray(ZBP.EPIC_FORCESParameters.byte_size())
+			struct.pack_into('<1l', result, 0,  self.transmit_foci_offset)
+			return result

@@ -71,6 +71,22 @@ switch bsp.acquisition_kind
         bsp.single_orientation = 1;
         bsp.transmit_receive_orientation = ...
             parameters.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
+    % TODO: Temporary approximation for visualization purposes.
+    case ZBP.AcquisitionKind.EPIC_FORCES
+        bsp.acquisition_kind = ZBP.AcquisitionKind.FORCES;
+        bsp.single_focus       = 1;
+        bsp.single_orientation = 1;
+
+        transmitFoci = [parameters.transmit_foci(section_number, :)];
+        bsp.focal_depths(1:bsp.acquisition_count) = [transmitFoci.focal_depth];
+        bsp.steering_angles(1:bsp.acquisition_count) = [transmitFoci.steering_angle];
+        bsp.transmit_receive_orientations(1:bsp.acquisition_count) = [transmitFoci.transmit_receive_orientation];
+
+        bsp.focal_vector = [...
+            transmitFoci(ceil(end/2)).steering_angle, ...
+            transmitFoci(ceil(end/2)).focal_depth];
+        bsp.transmit_receive_orientation = ...
+            transmitFoci(ceil(end/2)).transmit_receive_orientation;
     case ZBP.AcquisitionKind.HERO_PA
         bsp.single_orientation = 1;
         bsp.transmit_receive_orientation = ...
