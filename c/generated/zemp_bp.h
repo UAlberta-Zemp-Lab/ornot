@@ -197,3 +197,7 @@ typedef struct ZBP_XDopplerParameters {
 	int32_t angle_count[2];
 	int32_t tilting_angles_offset;
 } ZBP_XDopplerParameters;
+
+typedef struct ZBP_EPIC_FORCESParameters {
+	int32_t transmit_foci_offset;
+} ZBP_EPIC_FORCESParameters;

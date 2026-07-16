@@ -31,6 +31,7 @@ classdef BeamformParameters
         origin_offsets single % receive_event_count x section_count
         tilting_angles single % receive_event_count x section_count
         sparse_elements uint16 % (receive_event_count - 1) x section_count
+        transmit_foci ZBP.RCATransmitFocus % receive_event_count x section_count
         data
     end
 
@@ -137,6 +138,22 @@ classdef BeamformParameters
                 "Acquisition Parameters are empty, but acquisition kind requires acquisition parameters");
 
             switch bp.acquisition_kind
+                case ZBP.AcquisitionKind.EPIC_FORCES
+                    receive_count = bp.receive_event_count;
+                    section_count = bp.raw_data_dimension(3);
+                    assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
+
+                    assert(all(size(bp.transmit_foci) == [receive_count, section_count]));
+
+                    for i = 1:section_count
+                        bp.acquisition_parameters(i).transmit_foci_offset = offset;
+                        offset = increment_offset(offset, receive_count*ZBP.RCATransmitFocus.byteSize, offset_alignment);
+                        tfOffset = bp.acquisition_parameters(i).transmit_foci_offset;
+                        for j = 1:receive_count
+                            bytes = set_bytes(bytes, bp.transmit_foci(j, i).toBytes(), tfOffset);
+                            tfOffset = increment_offset(tfOffset, ZBP.RCATransmitFocus.byteSize, 1);
+                        end
+                    end
                 case ZBP.AcquisitionKind.RCA_VLS
                     receive_count = bp.receive_event_count;
                     section_count = bp.raw_data_dimension(3);
@@ -213,6 +230,8 @@ classdef BeamformParameters
                     assert(isa(bp.acquisition_parameters, "ZBP.FORCESParameters"));
                 case ZBP.AcquisitionKind.UFORCES
                     assert(isa(bp.acquisition_parameters, "ZBP.uFORCESParameters"));
+                case ZBP.AcquisitionKind.EPIC_FORCES
+                    assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
                 case ZBP.AcquisitionKind.RCA_VLS
                     assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
                 case ZBP.AcquisitionKind.RCA_TPW
@@ -455,6 +474,22 @@ classdef BeamformParameters
                         for i = 1:section_count
                             bp.acquisition_parameters(i) = ZBP.HERCULESParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.FORCESParameters.byteSize)));
                             offset = offset + ZBP.HERCULESParameters.byteSize;
+                        end
+                    case ZBP.AcquisitionKind.EPIC_FORCES
+                        section_count = header.raw_data_dimension(3);
+                        offset = uint32(header.acquisition_parameters_offset);
+                        bp.acquisition_parameters = createArray([section_count, 1], "ZBP.EPIC_FORCESParameters");
+                        for i = 1:section_count
+                            bp.acquisition_parameters(i) = ZBP.EPIC_FORCESParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.EPIC_FORCESParameters.byteSize)));
+                            offset = offset + ZBP.EPIC_FORCESParameters.byteSize;
+                        end
+                        bp.transmit_foci = createArray([bp.receive_event_count, section_count], "ZBP.RCATransmitFocus");
+                        for i = 1:section_count
+                            transmitFociOffset = uint32(bp.acquisition_parameters(i).transmit_foci_offset);
+                            for j = 1:bp.receive_event_count
+                                bp.transmit_foci(j, i) = ZBP.RCATransmitFocus.fromBytes(bytes(uint32(transmitFociOffset) + (1:ZBP.RCATransmitFocus.byteSize)));
+                                transmitFociOffset = transmitFociOffset + ZBP.RCATransmitFocus.byteSize;
+                            end
                         end
                     case ZBP.AcquisitionKind.RCA_VLS
                         receive_count = header.receive_event_count;
