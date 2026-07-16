@@ -10,7 +10,7 @@ classdef AcquisitionKind < int32
 		RCA_VLS        (3)
 		RCA_TPW        (4)
 		UHERCULES      (5)
-		RACES          (6)
+		EPIC_HERCULES  (6)
 		EPIC_FORCES    (7)
 		EPIC_UFORCES   (8)
 		EPIC_UHERCULES (9)

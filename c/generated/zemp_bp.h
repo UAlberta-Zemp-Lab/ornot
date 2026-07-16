@@ -34,7 +34,7 @@ typedef enum {
 	ZBP_AcquisitionKind_RCA_VLS        = 3,
 	ZBP_AcquisitionKind_RCA_TPW        = 4,
 	ZBP_AcquisitionKind_UHERCULES      = 5,
-	ZBP_AcquisitionKind_RACES          = 6,
+	ZBP_AcquisitionKind_EPIC_HERCULES  = 6,
 	ZBP_AcquisitionKind_EPIC_FORCES    = 7,
 	ZBP_AcquisitionKind_EPIC_UFORCES   = 8,
 	ZBP_AcquisitionKind_EPIC_UHERCULES = 9,

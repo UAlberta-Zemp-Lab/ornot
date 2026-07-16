@@ -28,7 +28,7 @@ class ZBP:
 	AcquisitionKind_RCA_VLS        = 3
 	AcquisitionKind_RCA_TPW        = 4
 	AcquisitionKind_UHERCULES      = 5
-	AcquisitionKind_RACES          = 6
+	AcquisitionKind_EPIC_HERCULES  = 6
 	AcquisitionKind_EPIC_FORCES    = 7
 	AcquisitionKind_EPIC_UFORCES   = 8
 	AcquisitionKind_EPIC_UHERCULES = 9
