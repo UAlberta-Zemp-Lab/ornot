@@ -201,3 +201,8 @@
 	[angle_count           S32 2]
 	[tilting_angles_offset S32 1]
 }
+
+@Struct EPIC_FORCESParameters
+{
+	[transmit_foci_offset S32 1]
+}
