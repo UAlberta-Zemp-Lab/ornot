@@ -155,42 +155,43 @@ classdef BeamformParameters
                         end
                     case ZBP.AcquisitionKind.RCA_VLS
                         receive_count = bp.receive_event_count;
+                        section_count = bp.raw_data_dimension(3);
                         assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
-                        assert(isscalar(bp.acquisition_parameters));
 
-                        assert(~isempty(bp.focal_depths));
-                        assert(numel(bp.focal_depths) == receive_count);
-                        bp.acquisition_parameters.focal_depths_offset = offset;
-                        offset = increment_offset(offset, 4*numel(bp.focal_depths), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.focal_depths, "uint8"), bp.acquisition_parameters.focal_depths_offset);
+                        assert(all(size(bp.focal_depths) == [receive_count, section_count]));
+                        assert(all(size(bp.origin_offsets) == [receive_count, section_count]));
+                        assert(all(size(bp.transmit_receive_orientations) == [receive_count, section_count]));
 
-                        assert(~isempty(bp.origin_offsets));
-                        assert(numel(bp.origin_offsets) == receive_count);
-                        bp.acquisition_parameters.origin_offsets_offset = offset;
-                        offset = increment_offset(offset, 4*numel(bp.origin_offsets), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.origin_offsets, "uint8"), bp.acquisition_parameters.origin_offsets_offset);
+                        for i = 1:section_count
+                            bp.acquisition_parameters(i).focal_depths_offset = offset;
+                            offset = increment_offset(offset, 4*numel(bp.focal_depths), offset_alignment);
+                            bytes = set_bytes(bytes, typecast(bp.focal_depths, "uint8"), bp.acquisition_parameters(i).focal_depths_offset);
 
-                        assert(~isempty(bp.transmit_receive_orientations));
-                        assert(numel(bp.transmit_receive_orientations) == receive_count);
-                        bp.acquisition_parameters.transmit_receive_orientations_offset = offset;
-                        offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters.transmit_receive_orientations_offset);
+                            bp.acquisition_parameters(i).origin_offsets_offset = offset;
+                            offset = increment_offset(offset, 4*numel(bp.origin_offsets), offset_alignment);
+                            bytes = set_bytes(bytes, typecast(bp.origin_offsets, "uint8"), bp.acquisition_parameters(i).origin_offsets_offset);
+
+                            bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
+                            offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
+                            bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                        end
                     case ZBP.AcquisitionKind.RCA_TPW
                         receive_count = bp.receive_event_count;
+                        section_count = bp.raw_data_dimension(3);
                         assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
-                        assert(isscalar(bp.acquisition_parameters));
 
-                        assert(~isempty(bp.tilting_angles));
-                        assert(numel(bp.tilting_angles) == receive_count);
-                        bp.acquisition_parameters.tilting_angles_offset = offset;
-                        offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters.tilting_angles_offset);
+                        assert(all(size(bp.tilting_angles) == [receive_count, section_count]));
+                        assert(all(size(bp.transmit_receive_orientations) == [receive_count, section_count]));
 
-                        assert(~isempty(bp.transmit_receive_orientations));
-                        assert(numel(bp.transmit_receive_orientations) == receive_count);
-                        bp.acquisition_parameters.transmit_receive_orientations_offset = offset;
-                        offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters.transmit_receive_orientations_offset);
+                        for i = 1:section_count
+                            bp.acquisition_parameters(i).tilting_angles_offset = offset;
+                            offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
+                            bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters(i).tilting_angles_offset);
+
+                            bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
+                            offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
+                            bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                        end
                     case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
                         assert(~isempty(bp.sparse_elements));
                         for i = 1:section_count
@@ -498,15 +499,44 @@ classdef BeamformParameters
                         end
                     case ZBP.AcquisitionKind.RCA_VLS
                         receive_count = header.receive_event_count;
-                        bp.acquisition_parameters = ZBP.VLSParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.VLSParameters.byteSize)));
+                        section_count = header.raw_data_dimension(3);
+                        offset = uint32(header.acquisition_parameters_offset);
+                        bp.acquisition_parameters = createArray([sectionCount, 1], "ZBP.VLSParameters");
+                        for i = 1:section_count
+                            bp.acquisition_parameters(i) = ZBP.VLSParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.VLSParameters.byteSize)));
+                            offset = offset + ZBP.VLSParameters.byteSize;
+                        end
+                        bp.focal_depths = createArray([receive_count, section_count], "single");
+                        bp.origin_offsets = createArray([receive_count, section_count], "single");
+                        bp.transmit_receive_orientations = createArray([receive_count, section_count], "uint8");
+                        for i = 1:section_count
+                            focalDepthsOffset = uint32(bp.acquisition_parameters(i).focal_depths_offset);
+                            originOffsetsOffset = uint32(bp.acquisition_parameters(i).origin_offsets_offset);
+                            transmitReceiveOrientationsOffset = uint32(bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                            bp.focal_depths(:, i) = typecast(bytes(uint32(focalDepthsOffset) + (1:(4*receive_count))), "single");
+                            bp.origin_offsets(:, i) = typecast(bytes(uint32(originOffsetsOffset) + (1:(4*receive_count))), "single");
+                            bp.transmit_receive_orientations(:, i) = typecast(bytes(uint32(transmitReceiveOrientationsOffset) + (1:receive_count)), "uint8");
+                        end
                         bp.focal_depths = typecast(bytes(uint32(bp.acquisition_parameters.focal_depths_offset) + (1:(4*receive_count))), "single");
                         bp.origin_offsets = typecast(bytes(uint32(bp.acquisition_parameters.origin_offsets_offset) + (1:(4*receive_count))), "single");
                         bp.transmit_receive_orientations = typecast(bytes(uint32(bp.acquisition_parameters.transmit_receive_orientations_offset) + (1:receive_count)), "uint8");
                     case ZBP.AcquisitionKind.RCA_TPW
                         receive_count = header.receive_event_count;
-                        bp.acquisition_parameters = ZBP.TPWParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.TPWParameters.byteSize)));
-                        bp.tilting_angles = typecast(bytes(uint32(bp.acquisition_parameters.tilting_angles_offset) + (1:(4*receive_count))), "single");
-                        bp.transmit_receive_orientations = typecast(bytes(uint32(bp.acquisition_parameters.transmit_receive_orientations_offset) + (1:receive_count)), "uint8");
+                        section_count = header.raw_data_dimension(3);
+                        offset = uint32(header.acquisition_parameters_offset);
+                        bp.acquisition_parameters = createArray([section_count, 1], "ZBP.TPWParameters");
+                        for i = 1:section_count
+                            bp.acquisition_parameters(i) = ZBP.TPWParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.TPWParameters.byteSize)));
+                            offset = offset + ZBP.TPWParameters.byteSize;
+                        end
+                        bp.tilting_angles = createArray([receive_count, section_count], "single");
+                        bp.transmit_receive_orientations = createArray([receive_count, section_count], "uint8");
+                        for i = 1:section_count
+                            tiltingAnglesOffset = uint32(bp.acquisition_parameters(i).tilting_angles_offset);
+                            transmitReceiveOrientationsOffset = uint32(bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                            bp.tilting_angles(:, i) = typecast(bytes(uint32(tiltingAnglesOffset) + (1:(4*receive_count))), "single");
+                            bp.transmit_receive_orientations(:, i) = typecast(bytes(uint32(transmitReceiveOrientationsOffset) + (1:receive_count)), "uint8");
+                        end
                     case ZBP.AcquisitionKind.UHERCULES
                         section_count = header.raw_data_dimension(3);
                         sparse_element_count = header.receive_event_count - 1;
