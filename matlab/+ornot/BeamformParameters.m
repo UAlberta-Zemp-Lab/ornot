@@ -28,7 +28,7 @@ classdef BeamformParameters
         focal_depths single
         origin_offsets single
         tilting_angles single
-        sparse_elements uint16
+        sparse_elements uint16 % receive_event_count x section_count
         data
     end
 

@@ -1,4 +1,4 @@
-function images = beamform(bp, settings)
+function images = beamformGpu(bp, settings)
 arguments (Input)
     bp(1, 1) ornot.BeamformParameters
     settings(1,1) ornot.BeamformSettings
@@ -29,7 +29,7 @@ for i = 1:prod(images_size)
                 bsp.data_kind = int32(OGLBeamformerDataKind.Int16);
             else
                 bsp.data_kind = int32(OGLBeamformerDataKind.Int16Complex);
-                data = reshape([real(data);imag(data)],[],1);
+                data = reshape([real(data(:)'); imag(data(:))'], [], 1);
             end
         case {'single', 'double'}
             if isa(data, 'double')
@@ -39,7 +39,7 @@ for i = 1:prod(images_size)
                 bsp.data_kind = int32(OGLBeamformerDataKind.Float32);
             else
                 bsp.data_kind = int32(OGLBeamformerDataKind.Float32Complex);
-                data = reshape([real(data);imag(data)],[],1);
+                data = reshape([real(data(:)'); imag(data(:))'], [], 1);
             end
     end
 
