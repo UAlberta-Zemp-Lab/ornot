@@ -46,7 +46,7 @@ settings.compute_stages = [
     OGLBeamformerShaderStage.DAS
     ];
 
-imageCells = ornot.beamform(bp, settings);
+imageCells = ornot.beamformGpu(bp, settings);
 
 %% Intensity Transform Image
 for i = 1:numel(imageCells)

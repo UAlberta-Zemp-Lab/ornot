@@ -38,7 +38,7 @@ classdef Region
             region.das_voxel_transform = zeros(4);
             region.das_voxel_transform(1,1) = diff(x_range);
             region.das_voxel_transform(3,2) = diff(z_range);
-            region.das_voxel_transform(2,3) = 1;
+            region.das_voxel_transform(2,3) = 0;
             region.das_voxel_transform(:,4) = [x_range(1), y_position(1), z_range(1), 1];
         end
 
@@ -57,7 +57,7 @@ classdef Region
             region.das_voxel_transform = zeros(4);
             region.das_voxel_transform(2,1) = diff(y_range);
             region.das_voxel_transform(3,2) = diff(z_range);
-            region.das_voxel_transform(1,3) = 1;
+            region.das_voxel_transform(1,3) = 0;
             region.das_voxel_transform(:,4) = [x_position(1), y_range(1), z_range(1), 1];
         end
 
@@ -76,7 +76,7 @@ classdef Region
             region.das_voxel_transform = zeros(4);
             region.das_voxel_transform(1,1) = diff(x_range);
             region.das_voxel_transform(2,2) = diff(y_range);
-            region.das_voxel_transform(3,3) = 1;
+            region.das_voxel_transform(3,3) = 0;
             region.das_voxel_transform(:,4) = [x_range(1), y_range(1), z_position(1), 1];
         end
 

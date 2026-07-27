@@ -28,6 +28,8 @@ data_folder = string(data_folder);
 % filename = "260305_MN32-4_Example_Filename_uFORCES-16-Walking-8-Tx-Column-Chirp-2e-05";
 % filename = "260305_MN32-4_Example_Filename_HERCULES-Diverging-DepthRatio-0.5-Tx-Row-Chirp-2e-05";
 % filename = "260305_MN32-4_Example_Filename_HERCULES-Diverging-DepthRatio-0.5-Tx-Column-Chirp-2e-05";
+% filename = "260718_Cardiac3_Resolution_Targets_FORCES-Rx-Columns";
+% filename = "260718_Cardiac3_Resolution_Targets_HERCULES-Rx-Rows";
 
 lateral_extent = 50e-3 * [-1, 1];
 axial_extent   = 1e-3  * [20, 100];
@@ -55,7 +57,10 @@ settings.compute_stages = [
     OGLBeamformerShaderStage.DAS
     ];
 
-imageCells = ornot.beamform(bp, settings);
+% imageCells = ornot.beamformGpu(bp, settings);
+
+imageCells = ornot.beamformMatlab(bp, settings);
+
 
 %% Intensity Transform Image
 for i = 1:numel(imageCells)
