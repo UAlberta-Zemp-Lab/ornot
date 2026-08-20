@@ -2,7 +2,7 @@ function [biasPattern, transmitApodization, transmitDelays, receiveApodization, 
 arguments (Input)
     array(1,1) tobe.RowColumnArray
     uHerculesParameters(:,1) ZBP.HERCULESParameters
-    sparseElements(:,:) uint16
+    sparseElements(:,:) uint16 % section_count x receive_event_count
     speedOfSound(1,1) single
 end
 arguments (Output)
@@ -88,5 +88,5 @@ beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.UHERCULES;
 beamformParameters.acquisition_parameters = uHerculesParameters;
 beamformParameters.time_offset = timeOffset;
-beamformParameters.sparse_elements = sparseElements - 1;
+beamformParameters.sparse_elements = (sparseElements - 1)';
 end
