@@ -26,12 +26,12 @@ classdef BeamformParameters
         contrast_parameters
         channel_mapping uint16
         acquisition_parameters
-        transmit_receive_orientations uint8
-        focal_depths single
-        origin_offsets single
-        tilting_angles single
-        sparse_elements uint16
-        transmit_foci ZBP.RCATransmitFocus
+        transmit_receive_orientations uint8 % receive_event_count x section_count
+        focal_depths single % receive_event_count x section_count
+        origin_offsets single % receive_event_count x section_count
+        tilting_angles single % receive_event_count x section_count
+        sparse_elements uint16 % (receive_event_count - 1) x section_count
+        transmit_foci ZBP.RCATransmitFocus % receive_event_count x section_count
         data
     end
 
@@ -193,7 +193,10 @@ classdef BeamformParameters
                             bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
                         end
                     case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
-                        assert(~isempty(bp.sparse_elements));
+                        receive_count = bp.receive_event_count;
+                        section_count = bp.raw_data_dimension(3);
+                        assert(all(size(bp.sparse_elements) == [receive_count - 1, section_count]));
+
                         for i = 1:section_count
                             bp.acquisition_parameters(i).sparse_elements_offset = offset;
                             offset = increment_offset(offset, 2*numel(bp.sparse_elements(:,i)), offset_alignment);
