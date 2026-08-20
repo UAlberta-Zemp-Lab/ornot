@@ -60,8 +60,8 @@ beamformParameters.speed_of_sound = speedOfSound;
 beamformParameters.channel_count = transmitCount;
 beamformParameters.receive_event_count = receiveElementCount;
 beamformParameters.transducer_transform_matrix = reshape(single([
-    1, 0, 0, arraySize(1)/2;
-    0, 1, 0, arraySize(2)/2;
+    1, 0, 0, arraySize(2)/2; % Note (DD): Columns change in X
+    0, 1, 0, arraySize(1)/2; % Note (DD): Rows change in Y
     0, 0, 1, 0;
     0, 0, 0, 1;
     ]), 1, []);
