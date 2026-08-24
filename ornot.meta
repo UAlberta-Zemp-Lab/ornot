@@ -35,6 +35,7 @@
 @Enumeration(ContrastMode [
 	None
 	A1S2
+	A2
 ])
 
 @Enumeration(EmissionKind [
