@@ -40,6 +40,7 @@ class ZBP:
 	# ContrastMode
 	ContrastMode_None = 0
 	ContrastMode_A1S2 = 1
+	ContrastMode_A2   = 2
 
 	# EmissionKind
 	EmissionKind_Sine  = 0
