@@ -48,6 +48,7 @@ typedef enum {
 typedef enum {
 	ZBP_ContrastMode_None = 0,
 	ZBP_ContrastMode_A1S2 = 1,
+	ZBP_ContrastMode_A2   = 2,
 	ZBP_ContrastMode_Count,
 } ZBP_ContrastMode;
 
