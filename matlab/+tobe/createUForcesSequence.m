@@ -50,15 +50,15 @@ for n = 1:numel(transmitFoci)
     receiveElements = array.GetElements(receiveOrientations(n));
     h = hadamard(transmitCount, 'single');
     biasPattern(transmitEvents, receiveElements) = repmat(h(:, 1), [1, numel(receiveElements)]);
-    biasPattern(transmitEvents, receiveElements(sparseElements)) = h(:, 2:end);
+    biasPattern(transmitEvents, receiveElements(sparseElements(n, :))) = h(:, 2:end);
     receiveApodization(transmitEvents, receiveElements) = repmat(h(:, 1), [1, numel(receiveElements)]);
-    receiveApodization(transmitEvents, receiveElements(sparseElements)) = h(:, 2:end);
+    receiveApodization(transmitEvents, receiveElements(sparseElements(n, :))) = h(:, 2:end);
     [txDelays, focusTime] = tobe.computeLinearFocusedDelayProfile(...
         [transmitFoci(n).origin_offset, transmitFoci(n).focal_depth], ...
         speedOfSound, elementPositions(transmitElements), true);
     transmitDelays(transmitEvents, transmitElements) = repmat(txDelays, [transmitCount, 1]);
     focusTimes(n) = focusTime;
-    transmitDiameter = abs(transmitFoci(n).focal_depth) / transmitFNumber;
+    transmitDiameter = abs(transmitFoci(n).focal_depth) / transmitFNumber(n);
     txApodization = ...
         abs(elementPositions(transmitElements) - transmitFoci(n).origin_offset) ...
         <= (transmitDiameter / 2);

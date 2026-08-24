@@ -49,9 +49,9 @@ for n = 1:numel(transmitFoci)
     receiveElements = array.GetElements(receiveOrientations(n));
     h = hadamard(transmitCount, 'single');
     biasPattern(transmitEvents, transmitElements) = repmat(h(:, 1), [1, numel(transmitElements)]);
-    biasPattern(transmitEvents, transmitElements(sparseElements)) = h(:, 2:end);
+    biasPattern(transmitEvents, transmitElements(sparseElements(n, :))) = h(:, 2:end);
     transmitApodization(transmitEvents, transmitElements) = repmat(h(:, 1), [1, numel(transmitElements)]);
-    transmitApodization(transmitEvents, transmitElements(sparseElements)) = h(:, 2:end);
+    transmitApodization(transmitEvents, transmitElements(sparseElements(n, :))) = h(:, 2:end);
     if isinf(transmitFoci(n).focal_depth)
         [txDelays, focusTime] = tobe.computeLinearPlanarDelayProfile(...
             transmitFoci(n).steering_angle, speedOfSound, ...
