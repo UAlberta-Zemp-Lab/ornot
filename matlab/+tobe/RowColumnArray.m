@@ -45,6 +45,19 @@ classdef RowColumnArray
         AcChannelMapping(1,:) uint16 {mustBeInteger, mustBeVector}
         ShortedElements(1,:) uint16 {mustBeInteger, mustBeVector}
         OpenElements(1,:) uint16 {mustBeInteger, mustBeVector}
+        % Element numbers used as noise-cancellation references. When noise
+        % cancellation is enabled these receive-orientation elements are
+        % bias-zeroed (grounded) so they transduce no acoustic signal, and
+        % their recorded (noise-only) data is subtracted from the imaging
+        % channels before beamforming. Empty disables the feature for the array.
+        NoiseChannels(1,:) uint16 {mustBeInteger, mustBeVector}
+        % Per-element scalar gain applied to the noise reference before it
+        % is subtracted (correction = gain(element) * noiseReference), one
+        % entry per element of the array. Calibrated against a specific
+        % choice of NoiseChannels, so it must be re-measured whenever those
+        % change. Empty means "not calibrated": the gains are then fitted
+        % from each acquisition instead. Never negative.
+        NoiseGain(1,:) double {mustBeNonnegative, mustBeVector}
     end
 
     methods
