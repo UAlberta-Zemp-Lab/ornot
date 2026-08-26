@@ -45,6 +45,12 @@ classdef RowColumnArray
         AcChannelMapping(1,:) uint16 {mustBeInteger, mustBeVector}
         ShortedElements(1,:) uint16 {mustBeInteger, mustBeVector}
         OpenElements(1,:) uint16 {mustBeInteger, mustBeVector}
+        % Element numbers used as noise-cancellation references. When noise
+        % cancellation is enabled these receive-orientation elements are
+        % bias-zeroed (grounded) so they transduce no acoustic signal, and
+        % their recorded (noise-only) data is subtracted from the imaging
+        % channels before beamforming. Empty disables the feature for the array.
+        NoiseChannels(1,:) uint16 {mustBeInteger, mustBeVector}
     end
 
     methods
