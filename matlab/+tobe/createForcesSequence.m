@@ -65,14 +65,6 @@ for n = 1:numel(transmitFoci)
         repmat(txApodization, [transmitCount, 1]);
 end
 
-% Align delays so they all have the same focus time
-% Since we want all delays to be non-negative,
-% we will align the delays to the maximum focus time
-[maxFocusTime, n] = max(focusTimes);
-focusTimeDeltas = maxFocusTime - focusTimes;
-transmitDelays = transmitDelays + repelem(focusTimeDeltas, transmitCount, 1);
-timeOffset = maxFocusTime - (transmitFoci(n).focal_depth / speedOfSound);
-
 arraySize = array.GetSize();
 
 beamformParameters = ornot.BeamformParameters();
@@ -89,5 +81,10 @@ beamformParameters.transducer_transform_matrix = reshape(single([
 beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.FORCES;
 beamformParameters.acquisition_parameters = forcesParameters;
-beamformParameters.time_offset = timeOffset;
+timeOffsets = focusTimes - [transmitFoci.focal_depth]  / speedOfSound;
+beamformParameters.time_offset = timeOffsets(1);
+if ~isscalar(unique(focusTimes))
+    focusTimeDeltas = focusTimes - focusTimes(1);
+    beamformParameters.data_frame_time_delays = focusTimeDeltas;
+end
 end

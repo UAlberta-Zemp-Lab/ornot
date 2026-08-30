@@ -59,14 +59,6 @@ for n = 1:numel(transmitFoci)
     transmitApodization(n, transmitElements) = 1;
 end
 
-% Align delays so they all have the same focus time
-% Since we want all delays to be non-negative,
-% we will align the delays to the maximum focus time
-maxFocusTime = max(focusTimes);
-focusTimeDeltas = maxFocusTime - focusTimes;
-transmitDelays = transmitDelays + focusTimeDeltas;
-timeOffset = maxFocusTime;
-
 arraySize = array.GetSize();
 
 beamformParameters = ornot.BeamformParameters();
@@ -84,5 +76,10 @@ beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.EPIC_FORCES;
 beamformParameters.acquisition_parameters = createArray([numDataFrame, 1], "ZBP.EPIC_FORCESParameters");
 beamformParameters.transmit_foci = transmitFoci;
-beamformParameters.time_offset = timeOffset;
+timeOffsets = focusTimes - [transmitFoci.focal_depth]  / speedOfSound;
+beamformParameters.time_offset = timeOffsets(1);
+if ~isscalar(unique(focusTimes))
+    focusTimeDeltas = focusTimes - focusTimes(1);
+    beamformParameters.data_frame_time_delays = focusTimeDeltas;
+end
 end

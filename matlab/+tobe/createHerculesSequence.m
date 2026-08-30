@@ -65,11 +65,6 @@ for n = 1:numel(transmitFoci)
     receiveApodization(transmitEvents, receiveElements) = 1;
 end
 
-% Align delays so they all have the same focus time
-maxFocusTime = max(focusTimes);
-focusTimeDeltas = maxFocusTime - focusTimes;
-transmitDelays = transmitDelays + repelem(focusTimeDeltas, transmitCount, 1);
-timeOffset = maxFocusTime;
 arraySize = array.GetSize();
 
 beamformParameters = ornot.BeamformParameters();
@@ -86,5 +81,10 @@ beamformParameters.transducer_transform_matrix = reshape(single([
 beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.HERCULES;
 beamformParameters.acquisition_parameters = herculesParameters;
-beamformParameters.time_offset = timeOffset;
+timeOffsets = focusTimes;
+beamformParameters.time_offset = timeOffsets(1);
+if ~isscalar(unique(focusTimes))
+    focusTimeDeltas = focusTimes - focusTimes(1);
+    beamformParameters.data_frame_time_delays = focusTimeDeltas;
+end
 end
