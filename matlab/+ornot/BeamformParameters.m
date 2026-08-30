@@ -23,6 +23,7 @@ classdef BeamformParameters
         % NOTE (DD): MATLAB won't allow for heterogenous arrays, without the classes being specifically defined as subclasses of a common superclass.
         % This means that we can't load emission parameters of different types into a single array, so we will load them into a cell array instead.
         emission_parameters cell
+        data_frame_time_delays(1,:) single
         contrast_parameters
         channel_mapping uint16
         acquisition_parameters
@@ -117,6 +118,15 @@ classdef BeamformParameters
                 end
             else
                 header.emission_descriptors_offset = -1;
+            end
+
+            if ~isempty(bp.data_frame_time_delays)
+                header.data_frame_delays_offset = offset;
+                assert(numel(bp.data_frame_time_delays) == bp.raw_data_dimension(3))
+                offset = increment_offset(offset, 4*numel(bp.data_frame_time_delays), offset_alignment);
+                bytes = set_bytes(bytes, typecast(bp.data_frame_time_delays, "uint8"), header.data_frame_delays_offset);
+            else
+                header.data_frame_delays_offset = -1;
             end
 
             if ~isempty(bp.contrast_parameters)
@@ -440,6 +450,10 @@ classdef BeamformParameters
                                 bytes(uint32(uniqueParameterOffsets(i)) + (1:ZBP.EmissionChirpParameters.byteSize)));
                     end
                 end
+            end
+
+            if header.data_frame_delays_offset >= 0
+                bp.data_frame_time_delays = typecast(bytes(uint32(header.data_frame_delays_offset) + (1:(4*bp.raw_data_dimension(3)))), 'single');
             end
 
             if header.contrast_parameters_offset >= 0

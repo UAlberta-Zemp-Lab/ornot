@@ -87,6 +87,11 @@ beamformParameters.transducer_transform_matrix = reshape(single([
 beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.UHERCULES;
 beamformParameters.acquisition_parameters = uHerculesParameters;
-beamformParameters.time_offset = timeOffset;
 beamformParameters.sparse_elements = (sparseElements - 1)';
+timeOffsets = focusTimes;
+beamformParameters.time_offset = timeOffsets(1);
+if ~isscalar(unique(focusTimes))
+    focusTimeDeltas = focusTimes - focusTimes(1);
+    beamformParameters.data_frame_time_delays = focusTimeDeltas;
+end
 end

@@ -163,7 +163,7 @@ class ZBP:
 			return result
 
 	class HeaderV2:
-		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_kind=0, raw_data_offset=0, raw_data_compression_kind=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, demodulation_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_transform_matrix=[0] * 16, transducer_element_pitch=[0] * 2, time_offset=0, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_parameters_offset=0, emission_descriptors_offset=0):
+		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_kind=0, raw_data_offset=0, raw_data_compression_kind=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, demodulation_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_transform_matrix=[0] * 16, transducer_element_pitch=[0] * 2, time_offset=0, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_parameters_offset=0, emission_descriptors_offset=0, data_frame_delays_offset=0):
 			self.magic                         = magic
 			self.major                         = major
 			self.minor                         = minor
@@ -190,6 +190,7 @@ class ZBP:
 			self.contrast_mode                 = contrast_mode
 			self.contrast_parameters_offset    = contrast_parameters_offset
 			self.emission_descriptors_offset   = emission_descriptors_offset
+			self.data_frame_delays_offset      = data_frame_delays_offset
 
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -220,11 +221,12 @@ class ZBP:
 			result.contrast_mode                  = struct.unpack_from('<1l',  bytes, 172)[0]
 			result.contrast_parameters_offset     = struct.unpack_from('<1l',  bytes, 176)[0]
 			result.emission_descriptors_offset    = struct.unpack_from('<1l',  bytes, 180)[0]
+			result.data_frame_delays_offset       = struct.unpack_from('<1l',  bytes, 184)[0]
 			return result
 
 		@staticmethod
 		def byte_size():
-			return 184
+			return 188
 
 		def to_bytes(self):
 			result = bytearray(ZBP.HeaderV2.byte_size())
@@ -254,6 +256,7 @@ class ZBP:
 			struct.pack_into('<1l',  result, 172,  self.contrast_mode)
 			struct.pack_into('<1l',  result, 176,  self.contrast_parameters_offset)
 			struct.pack_into('<1l',  result, 180,  self.emission_descriptors_offset)
+			struct.pack_into('<1l',  result, 184,  self.data_frame_delays_offset)
 			return result
 
 	class EmissionDescriptor:

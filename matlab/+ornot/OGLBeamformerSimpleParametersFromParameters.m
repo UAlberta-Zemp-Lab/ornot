@@ -40,6 +40,10 @@ if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_par
     bsp.emission_parameters.data = emissionParameters.toBytes();
 end
 
+if ~isempty(parameters.data_frame_time_delays)
+    bsp.time_offset = bsp.time_offset + parameters.data_frame_time_delays(section_number);
+end
+
 switch parameters.sampling_mode
     case ZBP.SamplingMode.Standard
         bsp.sampling_mode = OGLBeamformerSamplingMode.m4X;

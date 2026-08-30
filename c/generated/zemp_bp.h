@@ -131,6 +131,7 @@ typedef struct ZBP_HeaderV2 {
 	int32_t  contrast_mode;
 	int32_t  contrast_parameters_offset;
 	int32_t  emission_descriptors_offset;
+	int32_t  data_frame_delays_offset;
 } ZBP_HeaderV2;
 
 typedef struct ZBP_EmissionDescriptor {
