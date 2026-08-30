@@ -133,6 +133,7 @@
 	[contrast_mode                 ContrastMode         1]
 	[contrast_parameters_offset    S32                  1]
 	[emission_descriptors_offset   S32                  1]
+	[data_frame_delays_offset      S32                  1]
 }
 
 @Struct EmissionDescriptor
