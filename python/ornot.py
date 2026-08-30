@@ -231,6 +231,9 @@ class ornot:
 			      Sine  -> (ZBP.EmissionSineParameters)
 			      Chirp -> (ZBP.EmissionChirpParameters)
 
+				data_frame_time_delays		 (float [])	  Optional, additional time delays added to 
+														  time_offset for each acquistion group
+
 			    channel_mapping              (int16 [])   Optional, used to remap the data so that
 			                                              channel 0 lands on the edge of the array and
 			                                              channel channel_count - 1 lands on the other
@@ -381,6 +384,11 @@ class ornot:
 					if header.channel_mapping_offset != -1:
 						result.channel_mapping = struct.unpack_from('<%dh' % result.channel_count, bytes,
 						                                            header.channel_mapping_offset)
+					result.data_frame_time_delays = []
+					if header.data_frame_delays_offset != -1:
+    					result.data_frame_time_delays = struct.unpack_from('<%df' % result.raw_data_dimension[2], bytes, 
+																			header.data_frame_delays_offset)
+
 					result.emission_kinds      = []
 					result.emission_parameters = []
 					emission_conversion_table = {
