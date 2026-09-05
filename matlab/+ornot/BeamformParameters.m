@@ -283,7 +283,8 @@ classdef BeamformParameters
                 d = ornot.DataToRaw(bp.data, bp.raw_data_compression_kind);
                 header.raw_data_offset = offset;
                 offset = increment_offset(offset, numel(d), offset_alignment);
-                bytes = set_bytes(bytes, d, header.raw_data_offset);
+                bytes = set_bytes(bytes, [], header.raw_data_offset);
+                bytes = cat(2, bytes, d(:)');
             else
                 header.raw_data_offset = -1;
             end
