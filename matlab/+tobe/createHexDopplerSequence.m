@@ -26,26 +26,29 @@ assert(all(binSize == floor(binSize)), ...
 
 % Allocate returns
 elementCount = sum(array.ElementCount);
-biasPattern = zeros(totalTransmitCount, elementCount, 'single');
-transmitApodization = zeros(totalTransmitCount, elementCount, 'single');
-receiveApodization = zeros(totalTransmitCount, elementCount, 'single');
+biasPattern = zeros(transmitCount, elementCount, 'single');
+transmitApodization = zeros(transmitCount, elementCount, 'single');
+receiveApodization = zeros(transmitCount, elementCount, 'single');
 
 % Row Tx, Col Rx Events
 rowElements = array.GetElements(ZBP.RCAOrientation.Rows);
 columnElements = array.GetElements(ZBP.RCAOrientation.Columns);
-hRows = hadamard(binCount(1));
+hRows = hadamard(single(binCount(1)));
 biasRows = repelem(hRows, 1, binSize(1));
-biasPattern(rowElements, rowElements) = biasRows;
-transmitApodization(rowElements, rowElements) = biasRows;
-receiveApodization(rowElements, columnElements) = 1;
+patternIndices1 = 1:binCount(1);
+biasPattern(patternIndices1 , rowElements) = biasRows;
+transmitApodization(patternIndices1 , rowElements) = biasRows;
+receiveApodization(patternIndices1 , columnElements) = 1;
 
 % Row Rx, Col Tx Events
-hColumns = hadamard(binCount(2));
+hColumns = hadamard(single(binCount(2)));
 biasColumns = repelem(hColumns, 1, binSize(2));
-biasPattern(columnElements, columnElements) = biasColumns;
-transmitApodization(columnElements, columnElements) = biasColumns;
-receiveApodization(columnElements, rowElements) = 1;
+patternIndices2 = binCount(1) + (1:binCount(2));
+biasPattern(patternIndices2, columnElements) = biasColumns;
+transmitApodization(patternIndices2, columnElements) = biasColumns;
+receiveApodization(patternIndices2, rowElements) = 1;
 
+arraySize = array.GetSize();
 beamformParameters = ornot.BeamformParameters();
 beamformParameters.decode_mode = ZBP.DecodeMode.Hadamard;
 beamformParameters.speed_of_sound = speedOfSound;
