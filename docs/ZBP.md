@@ -239,6 +239,7 @@ typedef struct ZBP_HeaderV2 {
 	int32_t  contrast_mode;
 	int32_t  contrast_parameters_offset;
 	int32_t  emission_descriptors_offset;
+	int32_t  data_frame_delays_offset;
 } ZBP_HeaderV2;
 ```
 
@@ -399,9 +400,19 @@ is `None` this offset can be -1.
 #### `emission_descriptors_offset`
 
 An offset to an array of [Emission Descriptor](#emission-descriptor)
-structures. If not -1, the number of emission descriptors present is
-determined by the number of [Data Frames](#raw_data_dimension)
-present. 
+structures. The number of emission descriptors present is determined
+by the number of [Data Frames](#raw_data_dimension). When there is no
+emission, such as when [`acquisition_mode`](#acquisition_mode) is
+[`HERO_PA`](#hero-pa-parameters), this offset can be -1.
+
+#### `data_frame_delays_offset`
+
+An offset to an array of `float32_t` values representing the additional
+time delay which should be applied to the binary data associated with this
+parameters file. If it is not present, no additional delays are applied.
+The length of this array is given by the count of [Data Frames](#raw_data_dimension).
+The array contains one value per Data Frame, and the value at index `i`
+is added to `time_offset` when processing Data Frame `i`.
 
 ### Emission Descriptor
 
@@ -412,21 +423,21 @@ typedef struct ZBP_EmissionDescriptor {
 } ZBP_EmissionDescriptor;
 ```
 
-A structure describing the emission used to acquire a single group
+A structure describing the emission used to acquire a single Data Frame
 in the binary file associated with this parameters file.
 
 #### `emission_kind`
 
 A [Emission Kind](#emission-kind) describing the way the binary
-data associated with this parameters file should be processed as
-well as the how to interpret the [emission parameters](#parameters_offset)
-contained in parameters file.
+data associated with this Data Frame should be processed and how to
+interpret the emission parameter structure referenced by
+[`parameters_offset`](#parameters_offset).
 
 #### `parameters_offset`
 
-An offset to an emission parameters structure the type of which is
-determined by the [Emission Kind](#emission-kind). This offset is
-required to always be valid.
+An offset to the emission parameters structure for this Data Frame. The
+type of the structure is determined by the [Emission Kind](#emission-kind).
+This offset is required to always be valid.
 
 ### Sine Emission Parameters
 
@@ -700,7 +711,8 @@ A structure containing the acquisition parameters when the
 
 #### `angle_count`
 
-The number of angle transmits in each orientation. Rows transmits first, then Columns. Must add up to [`receive_event_count`](#receive_event_count).
+The number of angle transmits in each orientation. Rows transmits first,
+then Columns. Must add up to [`receive_event_count`](#receive_event_count).
 
 #### `tilting_angles_offset`
 
