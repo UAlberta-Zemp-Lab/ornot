@@ -104,17 +104,24 @@ class ornot:
 			data, data_size = self.data_from_raw(parameters, f.read())
 		return data, data_size
 
-	def beamformer_simple_parameters_from_parameters(self, parameters):
+	def beamformer_simple_parameters_from_parameters(self, parameters, data_frame_index=0):
 		"""
 		Fills in all data dependant (Parameter) members of a
 		BeamformerSimpleParameters structure.
 
 		Arguments:
 		  parameters (Parameters): A filled in instance of a Parameters object
+		  data_frame_index (int):  Zero-based index of the data frame to use
 
 		Returns:
 		  (ffi.BeamformerSimpleParameters *): an ffi compatible parameters structure
 		"""
+		frame_count = parameters.raw_data_dimension[2]
+		if not isinstance(data_frame_index, int) or isinstance(data_frame_index, bool):
+			raise TypeError("data_frame_index must be an integer")
+		if data_frame_index < 0 or data_frame_index >= frame_count:
+			raise IndexError(f"data_frame_index {data_frame_index} is outside the available data frames")
+
 		ogl = self.ogl
 
 		bp = self.ffi.new("BeamformerSimpleParameters *")
@@ -139,6 +146,18 @@ class ornot:
 		bp.sample_count      = parameters.sample_count
 		bp.channel_count     = parameters.channel_count
 		bp.acquisition_count = parameters.receive_event_count
+
+		if len(parameters.emission_parameters) > 0:
+			emission = parameters.emission_parameters[data_frame_index]
+			if isinstance(emission, ZBP.EmissionSineParameters):
+				bp.time_offset += emission.cycles / emission.frequency / 2
+			elif isinstance(emission, ZBP.EmissionChirpParameters):
+				bp.time_offset += emission.duration / 2
+			else:
+				raise ValueError("Unsupported emission parameters")
+
+		if len(parameters.data_frame_time_delays) > 0:
+			bp.time_offset += parameters.data_frame_time_delays[data_frame_index]
 
 		if len(parameters.channel_mapping) > 0:
 			bp.channel_mapping[0:bp.channel_count] = parameters.channel_mapping[0:bp.channel_count]
@@ -316,6 +335,7 @@ class ornot:
 
 					result.emission_kinds      = [ZBP.EmissionKind_Sine]
 					result.emission_parameters = [ZBP.EmissionSineParameters()]
+					result.data_frame_time_delays = []
 					result.emission_parameters[0].cycles    = 2
 					result.emission_parameters[0].frequency = header.sampling_frequency / 4
 
@@ -386,8 +406,8 @@ class ornot:
 						                                            header.channel_mapping_offset)
 					result.data_frame_time_delays = []
 					if header.data_frame_delays_offset != -1:
-    					result.data_frame_time_delays = struct.unpack_from('<%df' % result.raw_data_dimension[2], bytes, 
-																			header.data_frame_delays_offset)
+						result.data_frame_time_delays = struct.unpack_from('<%df' % result.raw_data_dimension[2], bytes,
+																					header.data_frame_delays_offset)
 
 					result.emission_kinds      = []
 					result.emission_parameters = []
