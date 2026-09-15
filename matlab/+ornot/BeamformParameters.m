@@ -644,6 +644,23 @@ classdef BeamformParameters
                 bp = ornot.DataFromRaw(bp, bytes(uint64(header.raw_data_offset) + (1:byteCount)));
             end
 
+            % NOTE(DD): V2.1 data files have a bug where the emission peak excitation time is not added to the time offset
+            if header.major == 2 && header.minor == 1
+                if ~isempty(bp.emission_descriptors) && ~isempty(bp.emission_parameters)
+                    for i = 1:bp.raw_data_dimension(3)
+                        emissionDescriptor = bp.emission_descriptors(i);
+                        emissionParameters = bp.emission_parameters{emissionDescriptor};
+                        switch class(emissionParameters)
+                            case 'ZBP.EmissionSineParameters'
+                                bp.time_delays(i) = bp.time_delays(i) + emissionParameters.cycles / emissionParameters.frequency / 2;
+                            case 'ZBP.EmissionChirpParameters'
+                                bp.time_delays(i) = bp.time_delays(i) + emissionParameters.duration / 2;
+                            otherwise
+                                error('ornot:FromV2Bytes:InvalidParameter', 'Unsupported EmissionType!');
+                        end
+                    end
+                end
+            end
         end
     end
 
