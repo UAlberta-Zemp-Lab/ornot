@@ -29,10 +29,8 @@ if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_par
     switch class(emissionParameters)
         case 'ZBP.EmissionSineParameters'
             bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Sine);
-            bsp.time_offset = bsp.time_offset + emissionParameters.cycles / emissionParameters.frequency / 2;
         case 'ZBP.EmissionChirpParameters'
             bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Chirp);
-            bsp.time_offset = bsp.time_offset + emissionParameters.duration / 2;
         otherwise
             error('ornot:OGLBeamformerSimpleParametersFromParameters:InvalidParameter', ...
                 "Unsupported EmissionType!");
