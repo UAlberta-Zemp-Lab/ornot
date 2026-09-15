@@ -496,6 +496,25 @@ class ornot:
 						elif base.major == 2:
 							result.raw_data = bytes[header.raw_data_offset:]
 
+					# NOTE(DD): V2.1 data files have a bug where the emission peak excitation time is not added to the time offset
+					if base.major == 2 and base.minor == 1:
+						time_delays_offset = struct.unpack_from('<1l', bytes, ZBP.HeaderV2.byte_size())
+						if time_delays_offset + result.raw_data_dimension[2] * 4 <= len(bytes):
+							time_delays = struct.unpack_from('<%df', result.raw_data_dimension[2], bytes, time_delays_offset)
+							for i in range(result.raw_data_dimension[2]):
+								emission_parameters = result.emission_parameters[i]
+								if isinstance(emission_parameters, ZBP.EmissionSineParameters):
+									time_delays[i] += emission_parameters.cycles / emission_parameters.frequency / 2
+								elif isinstance(emission_parameters, ZBP.EmissionChirpParameters):
+									time_delays[i] += emission_parameters.duration / 2
+								else:
+									raise ValueError("Unsupported Emission Type")
+
+							if result.raw_data_dimension[2] == 1:
+								time_delays[0] += header.time_offset
+
+							result.time_delays = time_delays
+
 				return result
 
 	class Affine:
