@@ -387,7 +387,7 @@ class ornot:
 						result.acquisition_parameters['origin_offsets'] = origin_offsets
 						result.acquisition_parameters['focal_depths']   = focal_depths
 
-				if base.major == 2:
+				if base.major >= 2:
 					result.raw_data_kind                = header.raw_data_kind
 					result.raw_data_compression_kind    = header.raw_data_compression_kind
 					result.raw_data_dimension           = header.raw_data_dimension
@@ -404,10 +404,6 @@ class ornot:
 					if header.channel_mapping_offset != -1:
 						result.channel_mapping = struct.unpack_from('<%dh' % result.channel_count, bytes,
 						                                            header.channel_mapping_offset)
-					result.data_frame_time_delays = []
-					if header.data_frame_delays_offset != -1:
-						result.data_frame_time_delays = struct.unpack_from('<%df' % result.raw_data_dimension[2], bytes,
-																					header.data_frame_delays_offset)
 
 					result.emission_kinds      = []
 					result.emission_parameters = []
@@ -473,6 +469,11 @@ class ornot:
 					if header.raw_data_offset != -1:
 						result.raw_data = bytes[header.raw_data_offset:]
 
+					if base.major == 3:
+						result.data_frame_time_delays = []
+						if header.data_frame_delays_offset != -1:
+							result.data_frame_time_delays = struct.unpack_from('<%df' % result.raw_data_dimension[2], bytes,
+																						header.data_frame_delays_offset)
 				return result
 
 	class Affine:

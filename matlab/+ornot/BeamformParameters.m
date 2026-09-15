@@ -64,8 +64,8 @@ classdef BeamformParameters
 
             header = ZBP.HeaderV2;
             header.magic = ZBP.Constants.HeaderMagic;
-            header.major = 2;
-            header.minor = 2;
+            header.major = 3;
+            header.minor = 0;
             header.raw_data_dimension = bp.raw_data_dimension;
             header.raw_data_kind = int32(bp.raw_data_kind);
             header.raw_data_compression_kind = int32(bp.raw_data_compression_kind);
@@ -327,6 +327,8 @@ classdef BeamformParameters
                     bp = ornot.BeamformParameters.FromV1Bytes(bytes);
                 case 2
                     bp = ornot.BeamformParameters.FromV2Bytes(bytes);
+                case 3
+                    bp = ornot.BeamformParameters.FromV3Bytes(bytes);
             end
 
         end
@@ -451,10 +453,6 @@ classdef BeamformParameters
                                 bytes(uint32(uniqueParameterOffsets(i)) + (1:ZBP.EmissionChirpParameters.byteSize)));
                     end
                 end
-            end
-
-            if header.data_frame_delays_offset >= 0
-                bp.data_frame_time_delays = typecast(bytes(uint32(header.data_frame_delays_offset) + (1:(4*bp.raw_data_dimension(3)))), 'single');
             end
 
             if header.contrast_parameters_offset >= 0
@@ -595,6 +593,23 @@ classdef BeamformParameters
                     case ZBP.DataCompressionKind.ZSTD
                         bp = ornot.DataFromRaw(bp, bytes((1 + header.raw_data_offset):end));
                 end
+            end
+
+        end
+
+        function bp = FromV3Bytes(bytes)
+            arguments (Input)
+                bytes uint8
+            end
+            arguments (Output)
+                bp(1,1) ornot.BeamformParameters
+            end
+
+            bp = FromV2Bytes(bytes);
+            header = ZBP.HeaderV3.fromBytes(bytes);
+
+            if header.data_frame_delays_offset >= 0
+                bp.data_frame_time_delays = typecast(bytes(uint32(header.data_frame_delays_offset) + (1:(4*bp.raw_data_dimension(3)))), 'single');
             end
         end
     end

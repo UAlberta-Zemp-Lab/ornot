@@ -2,7 +2,7 @@
 
 % GENERATED CODE
 
-classdef HeaderV2
+classdef HeaderV3
 	properties
 		magic(1,1)                         uint64
 		major(1,1)                         uint32
@@ -30,21 +30,22 @@ classdef HeaderV2
 		contrast_mode(1,1)                 int32
 		contrast_parameters_offset(1,1)    int32
 		emission_descriptors_offset(1,1)   int32
+		data_frame_delays_offset(1,1)      int32
 	end
 
 	properties (Constant)
-		byteSize(1,1) uint32 = 184
+		byteSize(1,1) uint32 = 188
 	end
 
 	methods
 		function bytes = toBytes(obj)
 			arguments (Input)
-				obj(1,1) ZBP.HeaderV2
+				obj(1,1) ZBP.HeaderV3
 			end
 			arguments (Output)
 				bytes uint8
 			end
-			bytes = zeros(1, ZBP.HeaderV2.byteSize);
+			bytes = zeros(1, ZBP.HeaderV3.byteSize);
 			bytes(1:8)     = typecast(obj.magic(:),                         'uint8');
 			bytes(9:12)    = typecast(obj.major(:),                         'uint8');
 			bytes(13:16)   = typecast(obj.minor(:),                         'uint8');
@@ -71,6 +72,7 @@ classdef HeaderV2
 			bytes(173:176) = typecast(obj.contrast_mode(:),                 'uint8');
 			bytes(177:180) = typecast(obj.contrast_parameters_offset(:),    'uint8');
 			bytes(181:184) = typecast(obj.emission_descriptors_offset(:),   'uint8');
+			bytes(185:188) = typecast(obj.data_frame_delays_offset(:),      'uint8');
 		end
 	end
 
@@ -80,9 +82,9 @@ classdef HeaderV2
 				bytes uint8
 			end
 			arguments (Output)
-				out(1,1) ZBP.HeaderV2
+				out(1,1) ZBP.HeaderV3
 			end
-			out = ZBP.HeaderV2;
+			out = ZBP.HeaderV3;
 			out.magic(:)                         = typecast(bytes(1:8),     'uint64');
 			out.major(:)                         = typecast(bytes(9:12),    'uint32');
 			out.minor(:)                         = typecast(bytes(13:16),   'uint32');
@@ -109,6 +111,7 @@ classdef HeaderV2
 			out.contrast_mode(:)                 = typecast(bytes(173:176), 'int32');
 			out.contrast_parameters_offset(:)    = typecast(bytes(177:180), 'int32');
 			out.emission_descriptors_offset(:)   = typecast(bytes(181:184), 'int32');
+			out.data_frame_delays_offset(:)      = typecast(bytes(185:188), 'int32');
 		end
 	end
 end
