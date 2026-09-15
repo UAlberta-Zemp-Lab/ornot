@@ -595,6 +595,35 @@ classdef BeamformParameters
                 end
             end
 
+            % NOTE(DD): V2.1 data files have a bug where the emission peak excitation time is not added to the time offset
+            if header.major == 2 && header.minor == 1
+                if ~isempty(bp.emission_descriptors) && ~isempty(bp.emission_parameters)
+                    dataFrameTimeDelays = zeros(1, bp.raw_data_dimension(3));
+                    if ~isempty(bp.data_frame_time_delays)
+                        dataFrameTimeDelays = bp.data_frame_time_delays;
+                    end
+                    for i = 1:bp.raw_data_dimension(3)
+                        emissionDescriptor = bp.emission_descriptors(i);
+                        emissionParameters = bp.emission_parameters{emissionDescriptor};
+                        switch class(emissionParameters)
+                            case 'ZBP.EmissionSineParameters'
+                                dataFrameTimeDelays = dataFrameTimeDelays + emissionParameters.cycles / emissionParameters.frequency / 2;
+                            case 'ZBP.EmissionChirpParameters'
+                                dataFrameTimeDelays = dataFrameTimeDelays + emissionParameters.duration / 2;
+                            otherwise
+                                error('ornot:OGLBeamformerSimpleParametersFromParameters:InvalidParameter', ...
+                                    "Unsupported EmissionType!");
+                        end
+                    end
+
+                    if isscalar(unique(dataFrameTimeDelays))
+                        bp.time_offset = bp.time_offset + dataFrameTimeDelays;
+                        bp.data_frame_time_delays = [];
+                    else
+                        bp.data_frame_time_delays = dataFrameTimeDelays;
+                    end
+                end
+            end
         end
 
         function bp = FromV3Bytes(bytes)

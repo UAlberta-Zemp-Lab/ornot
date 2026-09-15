@@ -469,6 +469,27 @@ class ornot:
 					if header.raw_data_offset != -1:
 						result.raw_data = bytes[header.raw_data_offset:]
 
+					# NOTE(DD): V2.1 data files have a bug where the emission peak excitation time is not added to the time offset
+					if base.major == 2 and base.minor == 1:
+						if len(result.emission_parameters) > 0:
+							data_frame_time_delays = [0] * result.raw_data_dimension[2]
+							if len(result.data_frame_time_delays) > 0:
+								data_frame_time_delays = list(result.data_frame_time_delays)
+							for i in range(result.raw_data_dimension[2]):
+								emission_parameters = result.emission_parameters[i]
+								if isinstance(emission_parameters, ZBP.EmissionSineParameters):
+									data_frame_time_delays[i] += emission_parameters.cycles / emission_parameters.frequency / 2
+								elif isinstance(emission_parameters, ZBP.EmissionChirpParameters):
+									data_frame_time_delays[i] += emission_parameters.duration / 2
+								else:
+									raise ValueError("Unsupported Emission Type")
+
+							if len(set(data_frame_time_delays)) == 1:
+								result.time_offset += data_frame_time_delays[0]
+								result.data_frame_time_delays = []
+							else:
+								result.data_frame_time_delays = data_frame_time_delays
+
 					if base.major == 3:
 						result.data_frame_time_delays = []
 						if header.data_frame_delays_offset != -1:
