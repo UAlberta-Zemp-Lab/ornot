@@ -57,17 +57,18 @@ Encodes the imaging method used to acquire the data.
 ```c
 typedef enum {
 	ZBP_ContrastMode_None = 0,
+	ZBP_ContrastMode_A1S2 = 1,
+	ZBP_ContrastMode_A2   = 2,
 	ZBP_ContrastMode_Count,
 } ZBP_ContrastMode;
 ```
 
-A placeholder for encoding whether the data contains method of
-providing non-linear contrast. Note that some contrast enhancing
-methods can be handled directly in the acquisition hardware
+Encodes whether the data contains method of providing non-linear contrast. Note that some contrast enhancing methods can be handled directly in the acquisition hardware
 meaning that from a saved data or beamforming perspective the data
 does not have a contrast mode applied. In that case `None` is also
 used since these files are only meant to encode data needed for
-image reconstruction.
+image reconstruction. Elsewise encodes how data should be combined. For example,
+`ZBP_ContrastMode_A1S2` means that one frame should be added, and 2 should be subtracted to generate non-linear contrast.
 
 ### Data Kind
 
