@@ -12,7 +12,7 @@ jobs:
     env:
       CC: ${{matrix.cc}}
     steps:
-        - uses: actions/checkout@v6
+        - uses: actions/checkout@v7
           with:
             submodules: 'true'
         - name: Build
@@ -21,7 +21,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-        - uses: actions/checkout@v6
+        - uses: actions/checkout@v7
           with:
             submodules: 'true'
         - name: Build
@@ -48,16 +48,26 @@ jobs:
             msystem: ${{matrix.sys}}
             update: true
             install: zip git mingw-w64-${{matrix.env}}-clang
-        - uses: actions/checkout@v6
+        - uses: actions/checkout@v7
           with:
+            fetch-depth: 0
             submodules: 'true'
         - name: Build
           run: ./ci/build.sh
+        - name: Check Tag Ancestry
+          id: check
+          run: |
+            git fetch origin master:refs/remotes/origin/master
+            if git branch -r --contains "${{ github.ref }}" | grep -q "origin/master$"; then
+              echo "is_master=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_master=false" >> $GITHUB_OUTPUT
+            fi
         - name: Build Release
-          if: github.ref_type == 'tag'
+          if: ${{ github.ref_type == 'tag' && steps.check.outputs.is_master == 'true' }}
           run: ./ci/release.sh generic
         - name: Upload Release
-          if: github.ref_type == 'tag'
+          if: ${{ github.ref_type == 'tag' && steps.check.outputs.is_master == 'true' }}
           uses: softprops/action-gh-release@v2
           with:
             files: beamformer-pack*.zip
