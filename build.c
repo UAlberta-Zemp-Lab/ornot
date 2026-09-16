@@ -1788,20 +1788,20 @@ read_only global char *meta_entry_kind_strings[] = {META_ENTRY_KIND_LIST};
 #undef X
 
 #define META_KIND_LIST \
-	X(M4,  float,    single, f, 64, 16) \
-	X(SV4, int32_t,  int32,  l, 16,  4) \
-	X(UV4, uint32_t, uint32, L, 16,  4) \
-	X(UV2, uint32_t, uint32, L,  8,  2) \
-	X(V3,  float,    single, f, 12,  3) \
-	X(V2,  float,    single, f,  8,  2) \
-	X(F32, float,    single, f,  4,  1) \
-	X(S32, int32_t,  int32,  l,  4,  1) \
-	X(S16, int16_t,  int16,  h,  2,  1) \
-	X(S8,  int8_t,   int8,   b,  1,  1) \
-	X(U64, uint64_t, uint64, Q,  8,  1) \
-	X(U32, uint32_t, uint32, L,  4,  1) \
-	X(U16, uint16_t, uint16, H,  2,  1) \
-	X(U8,  uint8_t,  uint8,  B,  1,  1) \
+	X(M4,  float,    f32, single, f, 64, 16) \
+	X(SV4, int32_t,  f32, int32,  l, 16,  4) \
+	X(UV4, uint32_t, u32, uint32, L, 16,  4) \
+	X(UV2, uint32_t, u32, uint32, L,  8,  2) \
+	X(V3,  float,    f32, single, f, 12,  3) \
+	X(V2,  float,    f32, single, f,  8,  2) \
+	X(F32, float,    f32, single, f,  4,  1) \
+	X(S32, int32_t,  i32, int32,  l,  4,  1) \
+	X(S16, int16_t,  i16, int16,  h,  2,  1) \
+	X(S8,  int8_t,   i8,  int8,   b,  1,  1) \
+	X(U64, uint64_t, u64, uint64, Q,  8,  1) \
+	X(U32, uint32_t, u32, uint32, L,  4,  1) \
+	X(U16, uint16_t, u16, uint16, H,  2,  1) \
+	X(U8,  uint8_t,  u8,  uint8,  B,  1,  1) \
 
 typedef enum {
 	#define X(k, ...) MetaKind_## k,
@@ -1811,13 +1811,13 @@ typedef enum {
 } MetaKind;
 
 read_only global u8 meta_kind_elements[] = {
-	#define X(_k, _b, _m, _pys, _by, elements, ...) elements,
+	#define X(_k, _b, _o, _m, _pys, _by, elements, ...) elements,
 	META_KIND_LIST
 	#undef X
 };
 
 read_only global u8 meta_kind_bytes[] = {
-	#define X(_k, _b, _m, _pys, bytes, ...) bytes,
+	#define X(_k, _b, _o, _m, _pys, bytes, ...) bytes,
 	META_KIND_LIST
 	#undef X
 };
@@ -1834,14 +1834,20 @@ read_only global str8 meta_kind_base_c_types[] = {
 	#undef X
 };
 
+read_only global str8 meta_kind_base_odin_types[] = {
+	#define X(_k, _b, odin, ...) str8_comp(#odin),
+	META_KIND_LIST
+	#undef X
+};
+
 read_only global str8 meta_kind_matlab_types[] = {
-	#define X(_k, _b, m, ...) str8_comp(#m),
+	#define X(_k, _b, _o, m, ...) str8_comp(#m),
 	META_KIND_LIST
 	#undef X
 };
 
 read_only global str8 meta_kind_python_struct_types[] = {
-	#define X(_k, _b, _m, pys, ...) str8_comp(#pys),
+	#define X(_k, _b, _o, _m, pys, ...) str8_comp(#pys),
 	META_KIND_LIST
 	#undef X
 };
@@ -3283,6 +3289,23 @@ metagen_push_c_enum(MetaprogramContext *m, Arena scratch, str8 kind, str8 *ids, 
 	meta_end_scope(m, str8("} "), kind, str8(";\n"));
 }
 
+function void
+metagen_push_odin_enum(MetaprogramContext *m, Arena scratch, str8 kind, str8 *ids, sz ids_count, b8 make_flaggable)
+{
+	str8 kind_full = push_str8_from_parts(&scratch, str8(""), kind);
+	meta_begin_scope(m, kind_full, str8(":: enum {"));
+	if (make_flaggable) {
+		ids++;
+		ids_count--;
+	}
+	metagen_push_counted_enum_body(m, str8(""), str8(""), str8("= "), str8(","), ids, ids_count);
+	meta_end_scope(m, str8("}"));
+	if (make_flaggable) {
+		meta_push_line(m, kind_full, str8("s :: bit_set["), kind, str8("]"));
+	}
+	meta_push(m, str8("\n"));
+}
+
 read_only global str8 c_file_header = str8_comp(""
 	"/* See LICENSE for license details. */\n\n"
 	"// GENERATED CODE\n\n"
@@ -3373,6 +3396,113 @@ metagen_emit_c_code(MetaContext *ctx, Arena arena)
 	}
 
 	result = meta_write_and_reset(m, out_meta);
+
+	return result;
+}
+
+read_only global str8 odin_file_header_zbp = str8_comp(""
+	"// See LICENSE for license details.\n\n"
+	"// GENERATED CODE\n\n"
+	"package ornot_zbp" "\n"
+);
+
+function b32
+metagen_emit_odin_code(MetaContext *ctx, Arena arena)
+{
+	os_make_directory("odin");
+	os_make_directory("odin" OS_PATH_SEPARATOR "zbp");
+	char *out = "odin" OS_PATH_SEPARATOR "zbp" OS_PATH_SEPARATOR ZBP_NAMESPACE ".odin";
+	
+	if (setjmp(compiler_jmp_buf)) {
+		build_log_error("Failed to generate Odin Bindings");
+		return 0;
+	}
+	
+	b32 result = 1;
+
+	if (!needs_rebuild(out, "ornot.meta"))
+		return result;
+
+	build_log_generate("Odin Bindings");
+
+	read_only local_persist str8 flaggable_enums[] = {
+		str8_comp("ZBP_RCAOrientation"),
+	};
+
+	MetaprogramContext m[1] = {{.stream = arena_stream(arena), .scratch = ctx->scratch}};
+
+	meta_push_line(m, odin_file_header_zbp);
+
+	///////////////////////
+	// NOTE(DD): constants
+	for (sz constant = 0; constant < ctx->constants.count; constant++) {
+		MetaConstant *c = ctx->constants.data + constant;
+		str8 name  = ctx->constant_names.data[c->name_id];
+		u64  index = integer_width_index(c->value);
+		meta_begin_line(m, name, str8(" :: 0x"));
+		meta_push_u64_hex_width(m, c->value, meta_integer_print_digits[index]);
+		meta_end_line(m);
+	}
+	if (ctx->constants.count > 0) meta_push_line(m);
+
+	////////////////////////
+	// NOTE(DD): enumerants
+	for (sz kind = 0; kind < ctx->enumeration_kinds.count; kind++) {
+		str8 enum_name = ctx->enumeration_kinds.data[kind];
+		b8 make_flaggable = 0;
+		for (sz i = 0; i < (sz)countof(flaggable_enums); i++)
+			if (str8_equal(enum_name, flaggable_enums[i]))
+				make_flaggable = 1;
+		metagen_push_odin_enum(m, m->scratch, enum_name, ctx->enumeration_members.data[kind].data,
+		                    ctx->enumeration_members.data[kind].count, make_flaggable);
+		m->scratch = ctx->scratch;
+	}
+
+	////////////////////////
+	// NOTE(DD): bit fields
+	read_only local_persist str8 transmit_receive_orientation = str8_comp(""
+		"TransmitReceiveOrientation :: bit_field u8 {\n"
+		"\ttransmit : RCAOrientations | 4,\n"
+		"\treceive  : RCAOrientations | 4,\n"
+		"}\n"
+	);
+	meta_push_line(m, transmit_receive_orientation);
+
+	////////////////////////
+	// NOTE(DD): structs
+	{
+		for (sz structure = 0; structure < ctx->structs.count; structure++) {
+			MetaStruct *s = ctx->structs.data + structure;
+
+			sz max_type_name_length = 0;
+			for (u32 member = 0; member < s->member_count; member++) {
+				max_type_name_length = Max(max_type_name_length, s->members[member].length);
+			}
+
+			if (structure != 0) meta_push(m, str8("\n"));
+			meta_begin_scope(m, s->name, str8(" :: struct {")); {
+				for (u32 member = 0; member < s->member_count; member++) {
+					s32  id     = s->type_ids[member];
+					str8 memb = s->members[member];
+					str8 kind   = id < 0 ? s->types[member] : meta_kind_base_odin_types[id];
+					sz   length = memb.length;
+
+					meta_begin_line(m, memb, str8(": "));
+					meta_pad(m, ' ', 1 + (s32)(max_type_name_length - length));
+					if (s->elements[member] > 1) {
+						meta_push(m, str8("["));
+						meta_push_u64(m, s->elements[member]);
+						meta_push(m, str8("]"));
+					}
+					meta_push(m, id < 0? str8(ZBP_NAMESPACE "_") : str8(""), kind);
+					meta_end_line(m, str8(","));
+				}
+			} meta_end_scope(m, str8("}"));
+			m->scratch = ctx->scratch;
+		}
+	}
+
+	result = meta_write_and_reset(m, out);
 
 	return result;
 }
@@ -4104,6 +4234,7 @@ main(s32 argc, char *argv[])
 	if (!meta) return 1;
 
 	result &= metagen_emit_c_code(meta, arena);
+	result &= metagen_emit_odin_code(meta, arena);
 	result &= metagen_emit_matlab_code(meta, arena);
 	result &= metagen_emit_python_code(meta, arena);
 
