@@ -63,12 +63,15 @@ typedef enum {
 } ZBP_ContrastMode;
 ```
 
-Encodes whether the data contains method of providing non-linear contrast. Note that some contrast enhancing methods can be handled directly in the acquisition hardware
-meaning that from a saved data or beamforming perspective the data
-does not have a contrast mode applied. In that case `None` is also
-used since these files are only meant to encode data needed for
-image reconstruction. Elsewise encodes how data should be combined. For example,
-`ZBP_ContrastMode_A1S2` means that one frame should be added, and 2 should be subtracted to generate non-linear contrast.
+Encodes whether the data contains method of providing non-linear 
+contrast. Note that some contrast enhancing methods can be handled 
+directly in the acquisition hardware meaning that from a saved data 
+or beamforming perspective the data does not have a contrast mode 
+applied. In that case `None` is also used since these files are only 
+meant to encode data needed for image reconstruction. Elsewise 
+encodes how data should be combined. For example, `ZBP_ContrastMode_A1S2` 
+means that one frame should be added, and 2 should be subtracted to 
+generate non-linear contrast.
 
 ### Data Kind
 
@@ -401,11 +404,19 @@ is `None` this offset can be -1.
 #### `emission_descriptors_offset`
 
 An offset to an array of [Emission Descriptor](#emission-descriptor)
-structures. The number of emission descriptors present is determined by the number of [Data Frames](#raw_data_dimension). When there is no emission, such as when [`acquisition_mode`](#acquisition_mode) is [`HERO_PA`](#hero-pa-parameters), this offset can be -1.
+structures. The number of emission descriptors present is determined
+by the number of [Data Frames](#raw_data_dimension). When there is no
+emission, such as when [`acquisition_mode`](#acquisition_mode) is
+[`HERO_PA`](#hero-pa-parameters), this offset can be -1.
 
 #### `data_frame_delays_offset`
 
-An offset to an array of `float32_t` values representing the additional time delay which should be applied to the binary data associated with this parameters file. If it is not present, no additional delays are applied. The length of this array is given by the count of [Data Frames](#raw_data_dimension).The array contains one value per Data Frame, and the value at index `i` is added to `time_offset` when processing Data Frame `i`.
+An offset to an array of `float32_t` values representing the additional
+time delay which should be applied to the binary data associated with this
+parameters file. If it is not present, no additional delays are applied.
+The length of this array is given by the count of [Data Frames](#raw_data_dimension).
+The array contains one value per Data Frame, and the value at index `i`
+is added to `time_offset` when processing Data Frame `i`.
 
 ### Emission Descriptor
 
@@ -704,7 +715,8 @@ A structure containing the acquisition parameters when the
 
 #### `angle_count`
 
-The number of angle transmits in each orientation. Rows transmits first, then Columns. Must add up to [`receive_event_count`](#receive_event_count).
+The number of angle transmits in each orientation. Rows transmits first, 
+then Columns. Must add up to [`receive_event_count`](#receive_event_count).
 
 #### `tilting_angles_offset`
 
