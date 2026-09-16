@@ -150,139 +150,129 @@ classdef BeamformParameters
                 header.channel_mapping_offset = -1;
             end
 
-            if ~isempty(bp.acquisition_parameters)
-                section_count = bp.raw_data_dimension(3);
-                switch bp.acquisition_kind
-                    case ZBP.AcquisitionKind.EPIC_FORCES
-                        receive_count = bp.receive_event_count;
-                        section_count = bp.raw_data_dimension(3);
-                        assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
+            assert(~isempty(bp.acquisition_parameters), ...
+                "Acquisition Parameters are empty, but acquisition kind requires acquisition parameters");
 
-                        assert(all(size(bp.transmit_foci) == [receive_count, section_count]));
+            switch bp.acquisition_kind
+                case ZBP.AcquisitionKind.EPIC_FORCES
+                    receive_count = bp.receive_event_count;
+                    section_count = bp.raw_data_dimension(3);
+                    assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
 
-                        for i = 1:section_count
-                            bp.acquisition_parameters(i).transmit_foci_offset = offset;
-                            offset = increment_offset(offset, receive_count*ZBP.RCATransmitFocus.byteSize, offset_alignment);
-                            tfOffset = bp.acquisition_parameters(i).transmit_foci_offset;
-                            for j = 1:receive_count
-                                bytes = set_bytes(bytes, bp.transmit_foci(j, i).toBytes(), tfOffset);
-                                tfOffset = increment_offset(tfOffset, ZBP.RCATransmitFocus.byteSize, 1);
-                            end
+                    assert(all(size(bp.transmit_foci) == [receive_count, section_count]));
+
+                    for i = 1:section_count
+                        bp.acquisition_parameters(i).transmit_foci_offset = offset;
+                        offset = increment_offset(offset, receive_count*ZBP.RCATransmitFocus.byteSize, offset_alignment);
+                        tfOffset = bp.acquisition_parameters(i).transmit_foci_offset;
+                        for j = 1:receive_count
+                            bytes = set_bytes(bytes, bp.transmit_foci(j, i).toBytes(), tfOffset);
+                            tfOffset = increment_offset(tfOffset, ZBP.RCATransmitFocus.byteSize, 1);
                         end
-                    case ZBP.AcquisitionKind.RCA_VLS
-                        receive_count = bp.receive_event_count;
-                        section_count = bp.raw_data_dimension(3);
-                        assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
+                    end
+                case ZBP.AcquisitionKind.RCA_VLS
+                    receive_count = bp.receive_event_count;
+                    section_count = bp.raw_data_dimension(3);
+                    assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
 
-                        assert(all(size(bp.focal_depths) == [receive_count, section_count]));
-                        assert(all(size(bp.origin_offsets) == [receive_count, section_count]));
-                        assert(all(size(bp.transmit_receive_orientations) == [receive_count, section_count]));
+                    assert(all(size(bp.focal_depths) == [receive_count, section_count]));
+                    assert(all(size(bp.origin_offsets) == [receive_count, section_count]));
+                    assert(all(size(bp.transmit_receive_orientations) == [receive_count, section_count]));
 
-                        for i = 1:section_count
-                            bp.acquisition_parameters(i).focal_depths_offset = offset;
-                            offset = increment_offset(offset, 4*numel(bp.focal_depths), offset_alignment);
-                            bytes = set_bytes(bytes, typecast(bp.focal_depths, "uint8"), bp.acquisition_parameters(i).focal_depths_offset);
+                    for i = 1:section_count
+                        bp.acquisition_parameters(i).focal_depths_offset = offset;
+                        offset = increment_offset(offset, 4*numel(bp.focal_depths), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(bp.focal_depths, "uint8"), bp.acquisition_parameters(i).focal_depths_offset);
 
-                            bp.acquisition_parameters(i).origin_offsets_offset = offset;
-                            offset = increment_offset(offset, 4*numel(bp.origin_offsets), offset_alignment);
-                            bytes = set_bytes(bytes, typecast(bp.origin_offsets, "uint8"), bp.acquisition_parameters(i).origin_offsets_offset);
+                        bp.acquisition_parameters(i).origin_offsets_offset = offset;
+                        offset = increment_offset(offset, 4*numel(bp.origin_offsets), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(bp.origin_offsets, "uint8"), bp.acquisition_parameters(i).origin_offsets_offset);
 
-                            bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
-                            offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
-                            bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
-                        end
-                    case ZBP.AcquisitionKind.RCA_TPW
-                        receive_count = bp.receive_event_count;
-                        section_count = bp.raw_data_dimension(3);
-                        assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
+                        bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
+                        offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                    end
+                case ZBP.AcquisitionKind.RCA_TPW
+                    receive_count = bp.receive_event_count;
+                    section_count = bp.raw_data_dimension(3);
+                    assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
 
-                        assert(all(size(bp.tilting_angles) == [receive_count, section_count]));
-                        assert(all(size(bp.transmit_receive_orientations) == [receive_count, section_count]));
+                    assert(all(size(bp.tilting_angles) == [receive_count, section_count]));
+                    assert(all(size(bp.transmit_receive_orientations) == [receive_count, section_count]));
 
-                        for i = 1:section_count
-                            bp.acquisition_parameters(i).tilting_angles_offset = offset;
-                            offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
-                            bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters(i).tilting_angles_offset);
-
-                            bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
-                            offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
-                            bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
-                        end
-                    case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
-                        receive_count = bp.receive_event_count;
-                        section_count = bp.raw_data_dimension(3);
-                        assert(all(size(bp.sparse_elements) == [receive_count - 1, section_count]));
-
-                        for i = 1:section_count
-                            bp.acquisition_parameters(i).sparse_elements_offset = offset;
-                            offset = increment_offset(offset, 2*numel(bp.sparse_elements(:,i)), offset_alignment);
-                            bytes = set_bytes(bytes, typecast(bp.sparse_elements(:,i), "uint8"), bp.acquisition_parameters(i).sparse_elements_offset);
-                        end
-                    case ZBP.AcquisitionKind.HERO_PA
-                        assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
-                        assert(isscalar(bp.acquisition_parameters));
-                    case ZBP.AcquisitionKind.HEXDoppler
-                        assert(isa(bp.acquisition_parameters, "ZBP.HEXDopplerParameters"));
-                        assert(isscalar(bp.acquisition_parameters));
-
-                        assert(sum(bp.acquisition_parameters.bin_count) == bp.receive_event_count);
-                    case ZBP.AcquisitionKind.XDoppler
-                        assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
-                        assert(isscalar(bp.acquisition_parameters));
-
-                        receive_count = bp.receive_event_count;
-                        assert(sum(bp.acquisition_parameters.angle_count) == receive_count);
-
-                        assert(~isempty(bp.tilting_angles));
-                        assert(numel(bp.tilting_angles) == receive_count);
-                        bp.acquisition_parameters.tilting_angles_offset = offset;
+                    for i = 1:section_count
+                        bp.acquisition_parameters(i).tilting_angles_offset = offset;
                         offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters.tilting_angles_offset);
-                end
+                        bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters(i).tilting_angles_offset);
 
-                switch bp.acquisition_kind
-                    case ZBP.AcquisitionKind.FORCES
-                        assert(isa(bp.acquisition_parameters, "ZBP.FORCESParameters"));
-                    case ZBP.AcquisitionKind.UFORCES
-                        assert(isa(bp.acquisition_parameters, "ZBP.uFORCESParameters"));
-                    case ZBP.AcquisitionKind.EPIC_FORCES
-                        assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
-                    case ZBP.AcquisitionKind.RCA_VLS
-                        assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
-                    case ZBP.AcquisitionKind.RCA_TPW
-                        assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
-                    case ZBP.AcquisitionKind.HERCULES
-                        assert(isa(bp.acquisition_parameters, "ZBP.HERCULESParameters"));
-                    case ZBP.AcquisitionKind.UHERCULES
-                        assert(isa(bp.acquisition_parameters, "ZBP.uHERCULESParameters"));
-                    case ZBP.AcquisitionKind.HERO_PA
-                        assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
-                    case ZBP.AcquisitionKind.HEXDoppler
-                        assert(isa(bp.acquisition_parameters, "ZBP.HEXDopplerParameters"));
-                    case ZBP.AcquisitionKind.XDoppler
-                        assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
-                    otherwise
-                        assert(false, "Unsupported Acquisition Kind")
-                end
+                        bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
+                        offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                    end
+                case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
+                    receive_count = bp.receive_event_count;
+                    section_count = bp.raw_data_dimension(3);
+                    assert(all(size(bp.sparse_elements) == [receive_count - 1, section_count]));
 
-                header.acquisition_parameters_offset = offset;
-                for i = 1:numel(bp.acquisition_parameters)
-                    bytes = set_bytes(bytes, bp.acquisition_parameters(i).toBytes(), offset);
-                    offset = increment_offset(offset, bp.acquisition_parameters(i).byteSize, 1);
-                end
+                    for i = 1:section_count
+                        bp.acquisition_parameters(i).sparse_elements_offset = offset;
+                        offset = increment_offset(offset, 2*numel(bp.sparse_elements(:,i)), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(bp.sparse_elements(:,i), "uint8"), bp.acquisition_parameters(i).sparse_elements_offset);
+                    end
+                case ZBP.AcquisitionKind.HERO_PA
+                    assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
+                    assert(isscalar(bp.acquisition_parameters));
+                case ZBP.AcquisitionKind.HEXDoppler
+                    assert(isa(bp.acquisition_parameters, "ZBP.HEXDopplerParameters"));
+                    assert(isscalar(bp.acquisition_parameters));
 
-                offset = increment_offset(offset, 0, offset_alignment);
-            else
-                assert( bp.acquisition_kind ~= ZBP.AcquisitionKind.FORCES && bp.acquisition_kind ~= ZBP.AcquisitionKind.UFORCES ...
-                    && bp.acquisition_kind ~= ZBP.AcquisitionKind.HERCULES && bp.acquisition_kind ~= ZBP.AcquisitionKind.UHERCULES ...
-                    && bp.acquisition_kind ~= ZBP.AcquisitionKind.RCA_VLS && bp.acquisition_kind ~= ZBP.AcquisitionKind.RCA_TPW ...
-                    && bp.acquisition_kind ~= ZBP.AcquisitionKind.HERO_PA && ...
-                    bp.acquisition_kind ~= ZBP.AcquisitionKind.HEXDoppler && bp.acquisition_kind ~= ZBP.AcquisitionKind.XDoppler, ...
-                    "Acquisition Parameters are empty, but acquisition kind requires acquisition parameters");
-                assert(isempty(bp.focal_depths) && isempty(bp.origin_offsets) && isempty(bp.transmit_receive_orientations) && isempty(bp.tilting_angles) && isempty(bp.sparse_elements), ...
-                    "Acquisition Parameters are empty, but other dependent properties are not empty");
-                header.acquisition_parameters_offset = -1;
+                    assert(sum(bp.acquisition_parameters.bin_count) == bp.receive_event_count);
+                case ZBP.AcquisitionKind.XDoppler
+                    assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
+                    assert(isscalar(bp.acquisition_parameters));
+
+                    receive_count = bp.receive_event_count;
+                    assert(sum(bp.acquisition_parameters.angle_count) == receive_count);
+
+                    assert(~isempty(bp.tilting_angles));
+                    assert(numel(bp.tilting_angles) == receive_count);
+                    bp.acquisition_parameters.tilting_angles_offset = offset;
+                    offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
+                    bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters.tilting_angles_offset);
             end
+
+            switch bp.acquisition_kind
+                case ZBP.AcquisitionKind.FORCES
+                    assert(isa(bp.acquisition_parameters, "ZBP.FORCESParameters"));
+                case ZBP.AcquisitionKind.UFORCES
+                    assert(isa(bp.acquisition_parameters, "ZBP.uFORCESParameters"));
+                case ZBP.AcquisitionKind.EPIC_FORCES
+                    assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
+                case ZBP.AcquisitionKind.RCA_VLS
+                    assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
+                case ZBP.AcquisitionKind.RCA_TPW
+                    assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
+                case ZBP.AcquisitionKind.HERCULES
+                    assert(isa(bp.acquisition_parameters, "ZBP.HERCULESParameters"));
+                case ZBP.AcquisitionKind.UHERCULES
+                    assert(isa(bp.acquisition_parameters, "ZBP.uHERCULESParameters"));
+                case ZBP.AcquisitionKind.HERO_PA
+                    assert(isa(bp.acquisition_parameters, "ZBP.HERO_PAParameters"));
+                case ZBP.AcquisitionKind.HEXDoppler
+                    assert(isa(bp.acquisition_parameters, "ZBP.HEXDopplerParameters"));
+                case ZBP.AcquisitionKind.XDoppler
+                    assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
+                otherwise
+                    assert(false, "Unsupported Acquisition Kind")
+            end
+
+            header.acquisition_parameters_offset = offset;
+            for i = 1:numel(bp.acquisition_parameters)
+                bytes = set_bytes(bytes, bp.acquisition_parameters(i).toBytes(), offset);
+                offset = increment_offset(offset, bp.acquisition_parameters(i).byteSize, 1);
+            end
+
+            offset = increment_offset(offset, 0, offset_alignment);
 
             if ~isempty(bp.data)
                 assert(numel(bp.data) == prod(max(bp.raw_data_dimension, 1)));
