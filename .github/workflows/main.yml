@@ -56,6 +56,7 @@ jobs:
           run: ./ci/build.sh
         - name: Check Tag Ancestry
           id: check
+          if: github.ref_type == 'tag'
           run: |
             git fetch origin master:refs/remotes/origin/master
             if git branch -r --contains "${{ github.ref }}" | grep -q "origin/master$"; then
