@@ -4088,6 +4088,33 @@ metagen_run_emit(MetaprogramContext *m, MetaContext *ctx, MetaEmitOperationList 
 	meta_end_line(m);
 }
 
+function b32
+meta_entity_is_enum(MetaContext *ctx, da_count entity_id)
+{
+	MetaEntity *entity = ctx->entities.data + entity_id;
+	b32 result = entity->kind == MetaEntityKind_Enumeration ||
+	             entity->kind == MetaEntityKind_Flags;
+	return result;
+}
+
+function MetaKind
+meta_entity_enum_base_kind(MetaContext *ctx, da_count entity_id)
+{
+	assert(meta_entity_is_enum(ctx, entity_id));
+	MetaEntity *entity = ctx->entities.data + entity_id;
+	s64 limit  = entity->kind == MetaEntityKind_Flags ? 32 : U32_MAX;
+	MetaKind result = MetaKind_U64;
+	if (entity->table.entry_count < limit) result = MetaKind_U32;
+	return result;
+}
+
+function u32
+meta_entity_enum_size(MetaContext *ctx, da_count entity_id)
+{
+	u32 result = meta_kind_byte_sizes[meta_entity_enum_base_kind(ctx, entity_id)];
+	return result;
+}
+
 function s32
 meta_struct_member_elements(MetaContext *ctx, MetaStruct *s, u32 member)
 {
@@ -4097,6 +4124,19 @@ meta_struct_member_elements(MetaContext *ctx, MetaStruct *s, u32 member)
 		result = (s32)meta_entity(ctx, (MetaEntityID){result})->constant.U64;
 	if (s->member_flags[member] & MetaBuildStructMemberFlag_EnumerationCount)
 		result = (s32)meta_entity(ctx, (MetaEntityID){result})->table.entry_count;
+	return result;
+}
+
+function u32
+meta_struct_member_size(MetaContext *ctx, MetaStruct *s, u32 member)
+{
+	s32 type_id = s->type_ids[member];
+	b32 ref     = (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+	b32 is_enum = meta_entity_is_enum(ctx, type_id);
+	MetaEntity *re = ctx->entities.data + type_id;
+	u32 result = ref ? (is_enum ? meta_entity_enum_size(ctx, type_id)
+	                            : ctx->struct_infos[re->table.struct_info_id].info.size)
+	                 : meta_kind_byte_sizes[type_id];
 	return result;
 }
 
@@ -4305,10 +4345,10 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 							stream_append_str8(&sb, p.base_types[MetaKind_U8]);
 							if (p.layout_style == MetaPushStructStyle_MATLAB)
 								stream_append_str8(&sb, str8("  % +"));
-						} else if (re->kind == MetaEntityKind_Enumeration && p.layout_style == MetaPushStructStyle_MATLAB) {
+						} else if (meta_entity_is_enum(ctx, type_id) && p.layout_style == MetaPushStructStyle_MATLAB) {
 							// NOTE(rnp): matlab enumerations are int32 if we make this uint32
 							// MATLAB won't fuck up the type when the field is assigned
-							stream_append_str8(&sb, p.base_types[MetaKind_U32]);
+							stream_append_str8(&sb, p.base_types[meta_entity_enum_base_kind(ctx, type_id)]);
 							if (p.layout_style == MetaPushStructStyle_MATLAB)
 								stream_append_str8(&sb, str8(" % "));
 						} else {
@@ -4631,16 +4671,17 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 								u32 offset  = 1;
 								u32 members = 0;
 								for (u32 member = 0; member < s->info.member_count; member++) {
-									s32 type_id = s->type_ids[member];
-									if (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) {
-										MetaEntity *re = ctx->entities.data + type_id;
-										offset += ctx->struct_infos[re->table.struct_info_id].info.size;
+									u32 byte_size = meta_struct_member_size(ctx, s, member);
+									s32 type_id   = s->type_ids[member];
+									b32 ref       = (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+									if (ref && !meta_entity_is_enum(ctx, type_id)) {
+										offset += byte_size;
 									} else {
 										u32 row = members++;
 										Stream sb = arena_stream(m->scratch);
 										stream_append_str8(&sb, str8("bytes("));
 										stream_append_u64(&sb, offset);
-										offset += s->elements[member] * meta_kind_byte_sizes[type_id];
+										offset += s->elements[member] * byte_size;
 										stream_append_str8(&sb, str8(":"));
 										stream_append_u64(&sb, offset - 1);
 										stream_append_str8(&sb, str8(")"));
@@ -4663,24 +4704,23 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 									columns[i] = push_array(m->scratch, str8, s->info.member_count);
 
 								for (u32 member = 0; member < s->info.member_count; member++) {
-									s32 type_id = s->type_ids[member];
-									if (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) {
-										MetaEntity *re = ctx->entities.data + type_id;
+									u32 byte_size = meta_struct_member_size(ctx, s, member);
+									s32 type_id   = s->type_ids[member];
+									b32 ref       = (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+									if (ref && !meta_entity_is_enum(ctx, type_id)) {
 										u32 row = members++;
 										Stream sb = arena_stream(m->scratch);
 										stream_append_str8s(&sb, str8("bytes("));
 										stream_append_u64(&sb, offset);
-										offset += ctx->struct_infos[re->table.struct_info_id].info.size;
 										stream_append_str8(&sb, str8(":"));
-										stream_append_u64(&sb, offset - 1);
+										stream_append_u64(&sb, offset + byte_size - 1);
 										stream_append_str8(&sb, str8(")"));
 										columns[0][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 
 										columns[1][row] = push_str8_from_parts(m->scratch, str8(""), str8("= obj."),
 										                                       s->members[member], str8(".toBytes();"));
-									} else {
-										offset += s->elements[member] * meta_kind_byte_sizes[type_id];
 									}
+									offset += s->elements[member] * byte_size;
 								}
 								metagen_push_table(m, str8(""), str8(""), columns, members, 2);
 							}
@@ -4708,10 +4748,11 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 								u32 offset  = 1;
 								u32 members = 0;
 								for (u32 member = 0; member < s->info.member_count; member++) {
-									s32 type_id = s->type_ids[member];
-									if (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) {
-										MetaEntity *re = ctx->entities.data + type_id;
-										offset += ctx->struct_infos[re->table.struct_info_id].info.size;
+									u32 byte_size = meta_struct_member_size(ctx, s, member);
+									s32 type_id   = s->type_ids[member];
+									b32 ref       = (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+									if (ref && !meta_entity_is_enum(ctx, type_id)) {
+										offset += byte_size;
 									} else {
 										u32 row = members++;
 										columns[0][row] = push_str8_from_parts(m->scratch, str8(""), str8("out."),
@@ -4720,14 +4761,16 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 										Stream sb = arena_stream(m->scratch);
 										stream_append_str8(&sb, str8("= typecast(bytes("));
 										stream_append_u64(&sb, offset);
-										offset += s->elements[member] * meta_kind_byte_sizes[type_id];
+										offset += s->elements[member] * byte_size;
 										stream_append_str8(&sb, str8(":"));
 										stream_append_u64(&sb, offset - 1);
 										stream_append_str8(&sb, str8("),"));
 										columns[1][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 
+										MetaKind kind = ref ? meta_entity_enum_base_kind(ctx, type_id)
+										                    : (MetaKind)type_id;
 										columns[2][row] = push_str8_from_parts(m->scratch, str8(""), str8("'"),
-										                                       meta_kind_matlab_types[type_id],
+										                                       meta_kind_matlab_types[kind],
 										                                       str8("');"));
 									}
 								}
@@ -4744,9 +4787,10 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 									columns[i] = push_array(m->scratch, str8, s->info.member_count);
 
 								for (u32 member = 0; member < s->info.member_count; member++) {
-									s32 type_id = s->type_ids[member];
-									if (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) {
-										MetaEntity *re = ctx->entities.data + type_id;
+									u32 byte_size = meta_struct_member_size(ctx, s, member);
+									s32 type_id   = s->type_ids[member];
+									b32 ref       = (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+									if (ref && !meta_entity_is_enum(ctx, type_id)) {
 										u32 row = members++;
 										columns[0][row] = push_str8_from_parts(m->scratch, str8(""), str8("out."),
 										                                       s->members[member]);
@@ -4755,15 +4799,13 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 										stream_append_str8s(&sb, str8("= " META_NAMESPACE_UPPER "."),
 										                    ctx->entity_names.data[type_id], str8(".fromBytes(bytes("));
 										stream_append_u64(&sb, offset);
-										offset += ctx->struct_infos[re->table.struct_info_id].info.size;
 										stream_append_str8(&sb, str8(":"));
-										stream_append_u64(&sb, offset - 1);
+										stream_append_u64(&sb, offset + byte_size - 1);
 										stream_append_str8(&sb, str8("));"));
 
 										columns[1][row] = arena_stream_commit_and_reset(m->scratch, &sb);
-									} else {
-										offset += s->elements[member] * meta_kind_byte_sizes[type_id];
 									}
+									offset += byte_size;
 								}
 								metagen_push_table(m, str8(""), str8(""), columns, members, 2);
 							}
@@ -4866,10 +4908,12 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 				{
 					meta_begin_line(m, str8("def __init__(self"));
 					for (u32 entry = 0; entry < s->info.member_count; entry++) {
+						b32 ref     = s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType;
+						b32 is_enum = ref && meta_entity_is_enum(ctx, s->type_ids[entry]);
 						meta_push(m, str8(", "));
 						meta_push(m, s->members[entry], str8("="));
 						if (s->elements[entry] > 1) meta_push(m, str8("["));
-						meta_push(m, s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType ? str8("None") : str8("0"));
+						meta_push(m, (ref && !is_enum) ? str8("None") : str8("0"));
 						if (s->elements[entry] > 1) {
 							// wtf is this syntax
 							meta_push(m, str8("] * "));
@@ -4884,7 +4928,8 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							Stream sb = arena_stream(m->scratch);
 							stream_append_str8(&sb, str8("= "));
 
-							if (s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) {
+							b32 ref = (s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+							if (ref && !meta_entity_is_enum(ctx, s->type_ids[entry])) {
 								str8 ref_name = ctx->entity_names.data[s->type_ids[entry]];
 								stream_append_str8s(&sb, s->members[entry], str8(" if isinstance("), s->members[entry],
 								                    str8(", " META_NAMESPACE_UPPER "."), ref_name,
@@ -4908,11 +4953,15 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							Stream sb = arena_stream(m->scratch);
 							stream_append_str8(&sb, str8(" = "));
 
-							s32 id = s->type_ids[entry];
-							if ((s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) == 0) {
+							u32 byte_size = meta_struct_member_size(ctx, s, entry);
+							s32 id        = s->type_ids[entry];
+							b32 ref       = (s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+							b32 is_enum   = ref && meta_entity_is_enum(ctx, id);
+							if (!ref || meta_entity_is_enum(ctx, id)) {
+								MetaKind kind = is_enum ? meta_entity_enum_base_kind(ctx, id): id;
 								stream_append_str8(&sb, str8("struct.unpack_from('<"));
 								stream_append_u64(&sb, s->elements[entry]);
-								stream_append_str8s(&sb, meta_kind_python_struct_types[id], str8("',"));
+								stream_append_str8s(&sb, meta_kind_python_struct_types[kind], str8("',"));
 
 								columns[1][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
 								stream_append_str8(&sb, str8("bytes, "));
@@ -4923,11 +4972,8 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 									stream_append_str8(&sb, str8("[0]"));
 
 								columns[2][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
-
-								offset += meta_kind_byte_sizes[id] * s->elements[entry];
 							} else {
-								MetaEntity *re = ctx->entities.data + id;
-								str8 ref_name = ctx->entity_names.data[s->type_ids[entry]];
+								str8 ref_name = ctx->entity_names.data[id];
 								stream_append_str8s(&sb, str8(META_NAMESPACE_UPPER "."), ref_name, str8(".from_bytes("));
 								columns[1][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
 
@@ -4935,9 +4981,8 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 								stream_append_u64(&sb, offset);
 								stream_append_str8(&sb, str8(":])"));
 								columns[2][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
-
-								offset += ctx->struct_infos[re->table.struct_info_id].info.size;
 							}
+							offset += byte_size * s->elements[entry];
 						}
 						metagen_push_table(m, str8("result."), str8(""), columns, s->info.member_count, 3);
 						meta_push_line(m, str8("return result"));
@@ -4956,15 +5001,15 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 						u32 offset = 0;
 						meta_push_line(m, str8("result = bytearray(" META_NAMESPACE_UPPER "."), name, str8(".byte_size())"));
 						for (u32 entry = 0; entry < s->info.member_count; entry++) {
-							s32 id  = s->type_ids[entry];
-							b32 ref = (s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+							u32 byte_size = meta_struct_member_size(ctx, s, entry);
+							s32 id        = s->type_ids[entry];
+							b32 ref       = (s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) != 0;
+							b32 is_enum   = ref && meta_entity_is_enum(ctx, id);
 
-							MetaEntity *re = ctx->entities.data + id;
-
-							u64  elements = ref ? ctx->struct_infos[re->table.struct_info_id].info.size
-							                    : s->elements[entry];
-							str8 type     = ref ? meta_kind_python_struct_types[MetaKind_U8]
-							                    : meta_kind_python_struct_types[id];
+							u64  elements = (ref && !is_enum) ? byte_size : s->elements[entry];
+							str8 type     = is_enum ? meta_kind_python_struct_types[meta_entity_enum_base_kind(ctx, id)]
+							                        : ref ? meta_kind_python_struct_types[MetaKind_U8]
+							                              : meta_kind_python_struct_types[id];
 							Stream sb = arena_stream(m->scratch);
 							stream_append_u64(&sb, elements);
 							stream_append_str8s(&sb, type, str8("',"));
@@ -4975,13 +5020,12 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							stream_append_str8(&sb, str8(","));
 							columns[1][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
 
-							stream_append_str8s(&sb, (ref || s->elements[entry] > 1) ? str8("*") : str8(" "),
+							stream_append_str8s(&sb, ((ref && !is_enum) || s->elements[entry] > 1) ? str8("*") : str8(" "),
 							                    str8("self."), s->members[entry]);
-							if (ref) stream_append_str8(&sb, str8(".to_bytes()"));
+							if (ref && !is_enum) stream_append_str8(&sb, str8(".to_bytes()"));
 							columns[2][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
 
-							if (ref) offset += ctx->struct_infos[re->table.struct_info_id].info.size;
-							else     offset += meta_kind_byte_sizes[id] * s->elements[entry];
+							offset += byte_size * s->elements[entry];
 						}
 						metagen_push_table(m, str8("struct.pack_into('<"), str8(")"), columns, s->info.member_count, 3);
 						meta_push_line(m, str8("return result"));
@@ -5143,7 +5187,7 @@ metagen_load_context(Arena *arena, char *filename)
 					s->type_ids[member] = meta_lookup_string_slow(meta_kind_meta_types, MetaKind_Count, types[member]);
 
 					if (s->type_ids[member] == -1 && meta_struct_allow_references[kind_it]) {
-						s->member_flags[member] = MetaBuildStructMemberFlag_ReferenceType;
+						s->member_flags[member] |= MetaBuildStructMemberFlag_ReferenceType;
 						s64 id = meta_lookup_string_slow(ctx->entity_names.data, ctx->entity_names.count, types[member]);
 						if (id >= 0) {
 							MetaEntityKind kind = ctx->entities.data[id].kind;
@@ -5229,10 +5273,8 @@ metagen_load_context(Arena *arena, char *filename)
 					u32 member_size = 0;
 					if (type_reference) {
 						MetaEntity *ref = ctx->entities.data + s->type_ids[member];
-						if (ref->kind == MetaEntityKind_Enumeration || ref->kind == MetaEntityKind_Flags) {
-							s64 limit = ref->kind == MetaEntityKind_Flags ? 32 : U32_MAX;
-							if (ref->table.entry_count < limit) member_size = sizeof(u32);
-							else                                member_size = sizeof(u64);
+						if (meta_entity_is_enum(ctx, s->type_ids[member])) {
+							member_size = meta_entity_enum_size(ctx, s->type_ids[member]);
 						} else {
 							MetaStruct *sub_struct = ctx->struct_infos + ref->table.struct_info_id;
 							if (sub_struct->info.size != (u32)-1) {
