@@ -2,20 +2,28 @@
 @Constant(0x5042504D455AFECA) HeaderMagic
 @Constant(4) OffsetAlignment
 
-@Enumeration(RCAOrientation [None Rows Columns])
+@Enumeration RCAOrientation
+{
+	None
+	Rows
+	Columns
+}
 
-@Enumeration(DecodeMode [
+@Enumeration DecodeMode
+{
 	None
 	Hadamard
 	Walsh
-])
+}
 
-@Enumeration(SamplingMode [
+@Enumeration SamplingMode
+{
 	Standard
 	Bandpass
-])
+}
 
-@Enumeration(AcquisitionKind [
+@Enumeration AcquisitionKind
+{
 	FORCES
 	UFORCES
 	HERCULES
@@ -30,19 +38,21 @@
 	HERO_PA
 	HEXDoppler
 	XDoppler
-])
+}
 
-@Enumeration(ContrastMode [
+@Enumeration ContrastMode
+{
 	None
 	A1S2
-])
+}
 
-@Enumeration(EmissionKind [
+@Enumeration EmissionKind
+{
 	Sine
 	Chirp
-])
+}
 
-@Table([name size elements]) DataKind
+@Table([name size elements]) DataKindTable
 {
 	[Int16          2 1]
 	[Int16Complex   2 2]
@@ -52,12 +62,13 @@
 	[Float16Complex 2 2]
 }
 
-@Expand(DataKind) @Enumeration(DataKind `$(name)`)
+@Expand(DataKindTable) @Enumeration(`$(name)`) DataKind
 
-@Enumeration(DataCompressionKind [
+@Enumeration DataCompressionKind
+{
 	None
 	ZSTD
-])
+}
 
 @Struct BaseHeader
 {

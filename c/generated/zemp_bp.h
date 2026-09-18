@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#define ZBP_HeaderMagic (0x5042504d455afecaULL)
+#define ZBP_HeaderMagic     (0x5042504d455afecaULL)
 #define ZBP_OffsetAlignment (0x04U)
 
 typedef enum {
