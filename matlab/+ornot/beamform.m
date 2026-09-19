@@ -70,7 +70,7 @@ demodulate_shader_index = find(bsp.compute_stages == OGLBeamformerShaderStage.De
 
 if ~isempty(demodulate_shader_index)
     filter_slot = mod(section_number - 1, 4);
-    filter      = ornot.OGLBeamformerFilterForParameters(bp);
+    filter      = ornot.OGLBeamformerFilterForParameters(bp.sampling_frequency, bp.demodulation_frequency, bp.emission_parameters{bp.emission_descriptors(section_number)});
     try
         assert(calllib('ogl_beamformer_lib', 'beamformer_create_filter', struct(filter), filter_slot, 0));
     catch ME

@@ -48,6 +48,7 @@ typedef enum {
 typedef enum {
 	ZBP_ContrastMode_None = 0,
 	ZBP_ContrastMode_A1S2 = 1,
+	ZBP_ContrastMode_A2   = 2,
 	ZBP_ContrastMode_Count,
 } ZBP_ContrastMode;
 
@@ -132,6 +133,36 @@ typedef struct ZBP_HeaderV2 {
 	int32_t                 emission_descriptors_offset;
 } ZBP_HeaderV2;
 
+typedef struct ZBP_HeaderV3 {
+	uint64_t magic;
+	uint32_t major;
+	uint32_t minor;
+	uint32_t raw_data_dimension[4];
+	int32_t  raw_data_kind;
+	int32_t  raw_data_offset;
+	int32_t  raw_data_compression_kind;
+	int32_t  decode_mode;
+	int32_t  sampling_mode;
+	float    sampling_frequency;
+	float    demodulation_frequency;
+	float    speed_of_sound;
+	int32_t  channel_mapping_offset;
+	uint32_t sample_count;
+	uint32_t channel_count;
+	uint32_t receive_event_count;
+	float    transducer_transform_matrix[16];
+	float    transducer_element_pitch[2];
+	float    time_offset;
+	float    group_acquisition_time;
+	float    ensemble_repetition_interval;
+	int32_t  acquisition_mode;
+	int32_t  acquisition_parameters_offset;
+	int32_t  contrast_mode;
+	int32_t  contrast_parameters_offset;
+	int32_t  emission_descriptors_offset;
+	int32_t  data_frame_delays_offset;
+} ZBP_HeaderV3;
+
 typedef struct ZBP_EmissionDescriptor {
 	ZBP_EmissionKind emission_kind;
 	int32_t          parameters_offset;
@@ -197,3 +228,7 @@ typedef struct ZBP_XDopplerParameters {
 	int32_t angle_count[2];
 	int32_t tilting_angles_offset;
 } ZBP_XDopplerParameters;
+
+typedef struct ZBP_EPIC_FORCESParameters {
+	int32_t transmit_foci_offset;
+} ZBP_EPIC_FORCESParameters;
