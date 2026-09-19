@@ -74,6 +74,11 @@ typedef enum {
 	ZBP_DataCompressionKind_Count,
 } ZBP_DataCompressionKind;
 
+typedef enum {
+	ZBP_DataLayout_Standard = 0,
+	ZBP_DataLayout_Count,
+} ZBP_DataLayout;
+
 typedef struct ZBP_BaseHeader {
 	uint64_t magic;
 	uint32_t major;
@@ -134,34 +139,45 @@ typedef struct ZBP_HeaderV2 {
 } ZBP_HeaderV2;
 
 typedef struct ZBP_HeaderV3 {
-	uint64_t magic;
-	uint32_t major;
-	uint32_t minor;
-	uint32_t raw_data_dimension[4];
-	int32_t  raw_data_kind;
-	int32_t  raw_data_offset;
-	int32_t  raw_data_compression_kind;
-	int32_t  decode_mode;
-	int32_t  sampling_mode;
-	float    sampling_frequency;
-	float    demodulation_frequency;
-	float    speed_of_sound;
-	int32_t  channel_mapping_offset;
-	uint32_t sample_count;
-	uint32_t channel_count;
-	uint32_t receive_event_count;
-	float    transducer_transform_matrix[16];
-	float    transducer_element_pitch[2];
-	float    time_offset;
-	float    group_acquisition_time;
-	float    ensemble_repetition_interval;
-	int32_t  acquisition_mode;
-	int32_t  acquisition_parameters_offset;
-	int32_t  contrast_mode;
-	int32_t  contrast_parameters_offset;
-	int32_t  emission_descriptors_offset;
-	int32_t  data_frame_delays_offset;
+	uint64_t                magic;
+	uint32_t                major;
+	uint32_t                minor;
+	uint32_t                raw_data_dimension[4];
+	uint64_t                raw_data_size;
+	int32_t                 raw_data_offset;
+	ZBP_DataKind            raw_data_kind;
+	ZBP_DataCompressionKind raw_data_compression_kind;
+	ZBP_DataLayout          raw_data_layout;
+	ZBP_DecodeMode          decode_mode;
+	ZBP_SamplingMode        sampling_mode;
+	float                   sampling_frequency;
+	float                   speed_of_sound;
+	int32_t                 channel_mapping_offset;
+	uint32_t                sample_count;
+	uint32_t                channel_count;
+	uint32_t                receive_event_count;
+	uint32_t                transducer_tile_count[2];
+	float                   transducer_element_pitch[2];
+	float                   group_acquisition_time;
+	float                   ensemble_repetition_interval;
+	ZBP_AcquisitionKind     acquisition_mode;
+	int32_t                 acquisition_parameters_offset;
+	ZBP_ContrastMode        contrast_mode;
+	int32_t                 contrast_parameters_offset;
+	int32_t                 emission_descriptors_offset;
+	int32_t                 time_delays_offset;
+	int32_t                 demodulation_frequencies_offset;
+	int32_t                 transducer_transforms_offset;
+	uint32_t                string_count;
+	int32_t                 string_table_offset;
 } ZBP_HeaderV3;
+
+typedef struct ZBP_StringTableEntry {
+	uint32_t string_tag_length;
+	int32_t  string_tag_offset;
+	uint32_t string_length;
+	int32_t  string_offset;
+} ZBP_StringTableEntry;
 
 typedef struct ZBP_EmissionDescriptor {
 	ZBP_EmissionKind emission_kind;
