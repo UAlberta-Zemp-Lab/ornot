@@ -197,11 +197,11 @@ class ZBP:
 			result.major                          = struct.unpack_from('<1L',  bytes, 8)[0]
 			result.minor                          = struct.unpack_from('<1L',  bytes, 12)[0]
 			result.raw_data_dimension             = struct.unpack_from('<4L',  bytes, 16)
-			result.raw_data_kind                  = struct.unpack_from('<1l',  bytes, 32)[0]
+			result.raw_data_kind                  = struct.unpack_from('<1L',  bytes, 32)[0]
 			result.raw_data_offset                = struct.unpack_from('<1l',  bytes, 36)[0]
-			result.raw_data_compression_kind      = struct.unpack_from('<1l',  bytes, 40)[0]
-			result.decode_mode                    = struct.unpack_from('<1l',  bytes, 44)[0]
-			result.sampling_mode                  = struct.unpack_from('<1l',  bytes, 48)[0]
+			result.raw_data_compression_kind      = struct.unpack_from('<1L',  bytes, 40)[0]
+			result.decode_mode                    = struct.unpack_from('<1L',  bytes, 44)[0]
+			result.sampling_mode                  = struct.unpack_from('<1L',  bytes, 48)[0]
 			result.sampling_frequency             = struct.unpack_from('<1f',  bytes, 52)[0]
 			result.demodulation_frequency         = struct.unpack_from('<1f',  bytes, 56)[0]
 			result.speed_of_sound                 = struct.unpack_from('<1f',  bytes, 60)[0]
@@ -214,9 +214,9 @@ class ZBP:
 			result.time_offset                    = struct.unpack_from('<1f',  bytes, 152)[0]
 			result.group_acquisition_time         = struct.unpack_from('<1f',  bytes, 156)[0]
 			result.ensemble_repetition_interval   = struct.unpack_from('<1f',  bytes, 160)[0]
-			result.acquisition_mode               = struct.unpack_from('<1l',  bytes, 164)[0]
+			result.acquisition_mode               = struct.unpack_from('<1L',  bytes, 164)[0]
 			result.acquisition_parameters_offset  = struct.unpack_from('<1l',  bytes, 168)[0]
-			result.contrast_mode                  = struct.unpack_from('<1l',  bytes, 172)[0]
+			result.contrast_mode                  = struct.unpack_from('<1L',  bytes, 172)[0]
 			result.contrast_parameters_offset     = struct.unpack_from('<1l',  bytes, 176)[0]
 			result.emission_descriptors_offset    = struct.unpack_from('<1l',  bytes, 180)[0]
 			return result
@@ -231,11 +231,11 @@ class ZBP:
 			struct.pack_into('<1L',  result, 8,    self.major)
 			struct.pack_into('<1L',  result, 12,   self.minor)
 			struct.pack_into('<4L',  result, 16,  *self.raw_data_dimension)
-			struct.pack_into('<1l',  result, 32,   self.raw_data_kind)
+			struct.pack_into('<1L',  result, 32,   self.raw_data_kind)
 			struct.pack_into('<1l',  result, 36,   self.raw_data_offset)
-			struct.pack_into('<1l',  result, 40,   self.raw_data_compression_kind)
-			struct.pack_into('<1l',  result, 44,   self.decode_mode)
-			struct.pack_into('<1l',  result, 48,   self.sampling_mode)
+			struct.pack_into('<1L',  result, 40,   self.raw_data_compression_kind)
+			struct.pack_into('<1L',  result, 44,   self.decode_mode)
+			struct.pack_into('<1L',  result, 48,   self.sampling_mode)
 			struct.pack_into('<1f',  result, 52,   self.sampling_frequency)
 			struct.pack_into('<1f',  result, 56,   self.demodulation_frequency)
 			struct.pack_into('<1f',  result, 60,   self.speed_of_sound)
@@ -248,9 +248,9 @@ class ZBP:
 			struct.pack_into('<1f',  result, 152,  self.time_offset)
 			struct.pack_into('<1f',  result, 156,  self.group_acquisition_time)
 			struct.pack_into('<1f',  result, 160,  self.ensemble_repetition_interval)
-			struct.pack_into('<1l',  result, 164,  self.acquisition_mode)
+			struct.pack_into('<1L',  result, 164,  self.acquisition_mode)
 			struct.pack_into('<1l',  result, 168,  self.acquisition_parameters_offset)
-			struct.pack_into('<1l',  result, 172,  self.contrast_mode)
+			struct.pack_into('<1L',  result, 172,  self.contrast_mode)
 			struct.pack_into('<1l',  result, 176,  self.contrast_parameters_offset)
 			struct.pack_into('<1l',  result, 180,  self.emission_descriptors_offset)
 			return result
@@ -263,7 +263,7 @@ class ZBP:
 		@classmethod
 		def from_bytes(cls, bytes):
 			result = cls()
-			result.emission_kind      = struct.unpack_from('<1l', bytes, 0)[0]
+			result.emission_kind      = struct.unpack_from('<1L', bytes, 0)[0]
 			result.parameters_offset  = struct.unpack_from('<1l', bytes, 4)[0]
 			return result
 
@@ -273,7 +273,7 @@ class ZBP:
 
 		def to_bytes(self):
 			result = bytearray(ZBP.EmissionDescriptor.byte_size())
-			struct.pack_into('<1l', result, 0,  self.emission_kind)
+			struct.pack_into('<1L', result, 0,  self.emission_kind)
 			struct.pack_into('<1l', result, 4,  self.parameters_offset)
 			return result
 
