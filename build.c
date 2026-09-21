@@ -2886,6 +2886,11 @@ typedef struct {
 	X(Struct, 1, 1) \
 	X(Union,  1, 0) \
 
+// X(EntityKind, ...)
+#define META_ENUM_KIND_LIST \
+	X(Enumeration) \
+	X(Flags) \
+
 typedef enum {
 	#define X(name, ...) MetaEntityKind_ ##name,
 	META_ENTITY_KIND_LIST
@@ -2929,6 +2934,10 @@ read_only global b8 meta_struct_allow_references[] = {META_STRUCT_MAP_LIST};
 #undef X
 #define X(_k, _a, emit, ...) emit,
 read_only global b8 meta_struct_emit[] = {META_STRUCT_MAP_LIST};
+#undef X
+
+#define X(k, ...) MetaEntityKind_##k,
+read_only global MetaEntityKind meta_enum_entity_kinds[] = {META_ENUM_KIND_LIST};
 #undef X
 
 typedef enum {
@@ -4496,18 +4505,15 @@ metagen_emit_c_code(MetaContext *ctx, Arena *arena)
 
 	/////////////////////////
 	// NOTE(rnp): enumerants
-	struct {MetaEntityKind kind; b32 flags;} enums[] = {
-		{MetaEntityKind_Enumeration, 0},
-		{MetaEntityKind_Flags,       1},
-	};
-	for EachElement(enums, it) {
-		for (da_count kind = 0; kind < ctx->entity_kind_counts[enums[it].kind]; kind++) {
-			da_count    id = ctx->entity_kind_ids[enums[it].kind][kind];
+	for EachElement(meta_enum_entity_kinds, it) {
+		b32 flags = meta_enum_entity_kinds[it] == MetaEntityKind_Flags;
+		for (da_count kind = 0; kind < ctx->entity_kind_counts[meta_enum_entity_kinds[it]]; kind++) {
+			da_count    id = ctx->entity_kind_ids[meta_enum_entity_kinds[it]][kind];
 			MetaEntity *e  = ctx->entities.data + id;
 
 			str8 enum_name = push_str8_from_parts(m->scratch, str8(""), str8(META_NAMESPACE_UPPER "_"),
 			                                      ctx->entity_names.data[id]);
-			metagen_push_c_enum(m, enum_name, enums[it].flags, e->table.entries[0], e->table.entry_count);
+			metagen_push_c_enum(m, enum_name, flags, e->table.entries[0], e->table.entry_count);
 		}
 	}
 
@@ -4607,22 +4613,26 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 
 	/////////////////////////
 	// NOTE(rnp): enumerants
-	for (da_count kind = 0; kind < ctx->entity_kind_counts[MetaEntityKind_Enumeration]; kind++) {
-		da_count id = ctx->entity_kind_ids[MetaEntityKind_Enumeration][kind];
-		str8 name   = ctx->entity_names.data[id];
-		str8 output = push_str8_from_parts(m->scratch, str8(""), base_directory, str8(OS_PATH_SEPARATOR), name, str8(".m"));
+	for EachElement(meta_enum_entity_kinds, it) {
+		b32 flags = meta_enum_entity_kinds[it] == MetaEntityKind_Flags;
+		for (da_count kind = 0; kind < ctx->entity_kind_counts[meta_enum_entity_kinds[it]]; kind++) {
+			da_count id = ctx->entity_kind_ids[meta_enum_entity_kinds[it]][kind];
+			str8 name   = ctx->entity_names.data[id];
+			str8 output = push_str8_from_parts(m->scratch, str8(""), base_directory, str8(OS_PATH_SEPARATOR), name, str8(".m"));
 
-		MetaTable *etable = &ctx->entities.data[id].table;
-		str8 *kinds = etable->entries[0];
-		meta_push_line(m, matlab_file_header);
-		meta_begin_scope(m, str8("classdef "), name, str8(" < int32"));
-		meta_begin_scope(m, str8("enumeration"));
-		str8 prefix = str8("");
-		if (etable->entry_count > 0 && IsDigit(kinds[0].data[0])) prefix = str8("m");
-		metagen_push_counted_enum_body(m, str8(""), prefix, str8("("), str8(")"), kinds, etable->entry_count);
-		result &= meta_end_and_write_matlab(m, (c8 *)output.data);
+			MetaTable *etable = &ctx->entities.data[id].table;
+			str8 *kinds = etable->entries[0];
+			meta_push_line(m, matlab_file_header);
+			meta_begin_scope(m, str8("classdef "), name, str8(" < int32"));
+			meta_begin_scope(m, str8("enumeration"));
+			str8 prefix = str8("");
+			if (etable->entry_count > 0 && IsDigit(kinds[0].data[0])) prefix = str8("m");
+			metagen_push_counted_enum_body(m, str8(""), prefix, flags ? str8("(bitshift(1,") : str8("("),
+			                               flags ? str8("))") : str8(")"), kinds, etable->entry_count);
+			result &= meta_end_and_write_matlab(m, (c8 *)output.data);
 
-		arena_clear(m->scratch);
+			arena_clear(m->scratch);
+		}
 	}
 
 	//////////////////////
@@ -4871,19 +4881,23 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 
 	/////////////////////////
 	// NOTE(rnp): enumerants
-	for (da_count kind = 0; kind < ctx->entity_kind_counts[MetaEntityKind_Enumeration]; kind++) {
-		da_count id    = ctx->entity_kind_ids[MetaEntityKind_Enumeration][kind];
-		str8 name      = ctx->entity_names.data[id];
-		str8 name_full = push_str8_from_parts(m->scratch, str8(""), name, str8("_"));
+	for EachElement(meta_enum_entity_kinds, it) {
+		b32 flags = meta_enum_entity_kinds[it] == MetaEntityKind_Flags;
+		for (da_count kind = 0; kind < ctx->entity_kind_counts[meta_enum_entity_kinds[it]]; kind++) {
+			da_count    id = ctx->entity_kind_ids[meta_enum_entity_kinds[it]][kind];
+			str8 name      = ctx->entity_names.data[id];
+			str8 name_full = push_str8_from_parts(m->scratch, str8(""), name, str8("_"));
 
-		MetaTable *etable = &ctx->entities.data[id].table;
-		str8 *kinds = etable->entries[0];
-		meta_push(m, str8("\n"));
-		meta_push_line(m, str8("# "), name);
-		metagen_push_counted_enum_body(m, name_full, str8(""), str8("= "), str8(""), kinds, etable->entry_count);
-
-		arena_clear(m->scratch);
+			MetaTable *etable = &ctx->entities.data[id].table;
+			str8 *kinds = etable->entries[0];
+			meta_push(m, str8("\n"));
+			meta_push_line(m, str8("# "), name);
+			metagen_push_counted_enum_body(m, name_full, str8(""), flags ? str8("= 1 << ") : str8("= "),
+			                               str8(""), kinds, etable->entry_count);
+		}
 	}
+
+	arena_clear(m->scratch);
 
 	//////////////////////
 	// NOTE(rnp): structs
