@@ -1,24 +1,27 @@
 classdef BeamformParameters
     %% Depending on the source of this data, some properties may be empty
     properties
-        raw_data_dimension(1,4)            uint32
-        raw_data_kind(1,1)                 ZBP.DataKind
-        raw_data_compression_kind(1,1)     ZBP.DataCompressionKind
-        decode_mode(1,1)                   ZBP.DecodeMode
-        sampling_mode(1,1)                 ZBP.SamplingMode
-        sampling_frequency(1,1)            single
-        demodulation_frequency(1,1)        single
-        speed_of_sound(1,1)                single
-        sample_count(1,1)                  uint32
-        channel_count(1,1)                 uint32
-        receive_event_count(1,1)           uint32
-        transducer_transform_matrix(1,16)  single
-        transducer_element_pitch(1,2)      single
-        time_offset(1,1)                   single
-        group_acquisition_time(1,1)        single
-        ensemble_repetition_interval(1,1)  single
-        acquisition_kind(1,1)              ZBP.AcquisitionKind
-        contrast_mode(1,1)                 ZBP.ContrastMode
+        raw_data_dimension(1,4)               uint32
+        raw_data_kind(1,1)                    ZBP.DataKind
+        raw_data_compression_kind(1,1)        ZBP.DataCompressionKind
+        decode_mode(1,1)                      ZBP.DecodeMode
+        sampling_mode(1,1)                    ZBP.SamplingMode
+        sampling_frequency(1,1)               single
+        speed_of_sound(1,1)                   single
+        sample_count(1,1)                     uint32
+        channel_count(1,1)                    uint32
+        receive_event_count(1,1)              uint32
+        transducer_transform_matrices(4,4,:) single
+        transducer_tile_count(1,2)            uint32
+        transducer_element_pitch(1,2)         single
+        group_acquisition_time(1,1)           single
+        ensemble_repetition_interval(1,1)     single
+        acquisition_kind(1,1)                 ZBP.AcquisitionKind
+        contrast_mode(1,1)                    ZBP.ContrastMode
+        contrast_data_flags(1,1)              uint32
+        demodulation_frequencies(1,:)         single
+        time_delays(1,:)                      single
+        strings(:,2)                          string
         emission_descriptors uint8
         % NOTE (DD): MATLAB won't allow for heterogenous arrays, without the classes being specifically defined as subclasses of a common superclass.
         % This means that we can't load emission parameters of different types into a single array, so we will load them into a cell array instead.
@@ -61,24 +64,22 @@ classdef BeamformParameters
             increment_offset = @ornot.BeamformParameters.increment_offset;
             set_bytes = @ornot.BeamformParameters.set_bytes;
 
-            header = ZBP.HeaderV2;
+            header = ZBP.HeaderV3;
             header.magic = ZBP.Constants.HeaderMagic;
-            header.major = 2;
-            header.minor = 2;
+            header.major = 3;
+            header.minor = 0;
             header.raw_data_dimension = bp.raw_data_dimension;
             header.raw_data_kind = int32(bp.raw_data_kind);
             header.raw_data_compression_kind = int32(bp.raw_data_compression_kind);
             header.decode_mode = int32(bp.decode_mode);
             header.sampling_mode = int32(bp.sampling_mode);
             header.sampling_frequency = bp.sampling_frequency;
-            header.demodulation_frequency = bp.demodulation_frequency;
             header.speed_of_sound = bp.speed_of_sound;
             header.sample_count = bp.sample_count;
             header.channel_count = bp.channel_count;
             header.receive_event_count = bp.receive_event_count;
-            header.transducer_transform_matrix = bp.transducer_transform_matrix;
             header.transducer_element_pitch = bp.transducer_element_pitch;
-            header.time_offset = bp.time_offset;
+            header.transducer_tile_count = bp.transducer_tile_count;
             header.group_acquisition_time = bp.group_acquisition_time;
             header.ensemble_repetition_interval = bp.ensemble_repetition_interval;
             header.acquisition_mode = int32(bp.acquisition_kind);
@@ -118,6 +119,21 @@ classdef BeamformParameters
             else
                 header.emission_descriptors_offset = -1;
             end
+
+            assert(numel(bp.time_delays) == bp.raw_data_dimension(3))
+            header.time_delays_offset = offset;
+            offset = increment_offset(offset, 4*numel(bp.time_delays), offset_alignment);
+            bytes = set_bytes(bytes, typecast(bp.time_delays, "uint8"), header.time_delays_offset);
+
+            assert(numel(bp.demodulation_frequencies) == bp.raw_data_dimension(3))
+            header.demodulation_frequencies_offset = offset;
+            offset = increment_offset(offset, 4*numel(bp.demodulation_frequencies), offset_alignment);
+            bytes  = set_bytes(bytes, typecast(bp.demodulation_frequencies, "uint8"), header.demodulation_frequencies_offset);
+
+            assert(size(bp.transducer_transform_matrices, 3) == prod(bp.transducer_tile_count))
+            header.transducer_transforms_offset = offset;
+            offset = increment_offset(offset, 4*numel(bp.transducer_transform_matrices), offset_alignment);
+            bytes = set_bytes(bytes, typecast(bp.transducer_transform_matrices(:), "uint8"), header.transducer_transforms_offset);
 
             if ~isempty(bp.contrast_parameters)
                 assert(false, "Saving Contrast Parameters not currently supported")
@@ -269,6 +285,29 @@ classdef BeamformParameters
                 header.raw_data_offset = -1;
             end
 
+            header.string_count = size(bp.strings, 1);
+            if header.string_count
+                header.string_table_offset = offset;
+                offset = increment_offset(offset, header.string_count * ZBP.StringTableEntry.byteSize, offset_alignment);
+                for i = 1:size(1, bp.strings)
+                    entry = ZBP.StringTableEntry;
+                    entry.string_tag_length = strlength(bp.strings(i, 1));
+                    entry.string_length     = strlength(bp.strings(i, 2));
+                    entry.string_tag_offset = offset;
+                    offset = increment_offset(offset, entry.string_tag_length, 1);
+                    entry.string_offset     = offset;
+                    offset = increment_offset(offset, entry.string_length, 1);
+
+                    bytes = set_bytes(bytes, entry.toBytes(), header.string_table_offset + (i - 1) * ZBP.StringTableEntry.byteSize);
+                    bytes = set_bytes(bytes, uint8(bp.strings(i, 1)), entry.string_tag_offset, entry.string_tag_length);
+                    bytes = set_bytes(bytes, uint8(bp.strings(i, 2)), entry.string_offset,     entry.string_length);
+                end
+            else
+                header.string_table_offset = -1;
+            end
+
+            offset = increment_offset(offset, 0, offset_alignment);
+
             bytes = set_bytes(bytes, header.toBytes());
 
             file_size = bitand((numel(bytes) + uint64(offset_alignment) - 1), bitcmp(uint64(offset_alignment) - 1));;
@@ -305,8 +344,8 @@ classdef BeamformParameters
             switch baseHeader.major
                 case 1
                     bp = ornot.BeamformParameters.FromV1Bytes(bytes);
-                case 2
-                    bp = ornot.BeamformParameters.FromV2Bytes(bytes);
+                case {2, 3}
+                    bp = ornot.BeamformParameters.FromV2V3Bytes(bytes, baseHeader.major);
             end
 
         end
@@ -381,15 +420,22 @@ classdef BeamformParameters
             end
         end
 
-        function bp = FromV2Bytes(bytes)
+        function bp = FromV2V3Bytes(bytes, major)
             arguments (Input)
                 bytes uint8
+                major uint32
             end
             arguments (Output)
                 bp(1,1) ornot.BeamformParameters
             end
 
-            header = ZBP.HeaderV2.fromBytes(bytes);
+            base = ZBP.BaseHeader.fromBytes(bytes)
+            if major == 3
+                header = ZBP.HeaderV3.fromBytes(bytes);
+            elseif major == 2
+                header = ZBP.HeaderV2.fromBytes(bytes);
+            end
+
             bp = ornot.BeamformParameters;
             bp.raw_data_dimension = header.raw_data_dimension;
             bp.raw_data_kind = header.raw_data_kind;
@@ -397,21 +443,41 @@ classdef BeamformParameters
             bp.decode_mode = header.decode_mode;
             bp.sampling_mode = header.sampling_mode;
             bp.sampling_frequency = header.sampling_frequency;
-            bp.demodulation_frequency = header.demodulation_frequency;
             bp.speed_of_sound = header.speed_of_sound;
             bp.sample_count = header.sample_count;
             bp.channel_count = header.channel_count;
             bp.receive_event_count = header.receive_event_count;
-            bp.transducer_transform_matrix = header.transducer_transform_matrix;
             bp.transducer_element_pitch = header.transducer_element_pitch;
-            bp.time_offset = header.time_offset;
             bp.group_acquisition_time = header.group_acquisition_time;
             bp.ensemble_repetition_interval = header.ensemble_repetition_interval;
             bp.acquisition_kind = header.acquisition_mode;
             bp.contrast_mode = header.contrast_mode;
 
+            section_count = header.raw_data_dimension(3);
+            if major == 3
+                bp.time_delays = typecast(bytes(uint32(header.time_delays_offset) + (1:(4*section_count))), 'single');
+                bp.demodulation_frequencies = typecast(bytes(uint32(header.demodulation_frequencies_offset) + (1:(4*section_count))), 'single');
+                bp.transducer_tile_count = header.transducer_tile_count;
+                matrices = typecast(bytes(uint32(header.transducer_transforms_offset) + uint32(1:(4*16*prod(bp.transducer_tile_count)))), 'single');
+                bp.transducer_transform_matrices = reshape(matrices, 4, 4, []);
+                bp.contrast_data_flags = header.contrast_data_flags;
+
+                if header.string_count > 0
+                    bp.strings = strings(header.string_count, 2);
+                    for i = 1:header.string_count
+                        entry = ZBP.StringTableEntry.fromBytes(bytes(header.string_table_offset + (1:ZBP.StringTableEntry.byteSize)));
+                        bp.strings(i,1) = string(bytes(entry.string_tag_offset + (1:entry.string_tag_length)));
+                        bp.strings(i,2) = string(bytes(entry.string_offset + (1:entry.string_length)));
+                    end
+                end
+            elseif major == 2
+                bp.time_delays = ones(1, section_count) * header.time_offset;
+                bp.demodulation_frequencies = ones(1, section_count) * header.demodulation_frequency;
+                bp.transducer_tile_count = [1, 1];
+                bp.transducer_transform_matrices(:,:,1) = reshape(header.transducer_transform_matrix, 4, 4);
+            end
+
             if header.emission_descriptors_offset >= 0
-                section_count = header.raw_data_dimension(3);
                 emissionDescriptors = createArray([section_count, 1], "ZBP.EmissionDescriptor");
                 offset = uint32(header.emission_descriptors_offset);
                 for i = 1:section_count
@@ -495,7 +561,7 @@ classdef BeamformParameters
                         receive_count = header.receive_event_count;
                         section_count = header.raw_data_dimension(3);
                         offset = uint32(header.acquisition_parameters_offset);
-                        bp.acquisition_parameters = createArray([sectionCount, 1], "ZBP.VLSParameters");
+                        bp.acquisition_parameters = createArray([section_count, 1], "ZBP.VLSParameters");
                         for i = 1:section_count
                             bp.acquisition_parameters(i) = ZBP.VLSParameters.fromBytes(bytes(uint32(offset) + (1:ZBP.VLSParameters.byteSize)));
                             offset = offset + ZBP.VLSParameters.byteSize;
@@ -564,14 +630,20 @@ classdef BeamformParameters
             end
 
             if header.raw_data_offset >= 0
-                switch header.raw_data_compression_kind
-                    case ZBP.DataCompressionKind.None
-                        byteCount = ornot.dataKindByteCount(header.raw_data_kind)*prod(max(header.raw_data_dimension, 1));
-                        bp = ornot.DataFromRaw(bp, bytes(double(header.raw_data_offset) + (1:byteCount)));
-                    case ZBP.DataCompressionKind.ZSTD
-                        bp = ornot.DataFromRaw(bp, bytes((1 + header.raw_data_offset):end));
+                byteCount = 0;
+                if major == 3
+                    byteCount = header.raw_data_length;
+                elseif major == 2
+                    switch header.raw_data_compression_kind
+                        case ZBP.DataCompressionKind.None
+                            byteCount = ornot.dataKindByteCount(header.raw_data_kind)*prod(max(header.raw_data_dimension, 1));
+                        case ZBP.DataCompressionKind.ZSTD
+                            byteCount = numel(bytes) - header.raw_data_offset;
+                    end
                 end
+                bp = ornot.DataFromRaw(bp, bytes(uint64(header.raw_data_offset) + (1:byteCount)));
             end
+
         end
     end
 
