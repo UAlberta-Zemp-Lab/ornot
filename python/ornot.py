@@ -104,31 +104,41 @@ class ornot:
 			data, data_size = self.data_from_raw(parameters, f.read())
 		return data, data_size
 
-	def beamformer_simple_parameters_from_parameters(self, parameters):
+	def beamformer_simple_parameters_from_parameters(self, parameters, data_frame_index=0):
 		"""
 		Fills in all data dependant (Parameter) members of a
 		BeamformerSimpleParameters structure.
 
 		Arguments:
 		  parameters (Parameters): A filled in instance of a Parameters object
+		  data_frame_index (int):  Zero-based index of the data frame to use
 
 		Returns:
 		  (ffi.BeamformerSimpleParameters *): an ffi compatible parameters structure
 		"""
+		frame_count = parameters.raw_data_dimension[2]
+		if not isinstance(data_frame_index, int) or isinstance(data_frame_index, bool):
+			raise TypeError("data_frame_index must be an integer")
+		if data_frame_index < 0 or data_frame_index >= frame_count:
+			raise IndexError(f"data_frame_index {data_frame_index} is outside the available data frames")
+
 		ogl = self.ogl
 
 		bp = self.ffi.new("BeamformerSimpleParameters *")
 		bp.decode_mode            = parameters.decode_mode
 		bp.acquisition_kind       = parameters.acquisition_kind
-		bp.time_offset            = parameters.time_offset
+		bp.time_offset            = parameters.time_delays[data_frame_index]
 		bp.sampling_frequency     = parameters.sampling_frequency
+		bp.demodulation_frequency = parameters.demodulation_frequencies[data_frame_index]
 		bp.demodulation_frequency = parameters.demodulation_frequency
 		bp.speed_of_sound         = parameters.speed_of_sound
-		bp.xdc_transform          = parameters.transducer_transform_matrix
 		bp.xdc_element_pitch      = parameters.transducer_element_pitch
 		bp.raw_data_dimensions    = parameters.raw_data_dimension[0:2]
 		bp.data_kind              = parameters.raw_data_kind
 		bp.contrast_mode          = parameters.contrast_mode
+
+		# TODO(rnp): beamformer currently only handles a single transform
+		bp.xdc_transform          = parameters.transducer_transform_matrices[0:16]
 
 		sampling_mode_map = {
 			ZBP.SamplingMode_Standard: ogl.BeamformerSamplingMode_4X,
@@ -196,34 +206,39 @@ class ornot:
 			    raw_data_dimension           (uint32 [4]) dimensions of the raw data file (accounts for padding)
 			                                              [0]: samples * receive_event_count + padding
 			                                              [1]: channel
-			                                              [2]: groups
+			                                              [2]: data frames
 			                                              [3]: ensembles
 
 			    decode_mode                  (uint32)     ZBP.DecodeMode
 			    sampling_mode                (uint32)     ZBP.SamplingMode
 			    sampling_frequency           (float)      [Hz]
-			    demodulation_frequency       (float)      [Hz]
+			    demodulation_frequencies     (float [])   [Hz] (one for each of raw_data_dimension[2])
 			    speed_of_sound               (float)      [m/s]
 
 			    sample_count                 (uint32)
 			    channel_count                (uint32)
 			    receive_event_count          (uint32)
 
-			    transducer_transform_matrix  (float [16]) 4x4 Affine Transform for moving from world
+			    transducer_transform_matrices (float [][16])
+			                                              4x4 Affine Transform for moving from world
 			                                              origin to a space oriented with the receiver
-			                                              transducer starting at its corner
+			                                              transducer starting at its corner (one per tile).
+
+			    transducer_tile_count        (uint32 [2]) number of transducer tiles in each direction
 			    transducer_element_pitch     (float [2])  [m] center to center distance between
 			                                              (row, column) elements
 
-			    time_offset                  (float)      [s] time shift to apply to reach time 0
+			    time_delays                  (float [])   [s] time shift to apply to reach time 0 (one for
+			                                                  each of raw_data_dimension[2])
 
 			    group_acquisition_time       (float)      [s] time between each acquisition group
-			                                              (if raw_data_dimension[2] > 0)
+			                                              (if raw_data_dimension[2] > 1)
 			    ensemble_repetition_interval (float)      [s] time between ensembles
-			                                              (if raw_data_dimension[3] > 0)
+			                                              (if raw_data_dimension[3] > 1)
 
 			    acquisition_kind             (uint32)     ZBP.AcquisitionKind
 			    contrast_mode                (uint32)     ZBP.ContrastMode
+			    contrast_data_flags          (uint32)     ZBP.ContrastDataFlags
 
 			    emission_kinds               (uint32 [])  [ZBP.EmissionKind, ...] one per acquisition group
 
@@ -236,6 +251,10 @@ class ornot:
 			                                              channel channel_count - 1 lands on the other
 			                                              end of the array.
 			                                              Contains channel_count elements
+
+			    strings                      ((string, string) [])
+			                                              Optional, (tag, content) pairs of metadata
+			                                              which was contained in the file.
 
 			    raw_data                     (uint8 [])   Optional, an array of raw data if it was
 			                                              included in the file.
@@ -271,6 +290,7 @@ class ornot:
 				major_version_size_table = {
 					1: ZBP.HeaderV1.byte_size(),
 					2: ZBP.HeaderV2.byte_size(),
+					3: ZBP.HeaderV3.byte_size(),
 				}
 				version_size = major_version_size_table.get(base.major, -1)
 				if version_size == -1 or len(bytes) < version_size:
@@ -279,23 +299,23 @@ class ornot:
 				major_version_conversion_table = {
 					1: ZBP.HeaderV1.from_bytes,
 					2: ZBP.HeaderV2.from_bytes,
+					3: ZBP.HeaderV3.from_bytes,
 				}
 				header = major_version_conversion_table[base.major](bytes)
 
 				# NOTE(rnp): common parameters
 				result.decode_mode                 = header.decode_mode
 				result.sampling_frequency          = header.sampling_frequency
-				result.demodulation_frequency      = header.demodulation_frequency
 				result.speed_of_sound              = header.speed_of_sound
 
-				result.transducer_transform_matrix = header.transducer_transform_matrix
 				result.transducer_element_pitch    = header.transducer_element_pitch
+				result.transducer_tile_count       = [1, 1]
 
 				result.sample_count                = header.sample_count
 				result.channel_count               = header.channel_count
 				result.receive_event_count         = header.receive_event_count
 
-				result.time_offset                 = header.time_offset
+				result.contrast_data_flags         = 0
 
 				if base.major == 1:
 					result.raw_data_kind             = ZBP.DataKind_Int16
@@ -303,16 +323,20 @@ class ornot:
 					result.raw_data_dimension        = header.raw_data_dimension
 					result.raw_data                  = []
 
-					result.sampling_mode             = ZBP.SamplingMode_Standard
+					result.transducer_transform_matrices = [header.transducer_transform_matrix]
 
+					result.demodulation_frequencies  = [header.demodulation_frequency]
+					result.time_delays               = [header.time_offset]
+
+					result.sampling_mode             = ZBP.SamplingMode_Standard
 					result.contrast_mode             = ZBP.ContrastMode_None
+					result.acquisition_kind          = header.beamform_mode
 
 					result.channel_mapping           = header.channel_mapping
 
-					result.acquisition_kind          = header.beamform_mode
-
 					result.emission_kinds      = [ZBP.EmissionKind_Sine]
 					result.emission_parameters = [ZBP.EmissionSineParameters()]
+					result.data_frame_time_delays = []
 					result.emission_parameters[0].cycles    = 2
 					result.emission_parameters[0].frequency = header.sampling_frequency / 4
 
@@ -364,7 +388,7 @@ class ornot:
 						result.acquisition_parameters['origin_offsets'] = origin_offsets
 						result.acquisition_parameters['focal_depths']   = focal_depths
 
-				if base.major == 2:
+				if base.major == 2 || base.major == 3:
 					result.raw_data_kind                = header.raw_data_kind
 					result.raw_data_compression_kind    = header.raw_data_compression_kind
 					result.raw_data_dimension           = header.raw_data_dimension
@@ -377,10 +401,34 @@ class ornot:
 					result.acquisition_kind             = header.acquisition_mode
 					result.contrast_mode                = header.contrast_mode
 
+					if base.major == 3:
+						result.contrast_data_flags      = header.contrast_data_flags
+						result.demodulation_frequencies = struct.unpack_from('<%df' % result.raw_data_dimension[2], bytes,
+						                                                     header.demodulation_frequencies_offset)
+						result.time_delays              = struct.unpack_from('<%df' % result.raw_data_dimension[2], bytes,
+						                                                     header.time_delays_offset)
+						result.transducer_tile_count    = header.transducer_tile_count
+						result.transducer_transform_matrices = struct.unpack_from('<%df' % (16 * result.transducer_tile_count[0] * result.transducer_tile_count[1]),
+						                                                          bytes, header.transducer_transforms_offset)
+						if header.string_count > 0:
+							result.strings = [("", "")] * header.string_count
+							for i in range(header.string_count):
+								offset = header.string_table_offset + i * ZBP.StringTableEntry.byte_size()
+								entry  = ZBP.StringTableEntry.from_bytes(bytes[offset:])
+								tag    = bytes[entry.string_tag_offset:(entry.string_tag_offset + entry.string_tag_length)]
+								string = bytes[entry.string_offset:(entry.string_offset + entry.string_length)]
+								result.strings[i] = (tag, string)
+
+					if base.major == 2:
+						result.time_delays              = [header.time_offset]            * result.raw_data_dimension[2]
+						result.demodulation_frequencies = [header.demodulation_frequency] * result.raw_data_dimension[2]
+						result.transducer_transform_matrices = [header.transducer_transform_matrix]
+
 					result.channel_mapping = []
 					if header.channel_mapping_offset != -1:
 						result.channel_mapping = struct.unpack_from('<%dh' % result.channel_count, bytes,
 						                                            header.channel_mapping_offset)
+
 					result.emission_kinds      = []
 					result.emission_parameters = []
 					emission_conversion_table = {
@@ -443,7 +491,10 @@ class ornot:
 
 					result.raw_data = []
 					if header.raw_data_offset != -1:
-						result.raw_data = bytes[header.raw_data_offset:]
+						if base.major == 3:
+							result.raw_data = bytes[header.raw_data_offset:(header.raw_data_offset + header.raw_data_length)]
+						elif base.major == 2:
+							result.raw_data = bytes[header.raw_data_offset:]
 
 				return result
 
