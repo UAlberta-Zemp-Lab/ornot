@@ -97,8 +97,8 @@ class BeamformingRuns:
 				filter.kind    = ogl.BeamformerFilterKind_MatchedChirp
 				filter.complex = 1
 				filter.matched_chirp.duration      = parameters.emission_parameters[0].duration
-				filter.matched_chirp.min_frequency = parameters.emission_parameters[0].min_frequency - bp.demodulation_frequency
-				filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequency
+				filter.matched_chirp.min_frequency = parameters.emission_parameters[0].min_frequency - bp.demodulation_frequencies[0]
+				filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequencies[0]
 
 			filter.sampling_frequency = bp.sampling_frequency / 2
 			self.__must(ogl.beamformer_create_filter(filter, filter_slot, 0))
