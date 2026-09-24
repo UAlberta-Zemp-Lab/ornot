@@ -151,7 +151,7 @@ typedef struct ZBP_HeaderV3 {
 	int32_t                 raw_data_offset;
 	ZBP_DataKind            raw_data_kind;
 	ZBP_DataCompressionKind raw_data_compression_kind;
-	ZBP_DataLayout          raw_data_layout;
+	int32_t                 raw_data_layout_offset;
 	ZBP_DecodeMode          decode_mode;
 	ZBP_SamplingMode        sampling_mode;
 	float                   sampling_frequency;

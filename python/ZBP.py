@@ -263,7 +263,7 @@ class ZBP:
 			return result
 
 	class HeaderV3:
-		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_size=0, raw_data_offset=0, raw_data_kind=0, raw_data_compression_kind=0, raw_data_layout=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_tile_count=[0] * 2, transducer_element_pitch=[0] * 2, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_data_flags=0, contrast_parameters_offset=0, emission_descriptors_offset=0, time_delays_offset=0, demodulation_frequencies_offset=0, transducer_transforms_offset=0, string_count=0, string_table_offset=0):
+		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_size=0, raw_data_offset=0, raw_data_kind=0, raw_data_compression_kind=0, raw_data_layout_offset=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_tile_count=[0] * 2, transducer_element_pitch=[0] * 2, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_data_flags=0, contrast_parameters_offset=0, emission_descriptors_offset=0, time_delays_offset=0, demodulation_frequencies_offset=0, transducer_transforms_offset=0, string_count=0, string_table_offset=0):
 			self.magic                           = magic
 			self.major                           = major
 			self.minor                           = minor
@@ -272,7 +272,7 @@ class ZBP:
 			self.raw_data_offset                 = raw_data_offset
 			self.raw_data_kind                   = raw_data_kind
 			self.raw_data_compression_kind       = raw_data_compression_kind
-			self.raw_data_layout                 = raw_data_layout
+			self.raw_data_layout_offset          = raw_data_layout_offset
 			self.decode_mode                     = decode_mode
 			self.sampling_mode                   = sampling_mode
 			self.sampling_frequency              = sampling_frequency
@@ -308,7 +308,7 @@ class ZBP:
 			result.raw_data_offset                  = struct.unpack_from('<1l', bytes, 40)[0]
 			result.raw_data_kind                    = struct.unpack_from('<1L', bytes, 44)[0]
 			result.raw_data_compression_kind        = struct.unpack_from('<1L', bytes, 48)[0]
-			result.raw_data_layout                  = struct.unpack_from('<1L', bytes, 52)[0]
+			result.raw_data_layout_offset           = struct.unpack_from('<1l', bytes, 52)[0]
 			result.decode_mode                      = struct.unpack_from('<1L', bytes, 56)[0]
 			result.sampling_mode                    = struct.unpack_from('<1L', bytes, 60)[0]
 			result.sampling_frequency               = struct.unpack_from('<1f', bytes, 64)[0]
@@ -348,7 +348,7 @@ class ZBP:
 			struct.pack_into('<1l', result, 40,   self.raw_data_offset)
 			struct.pack_into('<1L', result, 44,   self.raw_data_kind)
 			struct.pack_into('<1L', result, 48,   self.raw_data_compression_kind)
-			struct.pack_into('<1L', result, 52,   self.raw_data_layout)
+			struct.pack_into('<1l', result, 52,   self.raw_data_layout_offset)
 			struct.pack_into('<1L', result, 56,   self.decode_mode)
 			struct.pack_into('<1L', result, 60,   self.sampling_mode)
 			struct.pack_into('<1f', result, 64,   self.sampling_frequency)

@@ -76,11 +76,6 @@
 	ZSTD
 }
 
-@Enumeration DataLayout
-{
-	Standard
-}
-
 @Struct BaseHeader
 {
 	[magic U64 1]
@@ -156,7 +151,7 @@
 	[raw_data_offset                 S32                  1]
 	[raw_data_kind                   DataKind             1]
 	[raw_data_compression_kind       DataCompressionKind  1]
-	[raw_data_layout                 DataLayout           1]
+	[raw_data_layout_offset          S32                  1]
 	[decode_mode                     DecodeMode           1]
 	[sampling_mode                   SamplingMode         1]
 	[sampling_frequency              F32                  1]
