@@ -278,6 +278,7 @@ classdef BeamformParameters
                 assert(numel(bp.data) == prod(max(bp.raw_data_dimension, 1)));
                 d = ornot.DataToRaw(bp.data, bp.raw_data_compression_kind);
                 header.raw_data_offset = offset;
+                header.raw_data_size = numel(d);
                 offset = increment_offset(offset, numel(d), offset_alignment);
                 bytes = set_bytes(bytes, [], header.raw_data_offset);
                 bytes = cat(2, bytes, d(:)');
@@ -632,7 +633,7 @@ classdef BeamformParameters
             if header.raw_data_offset >= 0
                 byteCount = 0;
                 if major == 3
-                    byteCount = header.raw_data_length;
+                    byteCount = header.raw_data_size;
                 elseif major == 2
                     switch header.raw_data_compression_kind
                         case ZBP.DataCompressionKind.None
