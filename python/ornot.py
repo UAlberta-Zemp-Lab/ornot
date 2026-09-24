@@ -130,7 +130,6 @@ class ornot:
 		bp.time_offset            = parameters.time_delays[data_frame_index]
 		bp.sampling_frequency     = parameters.sampling_frequency
 		bp.demodulation_frequency = parameters.demodulation_frequencies[data_frame_index]
-		bp.demodulation_frequency = parameters.demodulation_frequency
 		bp.speed_of_sound         = parameters.speed_of_sound
 		bp.xdc_element_pitch      = parameters.transducer_element_pitch
 		bp.raw_data_dimensions    = parameters.raw_data_dimension[0:2]
