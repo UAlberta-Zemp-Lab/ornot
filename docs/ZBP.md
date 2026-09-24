@@ -486,10 +486,8 @@ Version 2 contains the following differences from Version 3:
 * No `contrast_data_flags`.
 * Single `transducer_transform_matrix` instead of `transducer_tile_count`
   and `transducer_transforms_offset`. See [limitations](#tiled-arrays-v2).
-* Single `time_offset` instead of `time_delays_offset`. Version 2.1 has
-  an additional `time_delays_offset` immediately after the end of the header
-  and the included single `time_offset` must be added to each element of this
-  for beamforming.
+* Single `time_offset` instead of `time_delays_offset`. In Version 2.1 the
+  `time_offset` does not include the contribution of the emission.
 * Single `demodulation_frequency` instead of `demodulation_frequencies_offset`.
 * No `string_count` or `string_table_offset`.
 
