@@ -12,7 +12,7 @@ classdef HeaderV3
 		raw_data_offset(1,1)                 int32
 		raw_data_kind(1,1)                   uint32 % ZBP.DataKind
 		raw_data_compression_kind(1,1)       uint32 % ZBP.DataCompressionKind
-		raw_data_layout(1,1)                 uint32 % ZBP.DataLayout
+		raw_data_layout_offset(1,1)          int32
 		decode_mode(1,1)                     uint32 % ZBP.DecodeMode
 		sampling_mode(1,1)                   uint32 % ZBP.SamplingMode
 		sampling_frequency(1,1)              single
@@ -59,7 +59,7 @@ classdef HeaderV3
 			bytes(41:44)   = typecast(obj.raw_data_offset(:),                 'uint8');
 			bytes(45:48)   = typecast(obj.raw_data_kind(:),                   'uint8');
 			bytes(49:52)   = typecast(obj.raw_data_compression_kind(:),       'uint8');
-			bytes(53:56)   = typecast(obj.raw_data_layout(:),                 'uint8');
+			bytes(53:56)   = typecast(obj.raw_data_layout_offset(:),          'uint8');
 			bytes(57:60)   = typecast(obj.decode_mode(:),                     'uint8');
 			bytes(61:64)   = typecast(obj.sampling_mode(:),                   'uint8');
 			bytes(65:68)   = typecast(obj.sampling_frequency(:),              'uint8');
@@ -103,7 +103,7 @@ classdef HeaderV3
 			out.raw_data_offset(:)                 = typecast(bytes(41:44),   'int32');
 			out.raw_data_kind(:)                   = typecast(bytes(45:48),   'uint32');
 			out.raw_data_compression_kind(:)       = typecast(bytes(49:52),   'uint32');
-			out.raw_data_layout(:)                 = typecast(bytes(53:56),   'uint32');
+			out.raw_data_layout_offset(:)          = typecast(bytes(53:56),   'int32');
 			out.decode_mode(:)                     = typecast(bytes(57:60),   'uint32');
 			out.sampling_mode(:)                   = typecast(bytes(61:64),   'uint32');
 			out.sampling_frequency(:)              = typecast(bytes(65:68),   'single');

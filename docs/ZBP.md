@@ -250,7 +250,7 @@ typedef struct ZBP_HeaderV3 {
 	int32_t                 raw_data_offset;
 	ZBP_DataKind            raw_data_kind;
 	ZBP_DataCompressionKind raw_data_compression_kind;
-	ZBP_DataLayout          raw_data_layout;
+	int32_t                 raw_data_layout_offset;
 	ZBP_DecodeMode          decode_mode;
 	ZBP_SamplingMode        sampling_mode;
 	float                   sampling_frequency;
@@ -323,10 +323,10 @@ A [Data Compression Kind](#data-compression-kind) describing the
 interpretation of the binary data associated with this parameters
 file.
 
-#### `raw_data_layout`
+#### `raw_data_layout_offset`
 
-A [Data Layout](#data-layout) describing the layout of the binary
-data associated with this parameters file.
+An offset to an data layout parameters structure. Currently a
+placeholder, must be -1.
 
 #### `decode_mode`
 
@@ -345,7 +345,7 @@ parameters file was captured at.
 
 #### `speed_of_sound` [m/s]
 
-The suspected speed of sound in m/s at which to process the binary
+The nominal speed of sound in m/s at which to process the binary
 data associated with this parameters file.
 
 #### `channel_mapping_offset` (Optional)
@@ -482,7 +482,7 @@ The number of entries is given by [`string_count`](#string_count).
 Version 2 contains the following differences from Version 3:
 
 * No `raw_data_size` see [limitations](#attached-raw-data-v2).
-* No `raw_data_layout`.
+* No `raw_data_layout_offset`.
 * No `contrast_data_flags`.
 * Single `transducer_transform_matrix` instead of `transducer_tile_count`
   and `transducer_transforms_offset`. See [limitations](#tiled-arrays-v2).
