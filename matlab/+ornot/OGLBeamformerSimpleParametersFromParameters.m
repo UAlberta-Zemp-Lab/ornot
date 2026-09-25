@@ -22,7 +22,7 @@ bsp.sample_count           = parameters.sample_count;
 bsp.channel_count          = parameters.channel_count;
 bsp.acquisition_count      = parameters.receive_event_count;
 % TODO(rnp): beamformer currently only handles a single transform
-bsp.xdc_transform          = parameters.transducer_transform_matrices(:,:,1);
+bsp.xdc_transform          = reshape(parameters.transducer_transform_matrices(:,:,1), 1, []);
 
 if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_parameters)
     emissionDescriptor = parameters.emission_descriptors(section_number);
