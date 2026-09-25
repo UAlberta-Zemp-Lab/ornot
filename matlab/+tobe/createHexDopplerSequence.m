@@ -54,16 +54,17 @@ beamformParameters.decode_mode = ZBP.DecodeMode.Hadamard;
 beamformParameters.speed_of_sound = speedOfSound;
 beamformParameters.channel_count = elementCount;
 beamformParameters.receive_event_count = transmitCount;
-beamformParameters.transducer_transform_matrix = reshape(single([
+beamformParameters.transducer_tile_count = [1,1];
+beamformParameters.transducer_transform_matrices(:,:,1) = single([
     1, 0, 0, arraySize(2)/2; % Note (DD): Columns change in X
     0, 1, 0, arraySize(1)/2; % Note (DD): Rows change in Y
     0, 0, 1, 0;
     0, 0, 0, 1;
-    ]), 1, []);
+    ]);
 beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.HEXDoppler;
 hexDopplerParameters = ZBP.HEXDopplerParameters;
 hexDopplerParameters.bin_count = binCount;
 beamformParameters.acquisition_parameters = hexDopplerParameters;
-beamformParameters.time_offset = 0;
+beamformParameters.time_delays = 0;
 end

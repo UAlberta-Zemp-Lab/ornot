@@ -66,11 +66,6 @@ for n = 1:numel(transmitFoci)
         repmat(txApodization, [transmitCount, 1]);
 end
 
-% Align delays so they all have the same focus time
-[maxFocusTime, n] = max(focusTimes);
-focusTimeDeltas = maxFocusTime - focusTimes;
-transmitDelays = transmitDelays + repelem(focusTimeDeltas, transmitCount, 1);
-timeOffset = maxFocusTime - (transmitFoci(n).focal_depth / speedOfSound);
 arraySize = array.GetSize();
 
 beamformParameters = ornot.BeamformParameters();
@@ -78,15 +73,16 @@ beamformParameters.decode_mode = ZBP.DecodeMode.Hadamard;
 beamformParameters.speed_of_sound = speedOfSound;
 beamformParameters.channel_count = receiveElementCount;
 beamformParameters.receive_event_count = size(sparseElements, 2) + 1;
-beamformParameters.transducer_transform_matrix = reshape(single([
+beamformParameters.transducer_tile_count = [1,1];
+beamformParameters.transducer_transform_matrices(:,:,1) = single([
     1, 0, 0, arraySize(2)/2; % Note (DD): Columns change in X
     0, 1, 0, arraySize(1)/2; % Note (DD): Rows change in Y
     0, 0, 1, 0;
     0, 0, 0, 1;
-    ]), 1, []);
+    ]);
 beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.UFORCES;
 beamformParameters.acquisition_parameters = uForcesParameters;
-beamformParameters.time_offset = timeOffset;
+beamformParameters.time_delays = focusTimes' - [transmitFoci.focal_depth] / speedOfSound;
 beamformParameters.sparse_elements = (sparseElements - 1)';
 end
