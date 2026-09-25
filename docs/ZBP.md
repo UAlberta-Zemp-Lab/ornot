@@ -57,17 +57,31 @@ Encodes the imaging method used to acquire the data.
 ```c
 typedef enum {
 	ZBP_ContrastMode_None = 0,
+	ZBP_ContrastMode_A1S2 = 1,
+	ZBP_ContrastMode_A2   = 2,
 	ZBP_ContrastMode_Count,
 } ZBP_ContrastMode;
 ```
 
-A placeholder for encoding whether the data contains method of
-providing non-linear contrast. Note that some contrast enhancing
-methods can be handled directly in the acquisition hardware
-meaning that from a saved data or beamforming perspective the data
-does not have a contrast mode applied. In that case `None` is also
-used since these files are only meant to encode data needed for
-image reconstruction.
+Encodes whether the data was acquired using a method capable of
+providing non-linear contrast. For example,
+`ZBP_ContrastMode_A1S2` means that one batch of `sample_count`
+samples from a single channel should be added, and two should be
+subtracted to generate non-linear contrast.
+
+### Contrast Data Flags
+
+```c
+typedef enum {
+	ZBP_ContrastDataFlags_Reduced = 1 << 0,
+} ZBP_ContrastDataFlags;
+```
+
+A bit field used to record operations performed on a
+[Contrast](#contrast-mode) data set prior to saving.
+
+* `Reduced`: samples were combined prior to saving.
+  Usually done in hardware.
 
 ### Data Kind
 
@@ -102,6 +116,21 @@ typedef enum {
 
 Encodes the compression method used when storing the dataset
 associated with the parameter file.
+
+### Data Layout
+
+```c
+typedef enum {
+	ZBP_DataLayout_Standard = 0,
+	ZBP_DataLayout_Count,
+} ZBP_DataLayout;
+
+```
+
+Placeholder for storing raw data in a different layout. For
+performance we may need to acquire data with a different layout
+than we have been using. Without writing the shuffling ourselves
+it is too slow to reorganize the data prior to saving.
 
 ### Decode Mode
 
@@ -209,40 +238,46 @@ the parameters file may be higher than what the code was
 originally written to handle but the file may not use any of the
 additions to that minor revision.
 
-### Header Version 2
+### Header Version 3
 
 ```c
-typedef struct ZBP_HeaderV2 {
-	uint64_t magic;
-	uint32_t major;
-	uint32_t minor;
-	uint32_t raw_data_dimension[4];
-	int32_t  raw_data_kind;
-	int32_t  raw_data_offset;
-	int32_t  raw_data_compression_kind;
-	int32_t  decode_mode;
-	int32_t  sampling_mode;
-	float    sampling_frequency;
-	float    demodulation_frequency;
-	float    speed_of_sound;
-	int32_t  channel_mapping_offset;
-	uint32_t sample_count;
-	uint32_t channel_count;
-	uint32_t receive_event_count;
-	float    transducer_transform_matrix[16];
-	float    transducer_element_pitch[2];
-	float    time_offset;
-	float    group_acquisition_time;
-	float    ensemble_repetition_interval;
-	int32_t  acquisition_mode;
-	int32_t  acquisition_parameters_offset;
-	int32_t  contrast_mode;
-	int32_t  contrast_parameters_offset;
-	int32_t  emission_descriptors_offset;
-} ZBP_HeaderV2;
+typedef struct ZBP_HeaderV3 {
+	uint64_t                magic;
+	uint32_t                major;
+	uint32_t                minor;
+	uint32_t                raw_data_dimension[4];
+	uint64_t                raw_data_size;
+	int32_t                 raw_data_offset;
+	ZBP_DataKind            raw_data_kind;
+	ZBP_DataCompressionKind raw_data_compression_kind;
+	int32_t                 raw_data_layout_offset;
+	ZBP_DecodeMode          decode_mode;
+	ZBP_SamplingMode        sampling_mode;
+	float                   sampling_frequency;
+	float                   speed_of_sound;
+	int32_t                 channel_mapping_offset;
+	uint32_t                sample_count;
+	uint32_t                channel_count;
+	uint32_t                receive_event_count;
+	uint32_t                transducer_tile_count[2];
+	float                   transducer_element_pitch[2];
+	float                   group_acquisition_time;
+	float                   ensemble_repetition_interval;
+	ZBP_AcquisitionKind     acquisition_mode;
+	int32_t                 acquisition_parameters_offset;
+	ZBP_ContrastMode        contrast_mode;
+	uint32_t                contrast_data_flags;
+	int32_t                 contrast_parameters_offset;
+	int32_t                 emission_descriptors_offset;
+	int32_t                 time_delays_offset;
+	int32_t                 demodulation_frequencies_offset;
+	int32_t                 transducer_transforms_offset;
+	uint32_t                string_count;
+	int32_t                 string_table_offset;
+} ZBP_HeaderV3;
 ```
 
-Base structure defining the layout of Version 2 of the binary
+Base structure defining the layout of Version 3 of the binary
 parameters file. All `*_offset` parameters represent an offset
 from the start of the file. An offset of -1 indicates that the
 corresponding data is not included in the file. A description of
@@ -267,22 +302,31 @@ single image/volume. For example FORCES-128 requires 128 receive
 events and the collection of those receive events form a single
 Data Frame.
 
-#### `raw_data_kind`
+#### `raw_data_size`
 
-A [Data Kind](#data-kind) describing the interpretation of the
-binary data associated with this parameters file.
+If the file contains attached data this indicates the number of
+bytes after [`raw_data_offset`](#raw_data_offset-optional) which
+contain data.
 
 #### `raw_data_offset` (Optional)
 
 An offset from the start of the file to an attached raw data blob.
-See [Limitations](#attached-raw-data) for additional constraints
-when attaching compressed raw data.
+
+#### `raw_data_kind`
+
+A [Data Kind](#data-kind) describing the interpretation of the
+binary data associated with this parameters file.
 
 #### `raw_data_compression_kind`
 
 A [Data Compression Kind](#data-compression-kind) describing the
 interpretation of the binary data associated with this parameters
 file.
+
+#### `raw_data_layout_offset`
+
+An offset to an data layout parameters structure. Currently a
+placeholder, must be -1.
 
 #### `decode_mode`
 
@@ -299,18 +343,9 @@ data associated with this parameters file was sampled.
 The sampling rate in Hz that the binary data associated with this
 parameters file was captured at.
 
-#### `demodulation_frequency` [Hz]
-
-The demodulation frequency in Hz that the binary data associated
-with this parameters file should be processed with. If the [Data
-Kind](#data-kind) is Complex and this frequency is non-zero the
-data is assumed to be at baseband. If the [Data Kind](#data-kind)
-is Complex and this frequency is 0 then it is assumed the data is
-Complex RF data and it should be processed as RF data.
-
 #### `speed_of_sound` [m/s]
 
-The suspected speed of sound in m/s at which to process the binary
+The nominal speed of sound in m/s at which to process the binary
 data associated with this parameters file.
 
 #### `channel_mapping_offset` (Optional)
@@ -339,23 +374,16 @@ non-zero.
 The number of receive events in the binary data associated with
 this parameters file.
 
-#### `transducer_transform_matrix`
+#### `transducer_tile_count`
 
-A 4x4 affine transformation from the transmit origin to the center
-of the element in the corner of the array used to receive binary
-data associated with this parameters file. A 4x4 matrix allows for
-any arbitrary offset and tilt to applied to the receiver array.
+The number of transducer tiles in the (row, column) direction.
+Each value must always be at least `1`. The product of these two
+elements gives the total number of affine transformations pointed
+to by [`transducer_transforms_offset`](#transducer_transforms_offset).
 
 #### `transducer_element_pitch` [m]
 
 The (row, column) element pitch in meters.
-
-#### `time_offset` [s]
-
-The time in seconds at which the center of the emission pulse is
-at the surface of the transmitting array. This value should be
-added to any calculated time of flight during beamforming.
-Generally, this value is negative but that is not required.
 
 #### `group_acquisition_time` [s]
 
@@ -390,6 +418,14 @@ well as the how to interpret the
 [contrast parameters](#contrast_parameters_offset-optional)
 contained in parameters file.
 
+#### `contrast_data_flags`
+
+A bit mask of [Contrast Data Flags](#contrast-data-flags)
+describing any modifications applied to the data prior to saving.
+The primary purpose is to allow use of some acquisition hardware
+techniques while still documenting that a contrast enhancing
+method was applied.
+
 #### `contrast_parameters_offset` (Optional)
 
 An offset to an contrast parameters structure the type of which is
@@ -399,9 +435,107 @@ is `None` this offset can be -1.
 #### `emission_descriptors_offset`
 
 An offset to an array of [Emission Descriptor](#emission-descriptor)
-structures. The number of emission descriptors present is
-determined by the number of [Data Frames](#raw_data_dimension)
-present. This offset is required to always be valid.
+structures. The number of emission descriptors present is determined
+by the number of [Data Frames](#raw_data_dimension). When there is no
+emission, such as when [`acquisition_mode`](#acquisition_mode) is
+[`HERO_PA`](#hero-pa-parameters), this offset can be -1.
+
+#### `demodulation_frequencies_offset`
+
+An offset to an array of `float32_t` demodulation frequencies
+stored in [Hz] that the binary data associated with this
+parameters file should be processed with. The exists one entry per
+[Data Frame](#raw_data_dimension). If the [Data Kind](#data-kind)
+is Complex and this frequency is non-zero the data is assumed to
+be at baseband. If the [Data Kind](#data-kind) is Complex and this
+frequency is 0 then it is assumed the data is Complex RF data and
+it should be processed as RF data.
+
+#### `transducer_transforms_offset`
+
+An offset to an array of 4x4 affine transformations from the
+transmit origin to the center of the element in the corner of the
+each array used to receive the binary data associated with this
+parameters file. A 4x4 matrix allows for any arbitrary offset and
+tilt to applied to each receiver array.
+
+#### `time_delays_offset` [s]
+
+An offset to an array of `float32_t` values representing the
+additional time delay which should be applied to the binary data
+associated with each frame of data referred to by this parameters
+file. The length of this array is given by the count of
+[Data Frames](#raw_data_dimension).
+
+#### `string_count`
+
+Count of entries in the string table located at
+[`string_table_offset`](#string_table_offset).
+
+#### `string_table_offset`
+
+An offset to a table of [String Table Entries](#string-table-entry).
+The number of entries is given by [`string_count`](#string_count).
+
+### Header Version 2
+
+Version 2 contains the following differences from Version 3:
+
+* No `raw_data_size` see [limitations](#attached-raw-data-v2).
+* No `raw_data_layout_offset`.
+* No `contrast_data_flags`.
+* Single `transducer_transform_matrix` instead of `transducer_tile_count`
+  and `transducer_transforms_offset`. See [limitations](#tiled-arrays-v2).
+* Single `time_offset` instead of `time_delays_offset`. In Version 2.1 the
+  `time_offset` does not include the contribution of the emission.
+* Single `demodulation_frequency` instead of `demodulation_frequencies_offset`.
+* No `string_count` or `string_table_offset`.
+
+### Header Version 1
+
+Version 1 contains the following differences from Version 2:
+
+* No `minor` version field.
+* No `sampling_mode` parameter. Assume `ZBP_SamplingMode_Standard`.
+* No `raw_data_kind`, `raw_data_offset`, or `raw_data_compression_kind`.
+  Raw data could not be attached to these files and compression needs to be
+  determined externally (e.g. by file name). All files saved with this header
+  used `ZBP_DataKind_Int16`.
+* No `group_acquisition_time` or `ensemble_repetition_interval`.
+* No `contrast_mode`.
+* No `acquisition_parameters_offset`. Which of the included parameter arrays
+  are relevant needs to be determined based on the `beamform_mode` field
+  (a.k.a. `acquisition_mode`).
+* No `emission_descriptors_offset`. Emission parameters must be determined
+  externally but were often just a two cycle sine wave at the recorded
+  `demodulation_frequency`.
+* `frame_count` member which is a duplicate of `raw_data_dimension[2]`.
+* `channel_mapping`, `steering_angles`, `focal_depths`,
+  and `sparse_elements` are always included as fixed size
+  256 element arrays.
+* `hadamard_rows` field which is not used in any known V1 files.
+* `demodulation_frequency` is generally not accurate and should be replaced
+  by `sampling_frequency / 4`.
+* `transmit_mode` field encoding the Tx and Rx orientation in a different
+  format described below.
+
+#### `transmit_mode`
+
+A field encoding some of the possible transmit receive
+orientations. Bit 0 corresponds to the receive orientation and bit
+1 corresponds to the transmit orientation. In both cases a value
+of 1 means that columns were used and a value of 0 means that the
+rows were used. It can be converted to the standard encoding with
+the following table:
+
+```c
+uint8_t transmit_mode_to_standard_encoding[] = {
+	[0] = ZBP_RCAOrientation_Rows    << 4 | ZBP_RCAOrientation_Rows,
+	[1] = ZBP_RCAOrientation_Rows    << 4 | ZBP_RCAOrientation_Columns,
+	[2] = ZBP_RCAOrientation_Columns << 4 | ZBP_RCAOrientation_Rows,
+	[3] = ZBP_RCAOrientation_Columns << 4 | ZBP_RCAOrientation_Columns,
+};
+```
 
 ### Emission Descriptor
 
@@ -412,21 +546,21 @@ typedef struct ZBP_EmissionDescriptor {
 } ZBP_EmissionDescriptor;
 ```
 
-A structure describing the emission used to acquire a single group
+A structure describing the emission used to acquire a single Data Frame
 in the binary file associated with this parameters file.
 
 #### `emission_kind`
 
 A [Emission Kind](#emission-kind) describing the way the binary
-data associated with this parameters file should be processed as
-well as the how to interpret the [emission parameters](#parameters_offset)
-contained in parameters file.
+data associated with this Data Frame should be processed and how to
+interpret the emission parameter structure referenced by
+[`parameters_offset`](#parameters_offset).
 
 #### `parameters_offset`
 
-An offset to an emission parameters structure the type of which is
-determined by the [Emission Kind](#emission-kind). This offset is
-required to always be valid.
+An offset to the emission parameters structure for this Data Frame. The
+type of the structure is determined by the [Emission Kind](#emission-kind).
+This offset is required to always be valid.
 
 ### Sine Emission Parameters
 
@@ -700,181 +834,36 @@ A structure containing the acquisition parameters when the
 
 #### `angle_count`
 
-The number of angle transmits in each orientation. Rows transmits first, then Columns. Must add up to [`receive_event_count`](#receive_event_count).
+The number of angle transmits in each orientation. Rows transmits first,
+then Columns. Must add up to [`receive_event_count`](#receive_event_count).
 
 #### `tilting_angles_offset`
 
 An offset to an array of `float32_t` floats describing the tilting
 angles in degrees for each emission.
 
-### Header Version 1
+### String Table Entry
 
 ```c
-typedef struct ZBP_HeaderV1 {
-	uint64_t magic;
-	uint32_t version;
-	int16_t  decode_mode;
-	int16_t  beamform_mode;
-	uint32_t raw_data_dimension[4];
-	uint32_t sample_count;
-	uint32_t channel_count;
-	uint32_t receive_event_count;
-	uint32_t frame_count;
-	float    transducer_element_pitch[2];
-	float    transducer_transform_matrix[16];
-	int16_t  channel_mapping[256];
-	float    steering_angles[256];
-	float    focal_depths[256];
-	int16_t  sparse_elements[256];
-	int16_t  hadamard_rows[256];
-	float    speed_of_sound;
-	float    demodulation_frequency;
-	float    sampling_frequency;
-	float    time_offset;
-	uint32_t transmit_mode;
-} ZBP_HeaderV1;
+typedef struct ZBP_StringTableEntry {
+	uint32_t string_tag_length;
+	int32_t  string_tag_offset;
+	uint32_t string_length;
+	int32_t  string_offset;
+} ZBP_StringTableEntry;
 ```
 
-Base structure defining the layout of Version 1 of the binary
-parameters file. A description of each field follows.
-
-#### `magic`, `version`
-
-See [Base Header](#base-header).
-
-#### `decode_mode` (V1)
-
-A [Decode Mode](#decode-mode) describing the way the binary data
-associated with this parameters file should be decoded.
-
-#### `beamform_mode`
-
-An [Acquistion Kind](#acquisition-kind) describing the way the
-binary data associated with this parameters file should be
-processed.
-
-#### `raw_data_dimension` (V1)
-
-The dimensions of the raw data associated with this parameters
-file. These dimensions may contain padding elements.
-
-* `[0]`: Receive Events * Samples Per Event + Padding.
-* `[1]`: Data Channels.
-* `[2]`: Data Frames.
-* `[3]`: Ensembles (collections of Data Frames).
-
-#### `sample_count` (V1)
-
-The number of samples in the binary data associated with this
-parameters file.
-
-#### `channel_count` (V1)
-
-The number of receive channels in the binary data associated with
-this parameters file. It may mismatch the Data Channels in the
-[`raw_data_dimension`](#raw_data_dimension-v1) in which case the
-channel mapping must be used to determine which channels are
-non-zero.
-
-#### `receive_event_count` (V1)
-
-The number of receive events in the binary data associated with
-this parameters file.
-
-#### `frame_count`
-
-The number of data frames in the binary data associated with this
-parameters file.
-
-#### `transducer_transform_matrix` (V1)
-
-A 4x4 affine transformation from the transmit origin to the center
-of the element in the corner of the array used to receive binary
-data associated with this parameters file. A 4x4 matrix allows for
-any arbitrary offset and tilt to applied to the receiver array.
-
-#### `transducer_element_pitch` [m] (V1)
-
-The (row, column) element pitch in meters.
-
-#### `channel_mapping`
-
-An array representing the channel mapping which should be applied
-to the binary data associated with this parameters file. The count
-of valid entries is provided by the
-[`channel_count`](#channel_count-v1).
-
-#### `steering_angles` [degrees]
-
-An array of `float32_t` floats describing the steering angles in
-degrees for each emission. The count of valid entries is provided by
-[`receive_event_count`](#receive_event_count-v1).
-
-#### `focal_depths` [m]
-
-An array of `float32_t` floats describing the focal depth in
-meters for each emission. The count of valid entries is provided by
-[`receive_event_count`](#receive_event_count-v1).
-
-#### `sparse_elements`
-
-An array of `int16_t` integers corresponding to the elements used
-for each sparse emission. Only valid when the
-[`beamform_mode`](#beamform-mode) corresponds to a sparse
-[Acquisition Kind](#acquisition-kind). The count of valid entries is
-provided by [`receive_event_count`](#receive_event_count-v1).
-
-#### `hadamard_rows`
-
-Not used in any known version 1 files.
-
-#### `speed_of_sound` [m/s] (V1)
-
-The suspected speed of sound in m/s at which to process the binary
-data associated with this parameters file.
-
-#### `sampling_frequency` [Hz] (V1)
-
-The sampling rate in Hz that the binary data associated with this
-parameters file was captured at.
-
-#### `demodulation_frequency` [Hz] (V1)
-
-The demodulation frequency in Hz that the binary data associated
-with this parameters file should be processed with. In most
-version 1 files it was not valid and instead should be replaced
-with `sampling_frequency / 4`.
-
-#### `time_offset` [s] (V1)
-
-The time in seconds at which the center of the emission pulse is
-at the surface of the transmitting array. This value should be
-added to any calculated time of flight during beamforming.
-Generally, this value is negative but that is not required.
-
-#### `transmit_mode`
-
-A field encoding some of the possible transmit receive
-orientations. Bit 0 corresponds to the receive orientation and bit
-1 corresponds to the transmit orientation. In both cases a value
-of 1 means that columns were used and a value of 0 means that the
-rows were used. It can be converted to the version 2 encoding with
-the following table:
-
-```c
-uint8_t transmit_mode_to_version_2_encoding[] = {
-	[0] = ZBP_RCAOrientation_Rows    << 4 | ZBP_RCAOrientation_Rows,
-	[1] = ZBP_RCAOrientation_Rows    << 4 | ZBP_RCAOrientation_Columns,
-	[2] = ZBP_RCAOrientation_Columns << 4 | ZBP_RCAOrientation_Rows,
-	[3] = ZBP_RCAOrientation_Columns << 4 | ZBP_RCAOrientation_Columns,
-};
-```
+Used to describe a string embedded in the file. Strings are stored
+as `(tag, value)` pairs. Embedded strings need not be `0`
+terminated. In general it is expected that `tags` are stored
+immediately prior to their `values` but they may also be stored in
+separate groups.
 
 ## Known Limitations
 
 ### Version 2
 
-#### Attached Raw Data
+#### Attached Raw Data (V2)
 
 Since the format lacks metadata about the size of attached raw
 data when it is compressed, the size must be calculated
@@ -883,7 +872,7 @@ be attached as the final section in the parameters file-this way,
 the size can be calculated by subtracting the `raw_data_offset`
 from the total file size.
 
-#### Tiled Arrays
+#### Tiled Arrays (V2)
 
 Version 2 does not really contain any provisions for tiled arrays.
 They can mostly be handled by storing a separate parameters file

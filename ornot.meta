@@ -44,6 +44,12 @@
 {
 	None
 	A1S2
+	A2
+}
+
+@Flags ContrastDataFlags
+{
+	Reduced
 }
 
 @Enumeration EmissionKind
@@ -134,6 +140,51 @@
 	[emission_descriptors_offset   S32                  1]
 }
 
+@Struct HeaderV3
+{
+	[magic U64 1]
+	[major U32 1]
+	[minor U32 1]
+
+	[raw_data_dimension              U32                  4]
+	[raw_data_size                   U64                  1]
+	[raw_data_offset                 S32                  1]
+	[raw_data_kind                   DataKind             1]
+	[raw_data_compression_kind       DataCompressionKind  1]
+	[raw_data_layout_offset          S32                  1]
+	[decode_mode                     DecodeMode           1]
+	[sampling_mode                   SamplingMode         1]
+	[sampling_frequency              F32                  1]
+	[speed_of_sound                  F32                  1]
+	[channel_mapping_offset          S32                  1]
+	[sample_count                    U32                  1]
+	[channel_count                   U32                  1]
+	[receive_event_count             U32                  1]
+	[transducer_tile_count           U32                  2]
+	[transducer_element_pitch        F32                  2]
+	[group_acquisition_time          F32                  1]
+	[ensemble_repetition_interval    F32                  1]
+	[acquisition_mode                AcquisitionKind      1]
+	[acquisition_parameters_offset   S32                  1]
+	[contrast_mode                   ContrastMode         1]
+	[contrast_data_flags             U32                  1]
+	[contrast_parameters_offset      S32                  1]
+	[emission_descriptors_offset     S32                  1]
+	[time_delays_offset              S32                  1]
+	[demodulation_frequencies_offset S32                  1]
+	[transducer_transforms_offset    S32                  1]
+	[string_count                    U32                  1]
+	[string_table_offset             S32                  1]
+}
+
+@Struct StringTableEntry
+{
+	[string_tag_length U32]
+	[string_tag_offset S32]
+	[string_length     U32]
+	[string_offset     S32]
+}
+
 @Struct EmissionDescriptor
 {
 	[emission_kind     EmissionKind]
@@ -211,4 +262,9 @@
 {
 	[angle_count           S32 2]
 	[tilting_angles_offset S32 1]
+}
+
+@Struct EPIC_FORCESParameters
+{
+	[transmit_foci_offset S32 1]
 }

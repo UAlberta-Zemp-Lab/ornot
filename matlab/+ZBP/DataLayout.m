@@ -2,10 +2,8 @@
 
 % GENERATED CODE
 
-classdef ContrastMode < int32
+classdef DataLayout < int32
 	enumeration
-		None (0)
-		A1S2 (1)
-		A2   (2)
+		Standard (0)
 	end
 end

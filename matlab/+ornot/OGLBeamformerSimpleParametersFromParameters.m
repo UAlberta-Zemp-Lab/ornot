@@ -10,11 +10,10 @@ end
 bsp                        = OGLBeamformerSimpleParameters;
 bsp.decode_mode            = parameters.decode_mode;
 bsp.acquisition_kind       = parameters.acquisition_kind;
-bsp.time_offset            = parameters.time_offset;
+bsp.time_offset            = parameters.time_delays(section_number);
 bsp.sampling_frequency     = parameters.sampling_frequency;
-bsp.demodulation_frequency = parameters.demodulation_frequency;
+bsp.demodulation_frequency = parameters.demodulation_frequencies(section_number);
 bsp.speed_of_sound         = parameters.speed_of_sound;
-bsp.xdc_transform          = parameters.transducer_transform_matrix;
 bsp.xdc_element_pitch      = parameters.transducer_element_pitch;
 bsp.raw_data_dimensions    = parameters.raw_data_dimension(1:2);
 bsp.data_kind              = parameters.raw_data_kind;
@@ -22,9 +21,23 @@ bsp.contrast_mode          = parameters.contrast_mode;
 bsp.sample_count           = parameters.sample_count;
 bsp.channel_count          = parameters.channel_count;
 bsp.acquisition_count      = parameters.receive_event_count;
+% TODO(rnp): beamformer currently only handles a single transform
+bsp.xdc_transform          = reshape(parameters.transducer_transform_matrices(:,:,1), 1, []);
 
-bsp.emission_parameters.kind = parameters.emission_descriptor.emission_kind;
-bsp.emission_parameters.data = parameters.emission_parameters.toBytes();
+if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_parameters)
+    emissionDescriptor = parameters.emission_descriptors(section_number);
+    emissionParameters = parameters.emission_parameters{emissionDescriptor};
+    switch class(emissionParameters)
+        case 'ZBP.EmissionSineParameters'
+            bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Sine);
+        case 'ZBP.EmissionChirpParameters'
+            bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Chirp);
+        otherwise
+            error('ornot:OGLBeamformerSimpleParametersFromParameters:InvalidParameter', ...
+                "Unsupported EmissionType!");
+    end
+    bsp.emission_parameters.data = emissionParameters.toBytes();
+end
 
 switch parameters.sampling_mode
     case ZBP.SamplingMode.Standard
@@ -62,7 +75,7 @@ switch bsp.acquisition_kind
         bsp.steering_angles(1:bsp.acquisition_count) = parameters.tilting_angles(1:bsp.acquisition_count);
         bsp.transmit_receive_orientations(1:bsp.acquisition_count) = parameters.transmit_receive_orientations(1:bsp.acquisition_count);
     case {ZBP.AcquisitionKind.FORCES, ZBP.AcquisitionKind.UFORCES}
-        xdc_transform = reshape(parameters.transducer_transform_matrix, 4, 4);
+        xdc_transform = reshape(bsp.xdc_transform, 4, 4);
         [~, receive_orientation] = ornot.unpackTransmitReceiveOrientation(parameters.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation);
         if receive_orientation == ZBP.RCAOrientation.Rows
             xdc_transform(1:2,:) = xdc_transform(2:-1:1,:);
@@ -71,6 +84,21 @@ switch bsp.acquisition_kind
         bsp.single_orientation = 1;
         bsp.transmit_receive_orientation = ...
             parameters.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
+    case ZBP.AcquisitionKind.EPIC_FORCES % TODO: Temporary approximation for visualization purposes.
+        bsp.acquisition_kind = ZBP.AcquisitionKind.FORCES;
+        bsp.single_focus       = 1;
+        bsp.single_orientation = 1;
+
+        transmitFoci = [parameters.transmit_foci(section_number, :)];
+        bsp.focal_depths(1:bsp.acquisition_count) = [transmitFoci.focal_depth];
+        bsp.steering_angles(1:bsp.acquisition_count) = [transmitFoci.steering_angle];
+        bsp.transmit_receive_orientations(1:bsp.acquisition_count) = [transmitFoci.transmit_receive_orientation];
+
+        bsp.focal_vector = [...
+            transmitFoci(ceil(end/2)).steering_angle, ...
+            transmitFoci(ceil(end/2)).focal_depth];
+        bsp.transmit_receive_orientation = ...
+            transmitFoci(ceil(end/2)).transmit_receive_orientation;
     case ZBP.AcquisitionKind.HERO_PA
         bsp.single_orientation = 1;
         bsp.transmit_receive_orientation = ...
