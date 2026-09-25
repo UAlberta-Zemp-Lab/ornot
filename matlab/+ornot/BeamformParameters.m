@@ -153,10 +153,10 @@ classdef BeamformParameters
             assert(~isempty(bp.acquisition_parameters), ...
                 "Acquisition Parameters are empty, but acquisition kind requires acquisition parameters");
 
+            data_frame_count = bp.raw_data_dimension(3);
+            receive_count = bp.receive_event_count;
             switch bp.acquisition_kind
                 case ZBP.AcquisitionKind.EPIC_FORCES
-                    receive_count = bp.receive_event_count;
-                    data_frame_count = bp.raw_data_dimension(3);
                     assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
 
                     assert(all(size(bp.transmit_foci) == [receive_count, data_frame_count]));
@@ -171,8 +171,6 @@ classdef BeamformParameters
                         end
                     end
                 case ZBP.AcquisitionKind.RCA_VLS
-                    receive_count = bp.receive_event_count;
-                    data_frame_count = bp.raw_data_dimension(3);
                     assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
 
                     assert(all(size(bp.focal_depths) == [receive_count, data_frame_count]));
@@ -193,8 +191,6 @@ classdef BeamformParameters
                         bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
                     end
                 case ZBP.AcquisitionKind.RCA_TPW
-                    receive_count = bp.receive_event_count;
-                    data_frame_count = bp.raw_data_dimension(3);
                     assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
 
                     assert(all(size(bp.tilting_angles) == [receive_count, data_frame_count]));
@@ -210,8 +206,6 @@ classdef BeamformParameters
                         bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
                     end
                 case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
-                    receive_count = bp.receive_event_count;
-                    data_frame_count = bp.raw_data_dimension(3);
                     assert(all(size(bp.sparse_elements) == [receive_count - 1, data_frame_count]));
 
                     for i = 1:data_frame_count
@@ -231,7 +225,6 @@ classdef BeamformParameters
                     assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
                     assert(isscalar(bp.acquisition_parameters));
 
-                    receive_count = bp.receive_event_count;
                     assert(sum(bp.acquisition_parameters.angle_count) == receive_count);
 
                     assert(~isempty(bp.tilting_angles));
@@ -509,10 +502,12 @@ classdef BeamformParameters
                 bp.channel_mapping = typecast(bytes(uint32(header.channel_mapping_offset) + (1:(2*channel_count))), 'uint16');
             end
 
+            data_frame_count = header.raw_data_dimension(3);
+            receive_count = header.receive_event_count;
+            sparse_element_count = header.receive_event_count - 1;
             if header.acquisition_parameters_offset >= 0
                 switch header.acquisition_mode
                     case ZBP.AcquisitionKind.FORCES
-                        data_frame_count = header.raw_data_dimension(3);
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.FORCESParameters");
                         for i = 1:data_frame_count
@@ -520,8 +515,6 @@ classdef BeamformParameters
                             offset = offset + ZBP.FORCESParameters.byteSize;
                         end
                     case ZBP.AcquisitionKind.UFORCES
-                        data_frame_count = header.raw_data_dimension(3);
-                        sparse_element_count = header.receive_event_count - 1;
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.uFORCESParameters");
                         bp.sparse_elements = zeros(sparse_element_count, data_frame_count);
@@ -535,7 +528,6 @@ classdef BeamformParameters
                             end
                         end
                     case ZBP.AcquisitionKind.HERCULES
-                        data_frame_count = header.raw_data_dimension(3);
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.HERCULESParameters");
                         for i = 1:data_frame_count
@@ -543,7 +535,6 @@ classdef BeamformParameters
                             offset = offset + ZBP.HERCULESParameters.byteSize;
                         end
                     case ZBP.AcquisitionKind.EPIC_FORCES
-                        data_frame_count = header.raw_data_dimension(3);
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.EPIC_FORCESParameters");
                         for i = 1:data_frame_count
@@ -559,8 +550,6 @@ classdef BeamformParameters
                             end
                         end
                     case ZBP.AcquisitionKind.RCA_VLS
-                        receive_count = header.receive_event_count;
-                        data_frame_count = header.raw_data_dimension(3);
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.VLSParameters");
                         for i = 1:data_frame_count
@@ -582,8 +571,6 @@ classdef BeamformParameters
                         bp.origin_offsets = typecast(bytes(uint32(bp.acquisition_parameters.origin_offsets_offset) + (1:(4*receive_count))), "single");
                         bp.transmit_receive_orientations = typecast(bytes(uint32(bp.acquisition_parameters.transmit_receive_orientations_offset) + (1:receive_count)), "uint8");
                     case ZBP.AcquisitionKind.RCA_TPW
-                        receive_count = header.receive_event_count;
-                        data_frame_count = header.raw_data_dimension(3);
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.TPWParameters");
                         for i = 1:data_frame_count
@@ -599,8 +586,6 @@ classdef BeamformParameters
                             bp.transmit_receive_orientations(:, i) = typecast(bytes(uint32(transmitReceiveOrientationsOffset) + (1:receive_count)), "uint8");
                         end
                     case ZBP.AcquisitionKind.UHERCULES
-                        data_frame_count = header.raw_data_dimension(3);
-                        sparse_element_count = header.receive_event_count - 1;
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.uHERCULESParameters");
                         bp.sparse_elements = zeros(sparse_element_count, data_frame_count);
@@ -614,7 +599,6 @@ classdef BeamformParameters
                             end
                         end
                     case ZBP.AcquisitionKind.HERO_PA
-                        data_frame_count = header.raw_data_dimension(3);
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.HERO_PAParameters");
                         for i = 1:data_frame_count
@@ -625,7 +609,6 @@ classdef BeamformParameters
                         bp.acquisition_parameters = ZBP.HEXDopplerParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.HEXDopplerParameters.byteSize)));
                     case ZBP.AcquisitionKind.XDoppler
                         bp.acquisition_parameters = ZBP.XDopplerParameters.fromBytes(bytes(uint32(header.acquisition_parameters_offset) + (1:ZBP.XDopplerParameters.byteSize)));
-                        receive_count = header.receive_event_count;
                         bp.tilting_angles = typecast(bytes(uint32(bp.acquisition_parameters.tilting_angles_offset) + (1:(4*receive_count))), "single");
                 end
             end
