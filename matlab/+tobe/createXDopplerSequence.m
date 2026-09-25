@@ -51,10 +51,10 @@ end
 [maxFocusTime, n] = max(focusTimes);
 focusTimeDeltas = maxFocusTime - focusTimes;
 transmitDelays = transmitDelays + focusTimeDeltas;
-[timeOffset, focusTime] = tobe.computeLinearPlanarDelayProfile(...
+[timeDelay, focusTime] = tobe.computeLinearPlanarDelayProfile(...
     tiltingAngles(n), speedOfSound, ...
     0, true);
-timeOffset = timeOffset + maxFocusTime - focusTime;
+timeDelay = timeDelay + maxFocusTime - focusTime;
 arraySize = array.GetSize();
 
 beamformParameters = ornot.BeamformParameters();
@@ -62,17 +62,18 @@ beamformParameters.decode_mode = ZBP.DecodeMode.None;
 beamformParameters.speed_of_sound = speedOfSound;
 beamformParameters.channel_count = elementCount;
 beamformParameters.receive_event_count = transmitCount;
-beamformParameters.transducer_transform_matrix = reshape(single([
+beamformParameters.transducer_tile_count = [1,1];
+beamformParameters.transducer_transform_matrices(:,:,1) = single([
     1, 0, 0, arraySize(2)/2; % Note (DD): Columns change in X
     0, 1, 0, arraySize(1)/2; % Note (DD): Rows change in Y
     0, 0, 1, 0;
     0, 0, 0, 1;
-    ]), 1, []);
+    ]);
 beamformParameters.transducer_element_pitch = array.Pitch;
 beamformParameters.acquisition_kind = ZBP.AcquisitionKind.XDoppler;
 xDopplerParameters = ZBP.XDopplerParameters;
 xDopplerParameters.angle_count = angleCount;
 beamformParameters.acquisition_parameters = xDopplerParameters;
-beamformParameters.time_offset = timeOffset;
+beamformParameters.time_delays = timeDelay;
 beamformParameters.tilting_angles = tiltingAngles;
 end
