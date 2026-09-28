@@ -274,6 +274,7 @@ typedef struct ZBP_HeaderV3 {
 	int32_t                 transducer_transforms_offset;
 	uint32_t                string_count;
 	int32_t                 string_table_offset;
+	int32_t                 format_extension_offset;
 } ZBP_HeaderV3;
 ```
 
@@ -476,6 +477,15 @@ Count of entries in the string table located at
 
 An offset to a table of [String Table Entries](#string-table-entry).
 The number of entries is given by [`string_count`](#string_count).
+
+#### `format_extension_offset` (Optional)
+
+An offset to a format extension structure. This provides a designated
+location for version-specific additions that need to be introduced
+without adding another field to the header. The structure and its
+interpretation must be defined by the corresponding format version;
+there is no common payload layout, use with caution. This offset 
+can be -1 when no extension is present.
 
 ### Header Version 2
 

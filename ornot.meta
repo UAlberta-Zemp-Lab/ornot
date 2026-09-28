@@ -175,6 +175,7 @@
 	[transducer_transforms_offset    S32                  1]
 	[string_count                    U32                  1]
 	[string_table_offset             S32                  1]
+	[format_extension_offset         S32                  1]
 }
 
 @Struct StringTableEntry

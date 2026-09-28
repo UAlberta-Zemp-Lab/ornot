@@ -170,6 +170,7 @@ typedef struct ZBP_HeaderV3 {
 	int32_t                 transducer_transforms_offset;
 	uint32_t                string_count;
 	int32_t                 string_table_offset;
+	int32_t                 format_extension_offset;
 } ZBP_HeaderV3;
 
 typedef struct ZBP_StringTableEntry {
