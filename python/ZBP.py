@@ -260,7 +260,7 @@ class ZBP:
 			return result
 
 	class HeaderV3:
-		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_size=0, raw_data_offset=0, raw_data_kind=0, raw_data_compression_kind=0, raw_data_layout_offset=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_tile_count=[0] * 2, transducer_element_pitch=[0] * 2, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_data_flags=0, contrast_parameters_offset=0, emission_descriptors_offset=0, time_delays_offset=0, demodulation_frequencies_offset=0, transducer_transforms_offset=0, string_count=0, string_table_offset=0):
+		def __init__(self, magic=0, major=0, minor=0, raw_data_dimension=[0] * 4, raw_data_size=0, raw_data_offset=0, raw_data_kind=0, raw_data_compression_kind=0, raw_data_layout_offset=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, speed_of_sound=0, channel_mapping_offset=0, sample_count=0, channel_count=0, receive_event_count=0, transducer_tile_count=[0] * 2, transducer_element_pitch=[0] * 2, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_data_flags=0, contrast_parameters_offset=0, emission_descriptors_offset=0, time_delays_offset=0, demodulation_frequencies_offset=0, transducer_transforms_offset=0, string_count=0, string_table_offset=0, format_extension_offset=0):
 			self.magic                           = magic
 			self.major                           = major
 			self.minor                           = minor
@@ -293,6 +293,7 @@ class ZBP:
 			self.transducer_transforms_offset    = transducer_transforms_offset
 			self.string_count                    = string_count
 			self.string_table_offset             = string_table_offset
+			self.format_extension_offset         = format_extension_offset
 
 		@classmethod
 		def from_bytes(cls, bytes):
@@ -329,11 +330,12 @@ class ZBP:
 			result.transducer_transforms_offset     = struct.unpack_from('<1l', bytes, 144)[0]
 			result.string_count                     = struct.unpack_from('<1L', bytes, 148)[0]
 			result.string_table_offset              = struct.unpack_from('<1l', bytes, 152)[0]
+			result.format_extension_offset          = struct.unpack_from('<1l', bytes, 156)[0]
 			return result
 
 		@staticmethod
 		def byte_size():
-			return 156
+			return 160
 
 		def to_bytes(self):
 			result = bytearray(ZBP.HeaderV3.byte_size())
@@ -369,6 +371,7 @@ class ZBP:
 			struct.pack_into('<1l', result, 144,  self.transducer_transforms_offset)
 			struct.pack_into('<1L', result, 148,  self.string_count)
 			struct.pack_into('<1l', result, 152,  self.string_table_offset)
+			struct.pack_into('<1l', result, 156,  self.format_extension_offset)
 			return result
 
 	class StringTableEntry:

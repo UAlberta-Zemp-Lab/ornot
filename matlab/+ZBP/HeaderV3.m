@@ -36,10 +36,11 @@ classdef HeaderV3
 		transducer_transforms_offset(1,1)    int32
 		string_count(1,1)                    uint32
 		string_table_offset(1,1)             int32
+		format_extension_offset(1,1)         int32
 	end
 
 	properties (Constant)
-		byteSize(1,1) uint32 = 156
+		byteSize(1,1) uint32 = 160
 	end
 
 	methods
@@ -83,6 +84,7 @@ classdef HeaderV3
 			bytes(145:148) = typecast(obj.transducer_transforms_offset(:),    'uint8');
 			bytes(149:152) = typecast(obj.string_count(:),                    'uint8');
 			bytes(153:156) = typecast(obj.string_table_offset(:),             'uint8');
+			bytes(157:160) = typecast(obj.format_extension_offset(:),         'uint8');
 		end
 	end
 
@@ -127,6 +129,7 @@ classdef HeaderV3
 			out.transducer_transforms_offset(:)    = typecast(bytes(145:148), 'int32');
 			out.string_count(:)                    = typecast(bytes(149:152), 'uint32');
 			out.string_table_offset(:)             = typecast(bytes(153:156), 'int32');
+			out.format_extension_offset(:)         = typecast(bytes(157:160), 'int32');
 		end
 	end
 end
