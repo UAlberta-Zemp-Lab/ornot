@@ -360,22 +360,20 @@ classdef BeamformParameters
             bp.decode_mode = bpV1.decode_mode;
             bp.sampling_mode = ZBP.SamplingMode.Standard;
             bp.sampling_frequency = bpV1.sampling_frequency;
-            bp.demodulation_frequency = bpV1.demodulation_frequency;
+            bp.demodulation_frequencies = bpV1.demodulation_frequency;
             bp.speed_of_sound = bpV1.speed_of_sound;
             bp.sample_count = bpV1.sample_count;
             bp.channel_count = bpV1.channel_count;
             bp.receive_event_count = bpV1.receive_event_count;
-            bp.transducer_transform_matrix = bpV1.transducer_transform_matrix;
+            bp.transducer_transform_matrices = reshape(bpV1.transducer_transform_matrix, 4, 4);
             bp.transducer_element_pitch = bpV1.transducer_element_pitch;
-            bp.time_offset = bpV1.time_offset;
+            bp.time_delays = bpV1.time_offset;
             bp.acquisition_kind = bpV1.beamform_mode;
             bp.contrast_mode = ZBP.ContrastMode.None;
-            emission_descriptor = ZBP.EmissionDescriptor;
-            emission_descriptor.emission_kind = ZBP.EmissionKind.Sine;
-            bp.emission_descriptor = emission_descriptor;
             emission_parameters = ZBP.EmissionSineParameters;
-            emission_parameters.frequency = bp.demodulation_frequency;
+            emission_parameters.frequency = bp.demodulation_frequencies(1);
             emission_parameters.cycles = 1;
+            bp.emission_descriptors = 1;
             bp.emission_parameters = {emission_parameters};
             bp.channel_mapping = bpV1.channel_mapping;
 
