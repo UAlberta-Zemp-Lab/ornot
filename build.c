@@ -5404,6 +5404,7 @@ build_ornot(Arena *arena, Options *options)
 
 			m->stream.count += os_read_entire_file(arena, (c8 *)zempbp.data).length;
 			meta_push_line(m);
+			arena_commit(arena, 1);
 
 			m->stream.count += os_read_entire_file(arena, (c8 *)header.data).length;
 
