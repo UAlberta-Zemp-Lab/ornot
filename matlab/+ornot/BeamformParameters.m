@@ -283,7 +283,7 @@ classdef BeamformParameters
             if header.string_count
                 header.string_table_offset = offset;
                 offset = increment_offset(offset, header.string_count * ZBP.StringTableEntry.byteSize, offset_alignment);
-                for i = 1:size(1, bp.strings)
+                for i = 1:size(bp.strings, 1)
                     entry = ZBP.StringTableEntry;
                     entry.string_tag_length = strlength(bp.strings(i, 1));
                     entry.string_length     = strlength(bp.strings(i, 2));
@@ -292,9 +292,9 @@ classdef BeamformParameters
                     entry.string_offset     = offset;
                     offset = increment_offset(offset, entry.string_length, 1);
 
-                    bytes = set_bytes(bytes, entry.toBytes(), header.string_table_offset + (i - 1) * ZBP.StringTableEntry.byteSize);
-                    bytes = set_bytes(bytes, uint8(bp.strings(i, 1)), entry.string_tag_offset, entry.string_tag_length);
-                    bytes = set_bytes(bytes, uint8(bp.strings(i, 2)), entry.string_offset,     entry.string_length);
+                    bytes = set_bytes(bytes, entry.toBytes(), header.string_table_offset + int32((i - 1) * ZBP.StringTableEntry.byteSize));
+                    bytes = set_bytes(bytes, uint8(char(bp.strings(i, 1))), entry.string_tag_offset, entry.string_tag_length);
+                    bytes = set_bytes(bytes, uint8(char(bp.strings(i, 2))), entry.string_offset,     entry.string_length);
                 end
             else
                 header.string_table_offset = -1;
@@ -457,9 +457,9 @@ classdef BeamformParameters
                 if header.string_count > 0
                     bp.strings = strings(header.string_count, 2);
                     for i = 1:header.string_count
-                        entry = ZBP.StringTableEntry.fromBytes(bytes(header.string_table_offset + (1:ZBP.StringTableEntry.byteSize)));
-                        bp.strings(i,1) = string(bytes(entry.string_tag_offset + (1:entry.string_tag_length)));
-                        bp.strings(i,2) = string(bytes(entry.string_offset + (1:entry.string_length)));
+                        entry = ZBP.StringTableEntry.fromBytes(bytes(header.string_table_offset + int32(1:ZBP.StringTableEntry.byteSize)));
+                        bp.strings(i,1) = string(char(bytes(entry.string_tag_offset + int32(1:entry.string_tag_length)))');
+                        bp.strings(i,2) = string(char(bytes(entry.string_offset + int32(1:entry.string_length)))');
                     end
                 end
             elseif major == 2
