@@ -421,7 +421,7 @@ classdef BeamformParameters
                 bp(1,1) ornot.BeamformParameters
             end
 
-            base = ZBP.BaseHeader.fromBytes(bytes)
+            base = ZBP.BaseHeader.fromBytes(bytes);
             if major == 3
                 header = ZBP.HeaderV3.fromBytes(bytes);
             elseif major == 2
