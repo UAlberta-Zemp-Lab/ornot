@@ -100,6 +100,12 @@ class BeamformingRuns:
 				filter.matched_chirp.min_frequency = parameters.emission_parameters[0].min_frequency - bp.demodulation_frequencies[0]
 				filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequencies[0]
 
+			if parameters.emission_kinds[0] == ZBP.EmissionKind_UnipolarBurst:
+				filter.kind = ogl.BeamformerFilterKind_Kaiser
+				filter.kaiser.cutoff_frequency = 0.5 * parameters.emission_parameters[0].frequency
+				filter.kaiser.beta             = 5.65
+				filter.kaiser.length           = 36
+
 			filter.sampling_frequency = bp.sampling_frequency / 2
 			self.__must(ogl.beamformer_create_filter(filter, filter_slot, 0))
 
