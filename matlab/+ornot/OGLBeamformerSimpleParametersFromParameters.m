@@ -32,6 +32,8 @@ if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_par
             bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Sine);
         case 'ZBP.EmissionChirpParameters'
             bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Chirp);
+        case 'ZBP.EmissionUnipolarBurstParameters'
+            bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.UnipolarBurst);
         otherwise
             error('ornot:OGLBeamformerSimpleParametersFromParameters:InvalidParameter', ...
                 "Unsupported EmissionType!");

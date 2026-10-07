@@ -56,6 +56,7 @@
 {
 	Sine
 	Chirp
+	UnipolarBurst
 }
 
 @Table([name size elements]) DataKindTable
@@ -203,6 +204,14 @@
 	[duration      F32]
 	[min_frequency F32]
 	[max_frequency F32]
+}
+
+@Struct EmissionUnipolarBurstParameters
+{
+	[polarity  F32]
+	[frequency F32]
+	[cycles    F32]
+	[duty_cycle F32]
 }
 
 @Struct RCATransmitFocus
