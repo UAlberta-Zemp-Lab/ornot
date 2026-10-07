@@ -45,6 +45,7 @@ class ZBP:
 	# EmissionKind
 	EmissionKind_Sine  = 0
 	EmissionKind_Chirp = 1
+	EmissionKind_UnipolarBurst = 2
 
 	# DataKind
 	DataKind_Int16          = 0
@@ -469,6 +470,34 @@ class ZBP:
 			struct.pack_into('<1f', result, 0,  self.duration)
 			struct.pack_into('<1f', result, 4,  self.min_frequency)
 			struct.pack_into('<1f', result, 8,  self.max_frequency)
+			return result
+
+	class EmissionUnipolarBurstParameters:
+		def __init__(self, polarity=0, frequency=0, cycles=0, duty_cycle=0):
+			self.polarity  = polarity
+			self.frequency = frequency
+			self.cycles    = cycles
+			self.duty_cycle = duty_cycle
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.polarity   = struct.unpack_from('<1f', bytes, 0)[0]
+			result.frequency  = struct.unpack_from('<1f', bytes, 4)[0]
+			result.cycles     = struct.unpack_from('<1f', bytes, 8)[0]
+			result.duty_cycle = struct.unpack_from('<1f', bytes, 12)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 16
+
+		def to_bytes(self):
+			result = bytearray(ZBP.EmissionUnipolarBurstParameters.byte_size())
+			struct.pack_into('<1f', result, 0,   self.polarity)
+			struct.pack_into('<1f', result, 4,   self.frequency)
+			struct.pack_into('<1f', result, 8,   self.cycles)
+			struct.pack_into('<1f', result, 12,  self.duty_cycle)
 			return result
 
 	class RCATransmitFocus:

@@ -32,6 +32,13 @@ if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_par
             bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Sine);
         case 'ZBP.EmissionChirpParameters'
             bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Chirp);
+        case 'ZBP.EmissionUnipolarBurstParameters' % TODO(DD): See about adding EmissionPulseParameters to the beamformer
+            % bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.UnipolarBurst);
+            bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.Sine);
+            fakeEmissionParameters = ZBP.EmissionSineParameters();
+            fakeEmissionParameters.cycles = emissionParameters.cycles;
+            fakeEmissionParameters.frequency = emissionParameters.frequency;
+            emissionParameters = fakeEmissionParameters;
         otherwise
             error('ornot:OGLBeamformerSimpleParametersFromParameters:InvalidParameter', ...
                 "Unsupported EmissionType!");

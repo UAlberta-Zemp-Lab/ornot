@@ -6,5 +6,6 @@ classdef EmissionKind < int32
 	enumeration
 		Sine  (0)
 		Chirp (1)
+		UnipolarBurst (2)
 	end
 end
