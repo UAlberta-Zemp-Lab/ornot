@@ -152,6 +152,7 @@ bias sensitive modality (FORCES, HERCULES, etc.).
 typedef enum {
 	ZBP_EmissionKind_Sine  = 0,
 	ZBP_EmissionKind_Chirp = 1,
+	ZBP_EmissionKind_UnipolarBurst = 2,
 	ZBP_EmissionKind_Count,
 } ZBP_EmissionKind;
 ```
@@ -616,6 +617,42 @@ The starting frequency of the chirp in Hz.
 #### `max_frequency` [Hz]
 
 The ending frequency of the chirp in Hz.
+
+### Unipolar Burst Emission Parameters
+
+```c
+typedef struct ZBP_EmissionUnipolarBurstParameters {
+	float polarity;
+	float frequency;
+	float cycles;
+	float duty_cycle;
+} ZBP_EmissionUnipolarBurstParameters;
+```
+
+A structure describing a finite unipolar rectangular burst 
+emission. The waveform consists of repeated on/off states at 
+the specified frequency. Its voltage polarity remains constant 
+throughout the burst.
+
+#### `polarity`
+
+The electrical polarity of the burst. Must be either `1` or `-1`.
+
+#### `frequency` [Hz]
+
+The repetition frequency of the burst's on/off periods in Hz.
+
+#### `cycles`
+
+The integer number of burst periods.
+
+#### `duty_cycle`
+
+The fraction of each period for which the burst is active. Must 
+be greater than `0` and no greater than `1`. A value of `1` is 
+represented as one continuous on-state for the full burst duration.
+`0.5` is typically the ideally duty cycle if you want maximal energy
+about the repitition frequency.
 
 ### RCA Transmit Focus
 
