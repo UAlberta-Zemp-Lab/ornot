@@ -387,7 +387,7 @@ class ornot:
 						result.acquisition_parameters['origin_offsets'] = origin_offsets
 						result.acquisition_parameters['focal_depths']   = focal_depths
 
-				if base.major == 2 || base.major == 3:
+				if base.major == 2 or base.major == 3:
 					result.raw_data_kind                = header.raw_data_kind
 					result.raw_data_compression_kind    = header.raw_data_compression_kind
 					result.raw_data_dimension           = header.raw_data_dimension
