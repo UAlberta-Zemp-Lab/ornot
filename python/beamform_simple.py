@@ -80,6 +80,14 @@ with ffi.new("BeamformerFilterParameters *") as filter:
 		filter.kaiser.beta             = 5.65
 		filter.kaiser.length           = 36
 
+	if parameters.emission_kinds[0] == ZBP.EmissionKind_UnipolarBarker:
+		emission = parameters.emission_parameters[0]
+		filter.kind = ogl.BeamformerFilterKind_MatchedBarker
+		filter.barker.code_length   = emission.code_length
+		filter.barker.chip_duration = emission.chip_parameters.cycles / emission.chip_parameters.frequency
+		filter.barker.polarity      = emission.chip_parameters.polarity
+		filter.barker.unipolar      = True
+
 	filter.sampling_frequency = bp.sampling_frequency / 2
 
 	# NOTE: filters overlap so any subfilter has the same offset as "kaiser"

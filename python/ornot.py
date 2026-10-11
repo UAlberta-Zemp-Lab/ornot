@@ -245,6 +245,7 @@ class ornot:
 			      Sine  -> (ZBP.EmissionSineParameters)
 			      Chirp -> (ZBP.EmissionChirpParameters)
 				  UnipolarBurst -> (ZBP.EmissionUnipolarBurstParameters)
+				  UnipolarBarker -> (ZBP.EmissionUnipolarBarkerParameters)
 
 			    channel_mapping              (int16 [])   Optional, used to remap the data so that
 			                                              channel 0 lands on the edge of the array and
@@ -435,6 +436,7 @@ class ornot:
 						ZBP.EmissionKind_Sine:  ZBP.EmissionSineParameters.from_bytes,
 						ZBP.EmissionKind_Chirp: ZBP.EmissionChirpParameters.from_bytes,
 						ZBP.EmissionKind_UnipolarBurst: ZBP.EmissionUnipolarBurstParameters.from_bytes,
+						ZBP.EmissionKind_UnipolarBarker: ZBP.EmissionUnipolarBarkerParameters.from_bytes,
 					}
 					for i in range(result.raw_data_dimension[2]):
 						offset = header.emission_descriptors_offset + i * ZBP.EmissionDescriptor.byte_size()

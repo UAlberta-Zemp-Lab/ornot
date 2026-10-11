@@ -153,6 +153,7 @@ typedef enum {
 	ZBP_EmissionKind_Sine  = 0,
 	ZBP_EmissionKind_Chirp = 1,
 	ZBP_EmissionKind_UnipolarBurst = 2,
+	ZBP_EmissionKind_UnipolarBarker = 3,
 	ZBP_EmissionKind_Count,
 } ZBP_EmissionKind;
 ```
@@ -653,6 +654,22 @@ be greater than `0` and no greater than `1`. A value of `1` is
 represented as one continuous on-state for the full burst duration.
 `0.5` is typically the ideally duty cycle if you want maximal energy
 about the repitition frequency.
+
+### Unipolar Barker Emission Parameters
+
+```c
+typedef struct ZBP_EmissionUnipolarBarkerParameters {
+	ZBP_EmissionUnipolarBurstParameters chip_parameters;
+	float code_length;
+} ZBP_EmissionUnipolarBarkerParameters;
+```
+
+This structure describes a unipolar Barker-coded burst. Supported
+`code_length` values are `2`, `3`, `4`, `5`, `7`, `11`, and `13`;
+active chips use the configured polarity and zero chips are off-states.
+`cycles` specifies the number of carrier cycles in each chip.
+
+`chip_parameters` contains the `UnipolarBurst` settings.
 
 ### RCA Transmit Focus
 
