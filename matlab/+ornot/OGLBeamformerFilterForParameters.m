@@ -3,7 +3,7 @@ arguments (Input)
     samplingFrequency(1,1) single {mustBePositive}
     demodulationFrequency(1,1) single {mustBeNonnegative}
     emissionParameters(1,1) {mustBeA(emissionParameters, ...
-        ["ZBP.EmissionSineParameters", "ZBP.EmissionChirpParameters", "ZBP.EmissionUnipolarBurstParameters"])}
+        ["ZBP.EmissionSineParameters", "ZBP.EmissionChirpParameters", "ZBP.EmissionUnipolarBurstParameters", "ZBP.EmissionUnipolarBarkerParameters"])}
 end
 arguments (Output)
     filter(1,1) OGLBeamformerFilter
@@ -37,5 +37,14 @@ switch class(emissionParameters)
 
         filter.kind = OGLBeamformerFilterKind.Kaiser;
         filter.data = kaiser.toBytes();
+    case "ZBP.EmissionUnipolarBarkerParameters"
+        barker                 = OGLBeamformerFilterParameters.MatchedBarker;
+        barker.code_length     = uint32(emissionParameters.code_length);
+        barker.chip_duration   = emissionParameters.burst_parameters.cycles / emissionParameters.burst_parameters.frequency;
+        barker.polarity        = emissionParameters.burst_parameters.polarity;
+        barker.unipolar        = true;
+
+        filter.kind = OGLBeamformerFilterKind.MatchedBarker;
+        filter.data = barker.toBytes();
 end
 end

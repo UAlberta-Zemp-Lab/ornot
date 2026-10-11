@@ -43,9 +43,10 @@ class ZBP:
 	ContrastMode_A2   = 2
 
 	# EmissionKind
-	EmissionKind_Sine  = 0
-	EmissionKind_Chirp = 1
-	EmissionKind_UnipolarBurst = 2
+	EmissionKind_Sine           = 0
+	EmissionKind_Chirp          = 1
+	EmissionKind_UnipolarBurst  = 2
+	EmissionKind_UnipolarBarker = 3
 
 	# DataKind
 	DataKind_Int16          = 0
@@ -498,6 +499,28 @@ class ZBP:
 			struct.pack_into('<1f', result, 4,   self.frequency)
 			struct.pack_into('<1f', result, 8,   self.cycles)
 			struct.pack_into('<1f', result, 12,  self.duty_cycle)
+			return result
+
+	class EmissionUnipolarBarkerParameters:
+		def __init__(self, burst_parameters=None, code_length=0):
+			self.burst_parameters = burst_parameters if isinstance(burst_parameters, ZBP.EmissionUnipolarBurstParameters) else ZBP.EmissionUnipolarBurstParameters()
+			self.code_length      = code_length
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.burst_parameters  = ZBP.EmissionUnipolarBurstParameters.from_bytes( bytes[0:])
+			result.code_length       = struct.unpack_from('<1f',                       bytes, 16)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 20
+
+		def to_bytes(self):
+			result = bytearray(ZBP.EmissionUnipolarBarkerParameters.byte_size())
+			struct.pack_into('<16B', result, 0,  *self.burst_parameters.to_bytes())
+			struct.pack_into('<1f',  result, 16,  self.code_length)
 			return result
 
 	class RCATransmitFocus:

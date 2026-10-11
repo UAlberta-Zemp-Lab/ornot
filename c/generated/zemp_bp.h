@@ -53,9 +53,10 @@ typedef enum {
 } ZBP_ContrastMode;
 
 typedef enum {
-	ZBP_EmissionKind_Sine  = 0,
-	ZBP_EmissionKind_Chirp = 1,
-	ZBP_EmissionKind_UnipolarBurst = 2,
+	ZBP_EmissionKind_Sine           = 0,
+	ZBP_EmissionKind_Chirp          = 1,
+	ZBP_EmissionKind_UnipolarBurst  = 2,
+	ZBP_EmissionKind_UnipolarBarker = 3,
 	ZBP_EmissionKind_Count,
 } ZBP_EmissionKind;
 
@@ -203,6 +204,11 @@ typedef struct ZBP_EmissionUnipolarBurstParameters {
 	float cycles;
 	float duty_cycle;
 } ZBP_EmissionUnipolarBurstParameters;
+
+typedef struct ZBP_EmissionUnipolarBarkerParameters {
+	ZBP_EmissionUnipolarBurstParameters burst_parameters;
+	float                               code_length;
+} ZBP_EmissionUnipolarBarkerParameters;
 
 typedef struct ZBP_RCATransmitFocus {
 	float    focal_depth;

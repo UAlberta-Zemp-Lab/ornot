@@ -39,6 +39,8 @@ if ~isempty(parameters.emission_descriptors) && ~isempty(parameters.emission_par
             fakeEmissionParameters.cycles = emissionParameters.cycles;
             fakeEmissionParameters.frequency = emissionParameters.frequency;
             emissionParameters = fakeEmissionParameters;
+        case 'ZBP.EmissionUnipolarBarkerParameters'
+            bsp.emission_parameters.kind = uint32(ZBP.EmissionKind.UnipolarBarker);
         otherwise
             error('ornot:OGLBeamformerSimpleParametersFromParameters:InvalidParameter', ...
                 "Unsupported EmissionType!");
