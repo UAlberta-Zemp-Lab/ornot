@@ -4338,9 +4338,16 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 							stream_append_str8s(&sb, p.str_element_prefix, ctx->entity_names.data[s->elements[member]]);
 							if (enum_count) stream_append_str8(&sb, str8("_Count"));
 						} else {
-							if (p.element_count_style == MetaPushStructStyle_MATLAB)
-								stream_append_str8(&sb, str8("1,"));
-							stream_append_u64(&sb, resolved_element_count);
+							if (p.element_count_style == MetaPushStructStyle_MATLAB) {
+								if (!type_reference && type_id == MetaKind_M4)
+									stream_append_str8(&sb, str8("4,4"));
+								else {
+									stream_append_str8(&sb, str8("1,"));
+									stream_append_u64(&sb, resolved_element_count);
+								}
+							} else {
+								stream_append_u64(&sb, resolved_element_count);
+							}
 						}
 						stream_append_str8(&sb, elements_count_close[p.layout_style]);
 						columns[name_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);

@@ -370,7 +370,7 @@ classdef BeamformParameters
             bp.sample_count = bpV1.sample_count;
             bp.channel_count = bpV1.channel_count;
             bp.receive_event_count = bpV1.receive_event_count;
-            bp.transducer_transform_matrices = reshape(bpV1.transducer_transform_matrix, 4, 4);
+            bp.transducer_transform_matrices = bpV1.transducer_transform_matrix;
             bp.transducer_element_pitch = bpV1.transducer_element_pitch;
             bp.time_delays = bpV1.time_offset;
             bp.acquisition_kind = bpV1.beamform_mode;
@@ -471,7 +471,7 @@ classdef BeamformParameters
                 bp.time_delays = ones(1, data_frame_count) * header.time_offset;
                 bp.demodulation_frequencies = ones(1, data_frame_count) * header.demodulation_frequency;
                 bp.transducer_tile_count = [1, 1];
-                bp.transducer_transform_matrices(:,:,1) = reshape(header.transducer_transform_matrix, 4, 4);
+                bp.transducer_transform_matrices = header.transducer_transform_matrix;
             end
 
             if header.emission_descriptors_offset >= 0
