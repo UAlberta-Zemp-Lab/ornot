@@ -4202,6 +4202,7 @@ metagen_push_c_enum(MetaprogramContext *m, str8 kind, b32 flags, str8 *ids, s64 
 typedef enum {
 	MetaPushStructStyle_C,
 	MetaPushStructStyle_MATLAB,
+	MetaPushStructStyle_Odin,
 	MetaPushStructStyle_Count,
 } MetaPushStructStyle;
 
@@ -4295,37 +4296,43 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 
 				b32 enum_count         = (s->member_flags[member] & MetaBuildStructMemberFlag_EnumerationCount) != 0;
 				b32 elements_reference = enum_count || (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceElements) != 0;
+
+				read_only local_persist str8 elements_count_open[MetaPushStructStyle_Count] = {
+					[MetaPushStructStyle_C]      = str8_comp("["),
+					[MetaPushStructStyle_MATLAB] = str8_comp("("),
+					[MetaPushStructStyle_Odin]   = str8_comp("["),
+				};
+				read_only local_persist str8 elements_count_close[MetaPushStructStyle_Count] = {
+					[MetaPushStructStyle_C]      = str8_comp("]"),
+					[MetaPushStructStyle_MATLAB] = str8_comp(")"),
+					[MetaPushStructStyle_Odin]   = str8_comp("]"),
+				};
+
+				u32 resolved_element_count = meta_struct_member_elements(ctx, s, member);
+
+				if (type_reference && p.union_style == MetaPushStructStyle_MATLAB) {
+					MetaEntity *re = ctx->entities.data + type_id;
+					MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
+					if (member_name.length == 0) {
+						assert(rs->info.flags & MetaStructFlag_Union);
+						member_name = str8("data");
+					}
+					if (rs->info.flags & MetaStructFlag_Union)
+						resolved_element_count *= rs->info.size;
+				} else if (!type_reference && p.base_type_element_count_scales) {
+					resolved_element_count *= p.base_type_element_count_scales[type_id];
+				}
+
 				// NOTE(rnp): member name column
 				{
-					read_only local_persist str8 elements_count_open[MetaPushStructStyle_Count] = {
-						[MetaPushStructStyle_C]      = str8_comp("["),
-						[MetaPushStructStyle_MATLAB] = str8_comp("("),
-					};
-					read_only local_persist str8 elements_count_close[MetaPushStructStyle_Count] = {
-						[MetaPushStructStyle_C]      = str8_comp("]"),
-						[MetaPushStructStyle_MATLAB] = str8_comp(")"),
-					};
 					read_only local_persist s32 name_column[MetaPushStructStyle_Count] = {
 						[MetaPushStructStyle_C]      = 1,
 						[MetaPushStructStyle_MATLAB] = 0,
+						[MetaPushStructStyle_Odin]   = 0,
 					};
 
-					u32 resolved_element_count = meta_struct_member_elements(ctx, s, member);
-
-					if (type_reference && p.union_style == MetaPushStructStyle_MATLAB) {
-						MetaEntity *re = ctx->entities.data + type_id;
-						MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
-						if (member_name.length == 0) {
-							assert(rs->info.flags & MetaStructFlag_Union);
-							member_name = str8("data");
-						}
-						if (rs->info.flags & MetaStructFlag_Union)
-							resolved_element_count *= rs->info.size;
-					} else if (!type_reference && p.base_type_element_count_scales) {
-						resolved_element_count *= p.base_type_element_count_scales[type_id];
-					}
-
-					if (resolved_element_count > 1 || p.element_count_style == MetaPushStructStyle_MATLAB) {
+					if ((resolved_element_count > 1 || p.element_count_style == MetaPushStructStyle_MATLAB) 
+						&& p.element_count_style != MetaPushStructStyle_Odin) {
 						stream_append_str8s(&sb, member_name, elements_count_open[p.layout_style]);
 						if (elements_reference && p.element_count_style != MetaPushStructStyle_MATLAB) {
 							stream_append_str8s(&sb, p.str_element_prefix, ctx->entity_names.data[s->elements[member]]);
@@ -4345,7 +4352,13 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 						stream_append_str8(&sb, elements_count_close[p.layout_style]);
 						columns[name_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 					} else {
-						columns[name_column[p.layout_style]][row] = member_name;
+						if (p.layout_style != MetaPushStructStyle_Odin)
+							columns[name_column[p.layout_style]][row] = member_name;
+						else {
+							stream_append_str8(&sb, member_name);
+							stream_append_str8(&sb, str8(":"));
+							columns[name_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
+						}
 					}
 				}
 
@@ -4354,7 +4367,19 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 					read_only local_persist s32 type_column[MetaPushStructStyle_Count] = {
 						[MetaPushStructStyle_C]      = 0,
 						[MetaPushStructStyle_MATLAB] = 1,
+						[MetaPushStructStyle_Odin]   = 1,
 					};
+
+					if (resolved_element_count > 1 && p.element_count_style == MetaPushStructStyle_Odin) {
+						if (!type_reference && type_id == MetaKind_M4)
+							stream_append_str8(&sb, str8("matrix"));
+						stream_append_str8(&sb, elements_count_open[p.layout_style]);
+						if (!type_reference && type_id == MetaKind_M4)
+							stream_append_str8(&sb, str8("4,4"));
+						else
+							stream_append_u64(&sb, resolved_element_count);
+						stream_append_str8(&sb, elements_count_close[p.layout_style]);
+					}
 
 					if (type_reference) {
 						MetaEntity *re = ctx->entities.data + type_id;
@@ -4391,7 +4416,8 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 
 						columns[type_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 					} else {
-						columns[type_column[p.layout_style]][row] = p.base_types[type_id];
+						stream_append_str8(&sb, p.base_types[type_id]);
+						columns[type_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 					}
 				}
 
@@ -4648,37 +4674,18 @@ metagen_emit_odin_code(MetaContext *ctx, Arena *arena)
 				MetaEntity *e = ctx->entities.data + entity;
 				MetaStruct *s = ctx->struct_infos + e->table.struct_info_id;
 
-				s64 max_type_name_length = 0;
-				for (u32 member = 0; member < s->info.member_count; member++) {
-					max_type_name_length = Max(max_type_name_length, s->members[member].length);
-				}
-
 				if (structure != 0) meta_push(m, str8("\n"));
 				meta_begin_scope(m, s->info.name, str8(" :: struct {")); {
-					for (u32 member = 0; member < s->info.member_count; member++) {
-						s32  id     = s->type_ids[member];
-						str8 memb = s->members[member];
-						b32  reference = (s->member_flags[member] & MetaStructMemberFlag_ReferenceType) != 0;
-						str8 kind   = reference ? ctx->entity_names.data[id] : meta_kind_base_odin_types[id];
-						s64  length = memb.length;
+					meta_push_struct_body(ctx, m, e, (MetaPushStructParameters){
+						.layout_style        = MetaPushStructStyle_Odin,
+						.union_style         = MetaPushStructStyle_Odin,
+						.element_count_style = MetaPushStructStyle_Odin,
+						.base_types          = meta_kind_base_odin_types,
+						.suffix              = str8(","),
+						.base_type_element_count_scales = meta_kind_elements,
 
-						meta_begin_line(m, memb, str8(": "));
-						meta_pad(m, ' ', (s32)(max_type_name_length - length));
-						if (!reference && id == MetaKind_M4) {
-							meta_push(m, str8("matrix[4,4]"));
-						} else {
-							u32 elements = meta_struct_member_elements(ctx, s, member);
-							if (elements > 1) {
-								meta_push(m, str8("["));
-								meta_push_u64(m, elements);
-								meta_push(m, str8("]"));
-							}
-						}
-						meta_push(m, kind);
-						meta_end_line(m, str8(","));
-					}
+					});
 				} meta_end_scope(m, str8("}"));
-				m->scratch = ctx->scratch;
 			}
 		}
 	}
