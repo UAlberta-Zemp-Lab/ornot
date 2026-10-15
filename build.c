@@ -4924,14 +4924,16 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 					for (u32 entry = 0; entry < s->info.member_count; entry++) {
 						b32 ref     = s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType;
 						b32 is_enum = ref && meta_entity_is_enum(ctx, s->type_ids[entry]);
+						u32 elements = s->elements[entry];
+						if (!ref && !is_enum) elements *= meta_kind_elements[s->type_ids[entry]];
 						meta_push(m, str8(", "));
 						meta_push(m, s->members[entry], str8("="));
-						if (s->elements[entry] > 1) meta_push(m, str8("["));
+						if (elements > 1) meta_push(m, str8("["));
 						meta_push(m, (ref && !is_enum) ? str8("None") : str8("0"));
-						if (s->elements[entry] > 1) {
+						if (elements > 1) {
 							// wtf is this syntax
 							meta_push(m, str8("] * "));
-							meta_push_u64(m, s->elements[entry]);
+							meta_push_u64(m, elements);
 						}
 					}
 					meta_end_line(m, str8("):"));
@@ -4971,10 +4973,12 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							s32 id        = s->type_ids[entry];
 							b32 ref       = (s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) != 0;
 							b32 is_enum   = ref && meta_entity_is_enum(ctx, id);
+							u32 elements  = s->elements[entry];
+							if (!ref && !is_enum) elements *= meta_kind_elements[id];
 							if (!ref || meta_entity_is_enum(ctx, id)) {
 								MetaKind kind = is_enum ? meta_entity_enum_base_kind(ctx, id): id;
 								stream_append_str8(&sb, str8("struct.unpack_from('<"));
-								stream_append_u64(&sb, s->elements[entry]);
+								stream_append_u64(&sb, elements);
 								stream_append_str8s(&sb, meta_kind_python_struct_types[kind], str8("',"));
 
 								columns[1][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
@@ -4982,7 +4986,7 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 								stream_append_u64(&sb, offset);
 								stream_append_str8(&sb, str8(")"));
 
-								if (s->elements[entry] == 1)
+								if (elements == 1)
 									stream_append_str8(&sb, str8("[0]"));
 
 								columns[2][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
@@ -5021,6 +5025,7 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							b32 is_enum   = ref && meta_entity_is_enum(ctx, id);
 
 							u64  elements = (ref && !is_enum) ? byte_size : s->elements[entry];
+							if (!ref && !is_enum) elements *= meta_kind_elements[id];
 							str8 type     = is_enum ? meta_kind_python_struct_types[meta_entity_enum_base_kind(ctx, id)]
 							                        : ref ? meta_kind_python_struct_types[MetaKind_U8]
 							                              : meta_kind_python_struct_types[id];
@@ -5034,7 +5039,7 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							stream_append_str8(&sb, str8(","));
 							columns[1][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
 
-							stream_append_str8s(&sb, ((ref && !is_enum) || s->elements[entry] > 1) ? str8("*") : str8(" "),
+							stream_append_str8s(&sb, ((ref && !is_enum) || elements > 1) ? str8("*") : str8(" "),
 							                    str8("self."), s->members[entry]);
 							if (ref && !is_enum) stream_append_str8(&sb, str8(".to_bytes()"));
 							columns[2][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
