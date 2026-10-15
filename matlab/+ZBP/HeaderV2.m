@@ -20,7 +20,7 @@ classdef HeaderV2
 		sample_count(1,1)                  uint32
 		channel_count(1,1)                 uint32
 		receive_event_count(1,1)           uint32
-		transducer_transform_matrix(1,16)  single
+		transducer_transform_matrix(4,4)   single
 		transducer_element_pitch(1,2)      single
 		time_offset(1,1)                   single
 		group_acquisition_time(1,1)        single
