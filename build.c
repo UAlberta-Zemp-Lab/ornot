@@ -413,7 +413,11 @@ global char *g_argv0;
 #else
   #define LINK_LIB(name)             "-l" name
   #define OBJECT(name)               name ".o"
-  #define OUTPUT_DLL(name)           "-fPIC", "-shared", "-o", name
+    #if OS_WINDOWS
+  	#define OUTPUT_DLL(name)           "-shared", "-o", name
+  #else
+  	#define OUTPUT_DLL(name)           "-fPIC", "-shared", "-o", name
+  #endif
   #define OUTPUT_LIB(name)           OUTPUT(name)
   #define OUTPUT_EXE(name)           "-o", name
   #define COMPILER_OUTPUT            "-o"
@@ -2138,20 +2142,20 @@ read_only global char *meta_entry_kind_strings[] = {META_ENTRY_KIND_LIST};
 #undef X
 
 #define META_KIND_LIST \
-	X(M4,  float,    single, f, 64, 16) \
-	X(SV4, int32_t,  int32,  l, 16,  4) \
-	X(UV4, uint32_t, uint32, L, 16,  4) \
-	X(UV2, uint32_t, uint32, L,  8,  2) \
-	X(V3,  float,    single, f, 12,  3) \
-	X(V2,  float,    single, f,  8,  2) \
-	X(F32, float,    single, f,  4,  1) \
-	X(S32, int32_t,  int32,  l,  4,  1) \
-	X(S16, int16_t,  int16,  h,  2,  1) \
-	X(S8,  int8_t,   int8,   b,  1,  1) \
-	X(U64, uint64_t, uint64, Q,  8,  1) \
-	X(U32, uint32_t, uint32, L,  4,  1) \
-	X(U16, uint16_t, uint16, H,  2,  1) \
-	X(U8,  uint8_t,  uint8,  B,  1,  1) \
+	X(M4,  float,    f32, single, f, 64, 16) \
+	X(SV4, int32_t,  f32, int32,  l, 16,  4) \
+	X(UV4, uint32_t, u32, uint32, L, 16,  4) \
+	X(UV2, uint32_t, u32, uint32, L,  8,  2) \
+	X(V3,  float,    f32, single, f, 12,  3) \
+	X(V2,  float,    f32, single, f,  8,  2) \
+	X(F32, float,    f32, single, f,  4,  1) \
+	X(S32, int32_t,  i32, int32,  l,  4,  1) \
+	X(S16, int16_t,  i16, int16,  h,  2,  1) \
+	X(S8,  int8_t,   i8,  int8,   b,  1,  1) \
+	X(U64, uint64_t, u64, uint64, Q,  8,  1) \
+	X(U32, uint32_t, u32, uint32, L,  4,  1) \
+	X(U16, uint16_t, u16, uint16, H,  2,  1) \
+	X(U8,  uint8_t,  u8,  uint8,  B,  1,  1) \
 
 typedef enum {
 	#define X(k, ...) MetaKind_## k,
@@ -2161,13 +2165,13 @@ typedef enum {
 } MetaKind;
 
 read_only global u8 meta_kind_elements[] = {
-	#define X(_k, _b, _m, _pys, _by, elements, ...) elements,
+	#define X(_k, _b, _o, _m, _pys, _by, elements, ...) elements,
 	META_KIND_LIST
 	#undef X
 };
 
 read_only global u8 meta_kind_byte_sizes[] = {
-	#define X(_k, _b, _m, _pys, bytes, ...) bytes,
+	#define X(_k, _b, _o, _m, _pys, bytes, ...) bytes,
 	META_KIND_LIST
 	#undef X
 };
@@ -2184,14 +2188,20 @@ read_only global str8 meta_kind_base_c_types[] = {
 	#undef X
 };
 
+read_only global str8 meta_kind_base_odin_types[] = {
+	#define X(_k, _b, odin, ...) str8_comp(#odin),
+	META_KIND_LIST
+	#undef X
+};
+
 read_only global str8 meta_kind_matlab_types[] = {
-	#define X(_k, _b, m, ...) str8_comp(#m),
+	#define X(_k, _b, _o, m, ...) str8_comp(#m),
 	META_KIND_LIST
 	#undef X
 };
 
 read_only global str8 meta_kind_python_struct_types[] = {
-	#define X(_k, _b, _m, pys, ...) str8_comp(#pys),
+	#define X(_k, _b, _o, _m, pys, ...) str8_comp(#pys),
 	META_KIND_LIST
 	#undef X
 };
@@ -4196,6 +4206,7 @@ metagen_push_c_enum(MetaprogramContext *m, str8 kind, b32 flags, str8 *ids, s64 
 typedef enum {
 	MetaPushStructStyle_C,
 	MetaPushStructStyle_MATLAB,
+	MetaPushStructStyle_Odin,
 	MetaPushStructStyle_Count,
 } MetaPushStructStyle;
 
@@ -4269,70 +4280,95 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 
 			assert(member_name.length != 0 || type_reference);
 
-			if (s->members[member].length == 0 &&
-			    (p.union_style != MetaPushStructStyle_MATLAB || ctx->entities.data[type_id].kind != MetaEntityKind_Union))
-			{
+			if (ctx->entities.data[type_id].kind == MetaEntityKind_Union && p.union_style != MetaPushStructStyle_MATLAB){
 				*da_push(m->scratch, &stack) = (struct stack_item){se, member + 1};
 				*da_push(m->scratch, &stack) = (struct stack_item){ctx->entities.data + type_id, 0};
 
 				MetaStruct *ss = ctx->struct_infos + ctx->entities.data[type_id].table.struct_info_id;
-				if (p.layout_style == MetaPushStructStyle_C && ss->info.flags & MetaStructFlag_Union) {
-					metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
-					meta_begin_scope(m, str8("union {"));
+				assert(ss->info.flags & MetaStructFlag_Union && p.layout_style != MetaPushStructStyle_MATLAB);
+				metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
+				if (p.layout_style == MetaPushStructStyle_C) meta_begin_scope(m, str8("union {"));
+				else if (p.layout_style == MetaPushStructStyle_Odin) {
+					if (member_name.length == 0) {
+						member_name = str8("data");
+					}
+					meta_begin_scope(m, member_name, str8(": struct #raw_union {"));
+				}
 					row = 0;
 					scope++;
-				}
-
+				break;
+			} else if (s->members[member].length == 0) {
+				*da_push(m->scratch, &stack) = (struct stack_item){se, member + 1};
+				*da_push(m->scratch, &stack) = (struct stack_item){ctx->entities.data + type_id, 0};
 				break;
 			} else {
 				Stream sb = arena_stream(m->scratch);
 
 				b32 enum_count         = (s->member_flags[member] & MetaBuildStructMemberFlag_EnumerationCount) != 0;
 				b32 elements_reference = enum_count || (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceElements) != 0;
+
+				read_only local_persist str8 elements_count_open[MetaPushStructStyle_Count] = {
+					[MetaPushStructStyle_C]      = str8_comp("["),
+					[MetaPushStructStyle_MATLAB] = str8_comp("("),
+					[MetaPushStructStyle_Odin]   = str8_comp("["),
+				};
+				read_only local_persist str8 elements_count_close[MetaPushStructStyle_Count] = {
+					[MetaPushStructStyle_C]      = str8_comp("]"),
+					[MetaPushStructStyle_MATLAB] = str8_comp(")"),
+					[MetaPushStructStyle_Odin]   = str8_comp("]"),
+				};
+
+				u32 resolved_element_count = meta_struct_member_elements(ctx, s, member);
+
+				if (type_reference && p.union_style == MetaPushStructStyle_MATLAB) {
+					MetaEntity *re = ctx->entities.data + type_id;
+					MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
+					if (member_name.length == 0) {
+						assert(rs->info.flags & MetaStructFlag_Union);
+						member_name = str8("data");
+					}
+					if (rs->info.flags & MetaStructFlag_Union)
+						resolved_element_count *= rs->info.size;
+				} else if (!type_reference && p.base_type_element_count_scales) {
+					resolved_element_count *= p.base_type_element_count_scales[type_id];
+				}
+
 				// NOTE(rnp): member name column
 				{
-					read_only local_persist str8 elements_count_open[MetaPushStructStyle_Count] = {
-						[MetaPushStructStyle_C]      = str8_comp("["),
-						[MetaPushStructStyle_MATLAB] = str8_comp("("),
-					};
-					read_only local_persist str8 elements_count_close[MetaPushStructStyle_Count] = {
-						[MetaPushStructStyle_C]      = str8_comp("]"),
-						[MetaPushStructStyle_MATLAB] = str8_comp(")"),
-					};
 					read_only local_persist s32 name_column[MetaPushStructStyle_Count] = {
 						[MetaPushStructStyle_C]      = 1,
 						[MetaPushStructStyle_MATLAB] = 0,
+						[MetaPushStructStyle_Odin]   = 0,
 					};
 
-					u32 resolved_element_count = meta_struct_member_elements(ctx, s, member);
-
-					if (type_reference && p.union_style == MetaPushStructStyle_MATLAB) {
-						MetaEntity *re = ctx->entities.data + type_id;
-						MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
-						if (member_name.length == 0) {
-							assert(rs->info.flags & MetaStructFlag_Union);
-							member_name = str8("data");
-						}
-						if (rs->info.flags & MetaStructFlag_Union)
-							resolved_element_count *= rs->info.size;
-					} else if (!type_reference && p.base_type_element_count_scales) {
-						resolved_element_count *= p.base_type_element_count_scales[type_id];
-					}
-
-					if (resolved_element_count > 1 || p.element_count_style == MetaPushStructStyle_MATLAB) {
+					if ((resolved_element_count > 1 || p.element_count_style == MetaPushStructStyle_MATLAB) 
+						&& p.element_count_style != MetaPushStructStyle_Odin) {
 						stream_append_str8s(&sb, member_name, elements_count_open[p.layout_style]);
 						if (elements_reference && p.element_count_style != MetaPushStructStyle_MATLAB) {
 							stream_append_str8s(&sb, p.str_element_prefix, ctx->entity_names.data[s->elements[member]]);
 							if (enum_count) stream_append_str8(&sb, str8("_Count"));
 						} else {
-							if (p.element_count_style == MetaPushStructStyle_MATLAB)
-								stream_append_str8(&sb, str8("1,"));
-							stream_append_u64(&sb, resolved_element_count);
+							if (p.element_count_style == MetaPushStructStyle_MATLAB) {
+								if (!type_reference && type_id == MetaKind_M4)
+									stream_append_str8(&sb, str8("4,4"));
+								else {
+									stream_append_str8(&sb, str8("1,"));
+									stream_append_u64(&sb, resolved_element_count);
+								}
+							} else {
+								stream_append_u64(&sb, resolved_element_count);
+							}
 						}
 						stream_append_str8(&sb, elements_count_close[p.layout_style]);
 						columns[name_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 					} else {
-						columns[name_column[p.layout_style]][row] = member_name;
+						if (p.layout_style != MetaPushStructStyle_Odin)
+							columns[name_column[p.layout_style]][row] = member_name;
+						else {
+							stream_append_str8(&sb, member_name);
+							stream_append_str8(&sb, str8(":"));
+							columns[name_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
+						}
 					}
 				}
 
@@ -4341,7 +4377,19 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 					read_only local_persist s32 type_column[MetaPushStructStyle_Count] = {
 						[MetaPushStructStyle_C]      = 0,
 						[MetaPushStructStyle_MATLAB] = 1,
+						[MetaPushStructStyle_Odin]   = 1,
 					};
+
+					if (resolved_element_count > 1 && p.element_count_style == MetaPushStructStyle_Odin) {
+						if (!type_reference && type_id == MetaKind_M4)
+							stream_append_str8(&sb, str8("matrix"));
+						stream_append_str8(&sb, elements_count_open[p.layout_style]);
+						if (!type_reference && type_id == MetaKind_M4)
+							stream_append_str8(&sb, str8("4,4"));
+						else
+							stream_append_u64(&sb, resolved_element_count);
+						stream_append_str8(&sb, elements_count_close[p.layout_style]);
+					}
 
 					if (type_reference) {
 						MetaEntity *re = ctx->entities.data + type_id;
@@ -4378,7 +4426,8 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 
 						columns[type_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 					} else {
-						columns[type_column[p.layout_style]][row] = p.base_types[type_id];
+						stream_append_str8(&sb, p.base_types[type_id]);
+						columns[type_column[p.layout_style]][row] = arena_stream_commit_and_reset(m->scratch, &sb);
 					}
 				}
 
@@ -4387,10 +4436,12 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 			}
 		}
 
-		if (member == s->info.member_count && s->info.flags & MetaStructFlag_Union && p.layout_style == MetaPushStructStyle_C) {
+		if (member == s->info.member_count && s->info.flags & MetaStructFlag_Union && p.layout_style != MetaPushStructStyle_MATLAB) {
 			metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
 			while (scope > 0) {
-				meta_end_scope(m, str8("};"));
+				// TODO(DD): append the union name at the end of the c scope when it not empty
+				if (p.layout_style == MetaPushStructStyle_C) meta_end_scope(m, str8("};"));
+				else meta_end_scope(m, str8("},"));
 				scope--;
 			}
 			row = 0;
@@ -4546,6 +4597,153 @@ metagen_emit_c_code(MetaContext *ctx, Arena *arena)
 	}
 
 	result = meta_write_and_reset(m, out_meta);
+
+	return result;
+}
+
+read_only global str8 odin_file_header_zbp = str8_comp(""
+	"// See LICENSE for license details.\n\n"
+	"// GENERATED CODE\n\n"
+	"package ornot_zbp" "\n"
+);
+
+function b32
+metagen_emit_odin_code(MetaContext *ctx, Arena *arena)
+{
+	os_make_directory("odin");
+	os_make_directory("odin" OS_PATH_SEPARATOR "zbp");
+	char *out = "odin" OS_PATH_SEPARATOR "zbp" OS_PATH_SEPARATOR META_NAMESPACE_LOWER ".odin";
+
+	if (setjmp(compiler_jmp_buf)) {
+		build_log_error("Failed to generate Odin Bindings");
+		return 0;
+	}
+
+	b32 result = 1;
+
+	if (!needs_rebuild(out, "ornot.meta"))
+		return result;
+
+	build_log_generate("Odin Bindings");
+
+	MetaprogramContext m[1] = {{.stream = arena_stream(arena), .scratch = ctx->scratch}};
+
+	meta_push_line(m, odin_file_header_zbp);
+
+	///////////////////////
+	// NOTE(DD): constants
+	{
+		u32 integers = 0;
+		u32 floats   = 0;
+
+		for (da_count constant = 0; constant < ctx->entity_kind_counts[MetaEntityKind_Constant]; constant++) {
+			da_count    id = ctx->entity_kind_ids[MetaEntityKind_Constant][constant];
+			MetaEntity *e  = ctx->entities.data + id;
+			if (e->constant.kind == MetaConstantKind_Integer) integers++;
+			if (e->constant.kind == MetaConstantKind_Float)   floats++;
+		}
+
+		u32 row_alloc_count = Max(integers, floats);
+		str8 *columns[2];
+		columns[0] = push_array(m->scratch, str8, row_alloc_count);
+		columns[1] = push_array(m->scratch, str8, row_alloc_count);
+
+		u32 row_count;
+
+		row_count = 0;
+		for (da_count constant = 0; constant < ctx->entity_kind_counts[MetaEntityKind_Constant]; constant++) {
+			da_count    id = ctx->entity_kind_ids[MetaEntityKind_Constant][constant];
+			MetaEntity *e  = ctx->entities.data + id;
+			if (e->constant.kind == MetaConstantKind_Integer) {
+				u64 index = integer_width_index(e->constant.U64);
+				Stream sb = arena_stream(m->scratch);
+				stream_append_str8(&sb, str8(":: 0x"));
+				stream_append_hex_u64_width(&sb, e->constant.U64, meta_integer_print_digits[index]);
+				columns[0][row_count] = ctx->entity_names.data[id];
+				columns[1][row_count] = arena_stream_commit(m->scratch, &sb);
+				row_count++;
+			}
+		}
+		metagen_push_table(m, str8(""), str8(""), columns, row_count, 2);
+
+		row_count = 0;
+		if (integers && floats) meta_push_line(m, str8("\n"));
+		for (da_count constant = 0; constant < ctx->entity_kind_counts[MetaEntityKind_Constant]; constant++) {
+			da_count    id = ctx->entity_kind_ids[MetaEntityKind_Constant][constant];
+			MetaEntity *e  = ctx->entities.data + id;
+			if (e->constant.kind == MetaConstantKind_Float) {
+				Stream sb = arena_stream(m->scratch);
+				stream_append_str8(&sb, str8(" :: "));
+				stream_append_f64(&sb, e->constant.F64, 1000000);
+				columns[0][row_count] = ctx->entity_names.data[id];
+				columns[1][row_count] = arena_stream_commit(m->scratch, &sb);
+				row_count++;
+			}
+		}
+		metagen_push_table(m, str8(""), str8(""), columns, row_count, 2);
+
+		if (integers || floats) meta_push(m, str8("\n"));
+	}
+
+	////////////////////////
+	// NOTE(DD): enumerants
+	for EachElement(meta_enum_entity_kinds, it) {
+		b32 flags = meta_enum_entity_kinds[it] == MetaEntityKind_Flags;
+		for (da_count kind = 0; kind < ctx->entity_kind_counts[meta_enum_entity_kinds[it]]; kind++) {
+			da_count id = ctx->entity_kind_ids[meta_enum_entity_kinds[it]][kind];
+			MetaEntity *e = ctx->entities.data + id;
+			str8 enum_name = ctx->entity_names.data[id];
+
+			read_only global str8 flag_base_suffix = str8_comp("Kind");
+
+			if (!flags) meta_begin_scope(m, enum_name, str8(" :: enum {"));
+			else meta_begin_scope(m, enum_name, flag_base_suffix, str8(" :: enum {"));
+			metagen_push_counted_enum_body(m, str8(""), str8(""), str8("= "), str8(","), e->table.entries[0], e->table.entry_count);
+			meta_end_scope(m, str8("}"));
+
+			if (flags) meta_push_line(m, enum_name, str8(" :: bit_set["), enum_name, flag_base_suffix, str8("]"));
+			meta_end_line(m);
+		}
+	}
+
+	////////////////////////
+	// NOTE(DD): bit fields
+	read_only local_persist str8 transmit_receive_orientation = str8_comp(""
+		"TransmitReceiveOrientation :: bit_field u8 {\n"
+		"\ttransmit: RCAOrientation | 4,\n"
+		"\treceive:  RCAOrientation | 4,\n"
+		"}\n"
+	);
+	meta_push_line(m, transmit_receive_orientation);
+
+	////////////////////////
+	// NOTE(DD): structs
+	{
+		u32 structure = 0;
+		for EachElement(meta_struct_entity_kinds, kind_it) {
+			if (!meta_struct_emit[kind_it]) continue;
+			for (da_count it = 0; it < ctx->entity_kind_counts[meta_struct_entity_kinds[kind_it]]; it++, structure++) {
+				da_count entity = ctx->entity_kind_ids[meta_struct_entity_kinds[kind_it]][it];
+				MetaEntity *e = ctx->entities.data + entity;
+				MetaStruct *s = ctx->struct_infos + e->table.struct_info_id;
+
+				if (structure != 0) meta_push(m, str8("\n"));
+				meta_begin_scope(m, s->info.name, str8(" :: struct {")); {
+					meta_push_struct_body(ctx, m, e, (MetaPushStructParameters){
+						.layout_style        = MetaPushStructStyle_Odin,
+						.union_style         = MetaPushStructStyle_Odin,
+						.element_count_style = MetaPushStructStyle_Odin,
+						.base_types          = meta_kind_base_odin_types,
+						.suffix              = str8(","),
+						.base_type_element_count_scales = meta_kind_elements,
+
+					});
+				} meta_end_scope(m, str8("}"));
+			}
+		}
+	}
+
+	result = meta_write_and_reset(m, out);
 
 	return result;
 }
@@ -4726,9 +4924,15 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 										stream_append_u64(&sb, offset + byte_size - 1);
 										stream_append_str8(&sb, str8(")"));
 										columns[0][row] = arena_stream_commit_and_reset(m->scratch, &sb);
-
+										str8 member_name = s->members[member];
+										if (member_name.length == 0) {
+											MetaEntity *re = ctx->entities.data + type_id;
+											MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
+											assert(rs->info.flags & MetaStructFlag_Union);
+											member_name = str8("data");
+										}
 										columns[1][row] = push_str8_from_parts(m->scratch, str8(""), str8("= obj."),
-										                                       s->members[member], str8(".toBytes();"));
+										                                       member_name, str8(".toBytes();"));
 									}
 									offset += s->elements[member] * byte_size;
 								}
@@ -4802,8 +5006,15 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 									b32 ref       = (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) != 0;
 									if (ref && !meta_entity_is_enum(ctx, type_id)) {
 										u32 row = members++;
+										str8 member_name = s->members[member];
+										if (member_name.length == 0) {
+											MetaEntity *re = ctx->entities.data + type_id;
+											MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
+											assert(rs->info.flags & MetaStructFlag_Union);
+											member_name = str8("data");
+										}
 										columns[0][row] = push_str8_from_parts(m->scratch, str8(""), str8("out."),
-										                                       s->members[member]);
+										                                       member_name);
 
 										Stream sb = arena_stream(m->scratch);
 										stream_append_str8s(&sb, str8("= " META_NAMESPACE_UPPER "."),
@@ -4924,14 +5135,16 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 					for (u32 entry = 0; entry < s->info.member_count; entry++) {
 						b32 ref     = s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType;
 						b32 is_enum = ref && meta_entity_is_enum(ctx, s->type_ids[entry]);
+						u32 elements = s->elements[entry];
+						if (!ref && !is_enum) elements *= meta_kind_elements[s->type_ids[entry]];
 						meta_push(m, str8(", "));
 						meta_push(m, s->members[entry], str8("="));
-						if (s->elements[entry] > 1) meta_push(m, str8("["));
+						if (elements > 1) meta_push(m, str8("["));
 						meta_push(m, (ref && !is_enum) ? str8("None") : str8("0"));
-						if (s->elements[entry] > 1) {
+						if (elements > 1) {
 							// wtf is this syntax
 							meta_push(m, str8("] * "));
-							meta_push_u64(m, s->elements[entry]);
+							meta_push_u64(m, elements);
 						}
 					}
 					meta_end_line(m, str8("):"));
@@ -4971,10 +5184,12 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							s32 id        = s->type_ids[entry];
 							b32 ref       = (s->member_flags[entry] & MetaBuildStructMemberFlag_ReferenceType) != 0;
 							b32 is_enum   = ref && meta_entity_is_enum(ctx, id);
+							u32 elements  = s->elements[entry];
+							if (!ref && !is_enum) elements *= meta_kind_elements[id];
 							if (!ref || meta_entity_is_enum(ctx, id)) {
 								MetaKind kind = is_enum ? meta_entity_enum_base_kind(ctx, id): id;
 								stream_append_str8(&sb, str8("struct.unpack_from('<"));
-								stream_append_u64(&sb, s->elements[entry]);
+								stream_append_u64(&sb, elements);
 								stream_append_str8s(&sb, meta_kind_python_struct_types[kind], str8("',"));
 
 								columns[1][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
@@ -4982,7 +5197,7 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 								stream_append_u64(&sb, offset);
 								stream_append_str8(&sb, str8(")"));
 
-								if (s->elements[entry] == 1)
+								if (elements == 1)
 									stream_append_str8(&sb, str8("[0]"));
 
 								columns[2][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
@@ -5021,6 +5236,7 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							b32 is_enum   = ref && meta_entity_is_enum(ctx, id);
 
 							u64  elements = (ref && !is_enum) ? byte_size : s->elements[entry];
+							if (!ref && !is_enum) elements *= meta_kind_elements[id];
 							str8 type     = is_enum ? meta_kind_python_struct_types[meta_entity_enum_base_kind(ctx, id)]
 							                        : ref ? meta_kind_python_struct_types[MetaKind_U8]
 							                              : meta_kind_python_struct_types[id];
@@ -5034,7 +5250,7 @@ metagen_emit_python_code(MetaContext *ctx, Arena *arena)
 							stream_append_str8(&sb, str8(","));
 							columns[1][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
 
-							stream_append_str8s(&sb, ((ref && !is_enum) || s->elements[entry] > 1) ? str8("*") : str8(" "),
+							stream_append_str8s(&sb, ((ref && !is_enum) || elements > 1) ? str8("*") : str8(" "),
 							                    str8("self."), s->members[entry]);
 							if (ref && !is_enum) stream_append_str8(&sb, str8(".to_bytes()"));
 							columns[2][entry] = arena_stream_commit_and_reset(m->scratch, &sb);
@@ -5441,6 +5657,8 @@ main(s32 argc, char *argv[])
 	Temp scratch;
 	DeferLoop(scratch = temp_begin(arena), temp_end(scratch))
 		result &= metagen_emit_c_code(meta, arena);
+	DeferLoop(scratch = temp_begin(arena), temp_end(scratch))
+		result &= metagen_emit_odin_code(meta, arena);
 	DeferLoop(scratch = temp_begin(arena), temp_end(scratch))
 		result &= metagen_emit_matlab_code(meta, arena);
 	DeferLoop(scratch = temp_begin(arena), temp_end(scratch))
