@@ -4280,20 +4280,26 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 
 			assert(member_name.length != 0 || type_reference);
 
-			if (s->members[member].length == 0 &&
-			    (p.union_style != MetaPushStructStyle_MATLAB || ctx->entities.data[type_id].kind != MetaEntityKind_Union))
-			{
+			if (ctx->entities.data[type_id].kind == MetaEntityKind_Union && p.union_style != MetaPushStructStyle_MATLAB){
 				*da_push(m->scratch, &stack) = (struct stack_item){se, member + 1};
 				*da_push(m->scratch, &stack) = (struct stack_item){ctx->entities.data + type_id, 0};
 
 				MetaStruct *ss = ctx->struct_infos + ctx->entities.data[type_id].table.struct_info_id;
-				if (p.layout_style == MetaPushStructStyle_C && ss->info.flags & MetaStructFlag_Union) {
-					metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
-					meta_begin_scope(m, str8("union {"));
+				assert(ss->info.flags & MetaStructFlag_Union && p.layout_style != MetaPushStructStyle_MATLAB);
+				metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
+				if (p.layout_style == MetaPushStructStyle_C) meta_begin_scope(m, str8("union {"));
+				else if (p.layout_style == MetaPushStructStyle_Odin) {
+					if (member_name.length == 0) {
+						member_name = str8("data");
+					}
+					meta_begin_scope(m, member_name, str8(": struct #raw_union {"));
+				}
 					row = 0;
 					scope++;
-				}
-
+				break;
+			} else if (s->members[member].length == 0) {
+				*da_push(m->scratch, &stack) = (struct stack_item){se, member + 1};
+				*da_push(m->scratch, &stack) = (struct stack_item){ctx->entities.data + type_id, 0};
 				break;
 			} else {
 				Stream sb = arena_stream(m->scratch);
@@ -4430,10 +4436,12 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 			}
 		}
 
-		if (member == s->info.member_count && s->info.flags & MetaStructFlag_Union && p.layout_style == MetaPushStructStyle_C) {
+		if (member == s->info.member_count && s->info.flags & MetaStructFlag_Union && p.layout_style != MetaPushStructStyle_MATLAB) {
 			metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
 			while (scope > 0) {
-				meta_end_scope(m, str8("};"));
+				// TODO(DD): append the union name at the end of the c scope when it not empty
+				if (p.layout_style == MetaPushStructStyle_C) meta_end_scope(m, str8("};"));
+				else meta_end_scope(m, str8("},"));
 				scope--;
 			}
 			row = 0;
@@ -4916,9 +4924,15 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 										stream_append_u64(&sb, offset + byte_size - 1);
 										stream_append_str8(&sb, str8(")"));
 										columns[0][row] = arena_stream_commit_and_reset(m->scratch, &sb);
-
+										str8 member_name = s->members[member];
+										if (member_name.length == 0) {
+											MetaEntity *re = ctx->entities.data + type_id;
+											MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
+											assert(rs->info.flags & MetaStructFlag_Union);
+											member_name = str8("data");
+										}
 										columns[1][row] = push_str8_from_parts(m->scratch, str8(""), str8("= obj."),
-										                                       s->members[member], str8(".toBytes();"));
+										                                       member_name, str8(".toBytes();"));
 									}
 									offset += s->elements[member] * byte_size;
 								}
@@ -4992,8 +5006,15 @@ metagen_emit_matlab_code(MetaContext *ctx, Arena *arena)
 									b32 ref       = (s->member_flags[member] & MetaBuildStructMemberFlag_ReferenceType) != 0;
 									if (ref && !meta_entity_is_enum(ctx, type_id)) {
 										u32 row = members++;
+										str8 member_name = s->members[member];
+										if (member_name.length == 0) {
+											MetaEntity *re = ctx->entities.data + type_id;
+											MetaStruct *rs = ctx->struct_infos + re->table.struct_info_id;
+											assert(rs->info.flags & MetaStructFlag_Union);
+											member_name = str8("data");
+										}
 										columns[0][row] = push_str8_from_parts(m->scratch, str8(""), str8("out."),
-										                                       s->members[member]);
+										                                       member_name);
 
 										Stream sb = arena_stream(m->scratch);
 										stream_append_str8s(&sb, str8("= " META_NAMESPACE_UPPER "."),
