@@ -413,7 +413,11 @@ global char *g_argv0;
 #else
   #define LINK_LIB(name)             "-l" name
   #define OBJECT(name)               name ".o"
-  #define OUTPUT_DLL(name)           "-fPIC", "-shared", "-o", name
+    #if OS_WINDOWS
+  	#define OUTPUT_DLL(name)           "-shared", "-o", name
+  #else
+  	#define OUTPUT_DLL(name)           "-fPIC", "-shared", "-o", name
+  #endif
   #define OUTPUT_LIB(name)           OUTPUT(name)
   #define OUTPUT_EXE(name)           "-o", name
   #define COMPILER_OUTPUT            "-o"
