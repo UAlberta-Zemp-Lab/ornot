@@ -58,6 +58,16 @@ class ZBP:
 	DataCompressionKind_None = 0
 	DataCompressionKind_ZSTD = 1
 
+	# DataLayoutKind
+	DataLayoutKind_Block    = 0
+	DataLayoutKind_VsxStack = 1
+
+	# LayoutPrecedence
+	LayoutPrecedence_ReceiveEvent = 0
+	LayoutPrecedence_Channel      = 1
+	LayoutPrecedence_DataFrame    = 2
+	LayoutPrecedence_Ensemble     = 3
+
 	# ContrastDataFlags
 	ContrastDataFlags_Reduced = 1 << 0
 
@@ -372,6 +382,192 @@ class ZBP:
 			struct.pack_into('<1L', result, 148,  self.string_count)
 			struct.pack_into('<1l', result, 152,  self.string_table_offset)
 			struct.pack_into('<1l', result, 156,  self.format_extension_offset)
+			return result
+
+	class HeaderV4:
+		def __init__(self, magic=0, major=0, minor=0, raw_data_size=0, raw_data_offset=0, raw_data_compression_kind=0, raw_data_kind=0, data_layout_kind=0, data_layout_offset=0, element_count=[0] * 2, acquisition_precedence=[0] * 4, sample_count=0, receive_event_count=0, channel_count=0, data_frame_count=0, ensemble_count=0, decode_mode=0, sampling_mode=0, sampling_frequency=0, speed_of_sound=0, transducer_tile_count=[0] * 2, transducer_element_pitch=[0] * 2, group_acquisition_time=0, ensemble_repetition_interval=0, acquisition_mode=0, acquisition_parameters_offset=0, contrast_mode=0, contrast_data_flags=0, contrast_parameters_offset=0, emission_descriptors_offset=0, time_delays_offset=0, demodulation_frequencies_offset=0, transducer_transforms_offset=0, string_count=0, string_table_offset=0, format_extension_offset=0):
+			self.magic                           = magic
+			self.major                           = major
+			self.minor                           = minor
+			self.raw_data_size                   = raw_data_size
+			self.raw_data_offset                 = raw_data_offset
+			self.raw_data_compression_kind       = raw_data_compression_kind
+			self.raw_data_kind                   = raw_data_kind
+			self.data_layout_kind                = data_layout_kind
+			self.data_layout_offset              = data_layout_offset
+			self.element_count                   = element_count
+			self.acquisition_precedence          = acquisition_precedence
+			self.sample_count                    = sample_count
+			self.receive_event_count             = receive_event_count
+			self.channel_count                   = channel_count
+			self.data_frame_count                = data_frame_count
+			self.ensemble_count                  = ensemble_count
+			self.decode_mode                     = decode_mode
+			self.sampling_mode                   = sampling_mode
+			self.sampling_frequency              = sampling_frequency
+			self.speed_of_sound                  = speed_of_sound
+			self.transducer_tile_count           = transducer_tile_count
+			self.transducer_element_pitch        = transducer_element_pitch
+			self.group_acquisition_time          = group_acquisition_time
+			self.ensemble_repetition_interval    = ensemble_repetition_interval
+			self.acquisition_mode                = acquisition_mode
+			self.acquisition_parameters_offset   = acquisition_parameters_offset
+			self.contrast_mode                   = contrast_mode
+			self.contrast_data_flags             = contrast_data_flags
+			self.contrast_parameters_offset      = contrast_parameters_offset
+			self.emission_descriptors_offset     = emission_descriptors_offset
+			self.time_delays_offset              = time_delays_offset
+			self.demodulation_frequencies_offset = demodulation_frequencies_offset
+			self.transducer_transforms_offset    = transducer_transforms_offset
+			self.string_count                    = string_count
+			self.string_table_offset             = string_table_offset
+			self.format_extension_offset         = format_extension_offset
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.magic                            = struct.unpack_from('<1Q', bytes, 0)[0]
+			result.major                            = struct.unpack_from('<1L', bytes, 8)[0]
+			result.minor                            = struct.unpack_from('<1L', bytes, 12)[0]
+			result.raw_data_size                    = struct.unpack_from('<1Q', bytes, 16)[0]
+			result.raw_data_offset                  = struct.unpack_from('<1l', bytes, 24)[0]
+			result.raw_data_compression_kind        = struct.unpack_from('<1L', bytes, 28)[0]
+			result.raw_data_kind                    = struct.unpack_from('<1L', bytes, 32)[0]
+			result.data_layout_kind                 = struct.unpack_from('<1L', bytes, 36)[0]
+			result.data_layout_offset               = struct.unpack_from('<1l', bytes, 40)[0]
+			result.element_count                    = struct.unpack_from('<2L', bytes, 44)
+			result.acquisition_precedence           = struct.unpack_from('<4L', bytes, 52)
+			result.sample_count                     = struct.unpack_from('<1L', bytes, 68)[0]
+			result.receive_event_count              = struct.unpack_from('<1L', bytes, 72)[0]
+			result.channel_count                    = struct.unpack_from('<1L', bytes, 76)[0]
+			result.data_frame_count                 = struct.unpack_from('<1L', bytes, 80)[0]
+			result.ensemble_count                   = struct.unpack_from('<1L', bytes, 84)[0]
+			result.decode_mode                      = struct.unpack_from('<1L', bytes, 88)[0]
+			result.sampling_mode                    = struct.unpack_from('<1L', bytes, 92)[0]
+			result.sampling_frequency               = struct.unpack_from('<1f', bytes, 96)[0]
+			result.speed_of_sound                   = struct.unpack_from('<1f', bytes, 100)[0]
+			result.transducer_tile_count            = struct.unpack_from('<2L', bytes, 104)
+			result.transducer_element_pitch         = struct.unpack_from('<2f', bytes, 112)
+			result.group_acquisition_time           = struct.unpack_from('<1f', bytes, 120)[0]
+			result.ensemble_repetition_interval     = struct.unpack_from('<1f', bytes, 124)[0]
+			result.acquisition_mode                 = struct.unpack_from('<1L', bytes, 128)[0]
+			result.acquisition_parameters_offset    = struct.unpack_from('<1l', bytes, 132)[0]
+			result.contrast_mode                    = struct.unpack_from('<1L', bytes, 136)[0]
+			result.contrast_data_flags              = struct.unpack_from('<1L', bytes, 140)[0]
+			result.contrast_parameters_offset       = struct.unpack_from('<1l', bytes, 144)[0]
+			result.emission_descriptors_offset      = struct.unpack_from('<1l', bytes, 148)[0]
+			result.time_delays_offset               = struct.unpack_from('<1l', bytes, 152)[0]
+			result.demodulation_frequencies_offset  = struct.unpack_from('<1l', bytes, 156)[0]
+			result.transducer_transforms_offset     = struct.unpack_from('<1l', bytes, 160)[0]
+			result.string_count                     = struct.unpack_from('<1L', bytes, 164)[0]
+			result.string_table_offset              = struct.unpack_from('<1l', bytes, 168)[0]
+			result.format_extension_offset          = struct.unpack_from('<1l', bytes, 172)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 176
+
+		def to_bytes(self):
+			result = bytearray(ZBP.HeaderV4.byte_size())
+			struct.pack_into('<1Q', result, 0,    self.magic)
+			struct.pack_into('<1L', result, 8,    self.major)
+			struct.pack_into('<1L', result, 12,   self.minor)
+			struct.pack_into('<1Q', result, 16,   self.raw_data_size)
+			struct.pack_into('<1l', result, 24,   self.raw_data_offset)
+			struct.pack_into('<1L', result, 28,   self.raw_data_compression_kind)
+			struct.pack_into('<1L', result, 32,   self.raw_data_kind)
+			struct.pack_into('<1L', result, 36,   self.data_layout_kind)
+			struct.pack_into('<1l', result, 40,   self.data_layout_offset)
+			struct.pack_into('<2L', result, 44,  *self.element_count)
+			struct.pack_into('<4L', result, 52,  *self.acquisition_precedence)
+			struct.pack_into('<1L', result, 68,   self.sample_count)
+			struct.pack_into('<1L', result, 72,   self.receive_event_count)
+			struct.pack_into('<1L', result, 76,   self.channel_count)
+			struct.pack_into('<1L', result, 80,   self.data_frame_count)
+			struct.pack_into('<1L', result, 84,   self.ensemble_count)
+			struct.pack_into('<1L', result, 88,   self.decode_mode)
+			struct.pack_into('<1L', result, 92,   self.sampling_mode)
+			struct.pack_into('<1f', result, 96,   self.sampling_frequency)
+			struct.pack_into('<1f', result, 100,  self.speed_of_sound)
+			struct.pack_into('<2L', result, 104, *self.transducer_tile_count)
+			struct.pack_into('<2f', result, 112, *self.transducer_element_pitch)
+			struct.pack_into('<1f', result, 120,  self.group_acquisition_time)
+			struct.pack_into('<1f', result, 124,  self.ensemble_repetition_interval)
+			struct.pack_into('<1L', result, 128,  self.acquisition_mode)
+			struct.pack_into('<1l', result, 132,  self.acquisition_parameters_offset)
+			struct.pack_into('<1L', result, 136,  self.contrast_mode)
+			struct.pack_into('<1L', result, 140,  self.contrast_data_flags)
+			struct.pack_into('<1l', result, 144,  self.contrast_parameters_offset)
+			struct.pack_into('<1l', result, 148,  self.emission_descriptors_offset)
+			struct.pack_into('<1l', result, 152,  self.time_delays_offset)
+			struct.pack_into('<1l', result, 156,  self.demodulation_frequencies_offset)
+			struct.pack_into('<1l', result, 160,  self.transducer_transforms_offset)
+			struct.pack_into('<1L', result, 164,  self.string_count)
+			struct.pack_into('<1l', result, 168,  self.string_table_offset)
+			struct.pack_into('<1l', result, 172,  self.format_extension_offset)
+			return result
+
+	class BlockDataLayoutParameters:
+		def __init__(self, precedence=[0] * 4, block_size=0, units_per_block=0):
+			self.precedence      = precedence
+			self.block_size      = block_size
+			self.units_per_block = units_per_block
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.precedence       = struct.unpack_from('<4L', bytes, 0)
+			result.block_size       = struct.unpack_from('<1L', bytes, 16)[0]
+			result.units_per_block  = struct.unpack_from('<1L', bytes, 20)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 24
+
+		def to_bytes(self):
+			result = bytearray(ZBP.BlockDataLayoutParameters.byte_size())
+			struct.pack_into('<4L', result, 0,  *self.precedence)
+			struct.pack_into('<1L', result, 16,  self.block_size)
+			struct.pack_into('<1L', result, 20,  self.units_per_block)
+			return result
+
+	class VsxStackDataLayoutParameters:
+		def __init__(self, precedence=[0] * 3, stack_size=0, stack_channel_count=0, units_per_stack=0, row_channel_mapping_offset=0, column_channel_mapping_offset=0, unit_indices_offset=0):
+			self.precedence                    = precedence
+			self.stack_size                    = stack_size
+			self.stack_channel_count           = stack_channel_count
+			self.units_per_stack               = units_per_stack
+			self.row_channel_mapping_offset    = row_channel_mapping_offset
+			self.column_channel_mapping_offset = column_channel_mapping_offset
+			self.unit_indices_offset           = unit_indices_offset
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.precedence                     = struct.unpack_from('<3L', bytes, 0)
+			result.stack_size                     = struct.unpack_from('<1L', bytes, 12)[0]
+			result.stack_channel_count            = struct.unpack_from('<1L', bytes, 16)[0]
+			result.units_per_stack                = struct.unpack_from('<1L', bytes, 20)[0]
+			result.row_channel_mapping_offset     = struct.unpack_from('<1l', bytes, 24)[0]
+			result.column_channel_mapping_offset  = struct.unpack_from('<1l', bytes, 28)[0]
+			result.unit_indices_offset            = struct.unpack_from('<1l', bytes, 32)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 36
+
+		def to_bytes(self):
+			result = bytearray(ZBP.VsxStackDataLayoutParameters.byte_size())
+			struct.pack_into('<3L', result, 0,  *self.precedence)
+			struct.pack_into('<1L', result, 12,  self.stack_size)
+			struct.pack_into('<1L', result, 16,  self.stack_channel_count)
+			struct.pack_into('<1L', result, 20,  self.units_per_stack)
+			struct.pack_into('<1l', result, 24,  self.row_channel_mapping_offset)
+			struct.pack_into('<1l', result, 28,  self.column_channel_mapping_offset)
+			struct.pack_into('<1l', result, 32,  self.unit_indices_offset)
 			return result
 
 	class StringTableEntry:

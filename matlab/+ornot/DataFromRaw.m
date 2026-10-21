@@ -9,8 +9,7 @@ end
 
 switch bp.raw_data_compression_kind
 	case ZBP.DataCompressionKind.ZSTD
-		data_point_count = prod(max(bp.raw_data_dimension, 1));
-		data_byte_size = ornot.dataKindByteCount(bp.raw_data_kind) * data_point_count;
+        data_byte_size = ornot.rawDataByteCount(bp);
 
 		data = libpointer('uint8Ptr', zeros(1, data_byte_size, 'uint8'));
         if ~calllib('ornot', 'unpack_zstd_compressed_data', bytes, numel(bytes), data, data_byte_size)
@@ -41,5 +40,4 @@ switch bp.raw_data_kind
 		bp.data = complex(bp.data(1:2:end), bp.data(2:2:end));
 end
 
-bp.data = reshape(bp.data, bp.raw_data_dimension);
 end

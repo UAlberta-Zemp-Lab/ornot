@@ -487,6 +487,59 @@ interpretation must be defined by the corresponding format version;
 there is no common payload layout, use with caution. This offset 
 can be -1 when no extension is present.
 
+### Header Version 4
+
+Version 4 replaces the implicit raw-data dimensions from Version 3 with
+explicit counts and acquisition precedence in the header. The
+`data_layout_offset` refers only to the kind-specific layout parameters:
+
+```c
+typedef struct ZBP_HeaderV4 {
+	uint64_t                magic;
+	uint32_t                major;
+	uint32_t                minor;
+	uint64_t                raw_data_size;
+	int32_t                 raw_data_offset;
+	ZBP_DataCompressionKind raw_data_compression_kind;
+	ZBP_DataKind            raw_data_kind;
+	ZBP_DataLayoutKind      data_layout_kind;
+	int32_t                 data_layout_offset;
+	uint32_t                element_count[2];
+	ZBP_LayoutPrecedence    acquisition_precedence[4];
+	uint32_t                sample_count;
+	uint32_t                receive_event_count;
+	uint32_t                channel_count;
+	uint32_t                data_frame_count;
+	uint32_t                ensemble_count;
+	ZBP_DecodeMode          decode_mode;
+	ZBP_SamplingMode        sampling_mode;
+	float                   sampling_frequency;
+	float                   speed_of_sound;
+	uint32_t                transducer_tile_count[2];
+	float                   transducer_element_pitch[2];
+	float                   group_acquisition_time;
+	float                   ensemble_repetition_interval;
+	ZBP_AcquisitionKind     acquisition_mode;
+	int32_t                 acquisition_parameters_offset;
+	ZBP_ContrastMode        contrast_mode;
+	uint32_t                contrast_data_flags;
+	int32_t                 contrast_parameters_offset;
+	int32_t                 emission_descriptors_offset;
+	int32_t                 time_delays_offset;
+	int32_t                 demodulation_frequencies_offset;
+	int32_t                 transducer_transforms_offset;
+	uint32_t                string_count;
+	int32_t                 string_table_offset;
+	int32_t                 format_extension_offset;
+} ZBP_HeaderV4;
+```
+
+`data_layout_offset` points to the parameter structure selected by
+`data_layout_kind` (for example, `ZBP_BlockDataLayoutParameters` or
+`ZBP_VsxStackDataLayoutParameters`). The layout kind, counts, and acquisition
+precedence are carried directly in the header; there is no separate
+`DataLayout` structure.
+
 ### Header Version 2
 
 Version 2 contains the following differences from Version 3:

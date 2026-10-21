@@ -75,6 +75,20 @@ typedef enum {
 } ZBP_DataCompressionKind;
 
 typedef enum {
+	ZBP_DataLayoutKind_Block    = 0,
+	ZBP_DataLayoutKind_VsxStack = 1,
+	ZBP_DataLayoutKind_Count,
+} ZBP_DataLayoutKind;
+
+typedef enum {
+	ZBP_LayoutPrecedence_ReceiveEvent = 0,
+	ZBP_LayoutPrecedence_Channel      = 1,
+	ZBP_LayoutPrecedence_DataFrame    = 2,
+	ZBP_LayoutPrecedence_Ensemble     = 3,
+	ZBP_LayoutPrecedence_Count,
+} ZBP_LayoutPrecedence;
+
+typedef enum {
 	ZBP_ContrastDataFlags_Reduced = 1 << 0,
 } ZBP_ContrastDataFlags;
 
@@ -172,6 +186,61 @@ typedef struct ZBP_HeaderV3 {
 	int32_t                 string_table_offset;
 	int32_t                 format_extension_offset;
 } ZBP_HeaderV3;
+
+typedef struct ZBP_HeaderV4 {
+	uint64_t                magic;
+	uint32_t                major;
+	uint32_t                minor;
+	uint64_t                raw_data_size;
+	int32_t                 raw_data_offset;
+	ZBP_DataCompressionKind raw_data_compression_kind;
+	ZBP_DataKind            raw_data_kind;
+	ZBP_DataLayoutKind      data_layout_kind;
+	int32_t                 data_layout_offset;
+	uint32_t                element_count[2];
+	uint32_t                acquisition_precedence[4];
+	uint32_t                sample_count;
+	uint32_t                receive_event_count;
+	uint32_t                channel_count;
+	uint32_t                data_frame_count;
+	uint32_t                ensemble_count;
+	ZBP_DecodeMode          decode_mode;
+	ZBP_SamplingMode        sampling_mode;
+	float                   sampling_frequency;
+	float                   speed_of_sound;
+	uint32_t                transducer_tile_count[2];
+	float                   transducer_element_pitch[2];
+	float                   group_acquisition_time;
+	float                   ensemble_repetition_interval;
+	ZBP_AcquisitionKind     acquisition_mode;
+	int32_t                 acquisition_parameters_offset;
+	ZBP_ContrastMode        contrast_mode;
+	uint32_t                contrast_data_flags;
+	int32_t                 contrast_parameters_offset;
+	int32_t                 emission_descriptors_offset;
+	int32_t                 time_delays_offset;
+	int32_t                 demodulation_frequencies_offset;
+	int32_t                 transducer_transforms_offset;
+	uint32_t                string_count;
+	int32_t                 string_table_offset;
+	int32_t                 format_extension_offset;
+} ZBP_HeaderV4;
+
+typedef struct ZBP_BlockDataLayoutParameters {
+	uint32_t precedence[4];
+	uint32_t block_size;
+	uint32_t units_per_block;
+} ZBP_BlockDataLayoutParameters;
+
+typedef struct ZBP_VsxStackDataLayoutParameters {
+	uint32_t precedence[3];
+	uint32_t stack_size;
+	uint32_t stack_channel_count;
+	uint32_t units_per_stack;
+	int32_t  row_channel_mapping_offset;
+	int32_t  column_channel_mapping_offset;
+	int32_t  unit_indices_offset;
+} ZBP_VsxStackDataLayoutParameters;
 
 typedef struct ZBP_StringTableEntry {
 	uint32_t string_tag_length;

@@ -66,6 +66,18 @@ DataCompressionKind :: enum {
 	ZSTD = 1,
 }
 
+DataLayoutKind :: enum {
+	Block    = 0,
+	VsxStack = 1,
+}
+
+LayoutPrecedence :: enum {
+	ReceiveEvent = 0,
+	Channel      = 1,
+	DataFrame    = 2,
+	Ensemble     = 3,
+}
+
 ContrastDataFlagsKind :: enum {
 	Reduced = 0,
 }
@@ -171,6 +183,61 @@ HeaderV3 :: struct {
 	format_extension_offset:         i32,
 }
 
+HeaderV4 :: struct {
+	magic:                           u64,
+	major:                           u32,
+	minor:                           u32,
+	raw_data_size:                   u64,
+	raw_data_offset:                 i32,
+	raw_data_compression_kind:       DataCompressionKind,
+	raw_data_kind:                   DataKind,
+	data_layout_kind:                DataLayoutKind,
+	data_layout_offset:              i32,
+	element_count:                   [2]u32,
+	acquisition_precedence:          [4]LayoutPrecedence,
+	sample_count:                    u32,
+	receive_event_count:             u32,
+	channel_count:                   u32,
+	data_frame_count:                u32,
+	ensemble_count:                  u32,
+	decode_mode:                     DecodeMode,
+	sampling_mode:                   SamplingMode,
+	sampling_frequency:              f32,
+	speed_of_sound:                  f32,
+	transducer_tile_count:           [2]u32,
+	transducer_element_pitch:        [2]f32,
+	group_acquisition_time:          f32,
+	ensemble_repetition_interval:    f32,
+	acquisition_mode:                AcquisitionKind,
+	acquisition_parameters_offset:   i32,
+	contrast_mode:                   ContrastMode,
+	contrast_data_flags:             u32,
+	contrast_parameters_offset:      i32,
+	emission_descriptors_offset:     i32,
+	time_delays_offset:              i32,
+	demodulation_frequencies_offset: i32,
+	transducer_transforms_offset:    i32,
+	string_count:                    u32,
+	string_table_offset:             i32,
+	format_extension_offset:         i32,
+}
+
+BlockDataLayoutParameters :: struct {
+	precedence:      [4]LayoutPrecedence,
+	block_size:      u32,
+	units_per_block: u32,
+}
+
+VsxStackDataLayoutParameters :: struct {
+	precedence:                    [3]LayoutPrecedence,
+	stack_size:                    u32,
+	stack_channel_count:           u32,
+	units_per_stack:               u32,
+	row_channel_mapping_offset:    i32,
+	column_channel_mapping_offset: i32,
+	unit_indices_offset:           i32,
+}
+
 StringTableEntry :: struct {
 	string_tag_length: u32,
 	string_tag_offset: i32,
@@ -246,4 +313,9 @@ XDopplerParameters :: struct {
 
 EPIC_FORCESParameters :: struct {
 	transmit_foci_offset: i32,
+}
+
+DataLayoutParameters :: struct #raw_union {
+	block:     BlockDataLayoutParameters,
+	vsx_stack: VsxStackDataLayoutParameters,
 }

@@ -1,16 +1,26 @@
 classdef BeamformParameters
     %% Depending on the source of this data, some properties may be empty
     properties
-        raw_data_dimension(1,4)               uint32
         raw_data_kind(1,1)                    ZBP.DataKind
         raw_data_compression_kind(1,1)        ZBP.DataCompressionKind
+        data_layout_kind(1,1)                 ZBP.DataLayoutKind = ZBP.DataLayoutKind.VsxStack
+        block_data_layout_parameters(1,1)     ZBP.BlockDataLayoutParameters = ZBP.BlockDataLayoutParameters
+        vsx_stack_data_layout_parameters(1,1)  ZBP.VsxStackDataLayoutParameters = ZBP.VsxStackDataLayoutParameters
+        element_count(1,2)                    uint32 = uint32([0, 0])
+        acquisition_precedence(1,4)           uint32 = uint32([ ...
+            ZBP.LayoutPrecedence.ReceiveEvent, ...
+            ZBP.LayoutPrecedence.Channel, ...
+            ZBP.LayoutPrecedence.DataFrame, ...
+            ZBP.LayoutPrecedence.Ensemble])
+        sample_count(1,1)                     uint32
+        receive_event_count(1,1)              uint32
+        channel_count(1,1)                    uint32
+        data_frame_count(1,1)                 uint32
+        ensemble_count(1,1)                   uint32
         decode_mode(1,1)                      ZBP.DecodeMode
         sampling_mode(1,1)                    ZBP.SamplingMode
         sampling_frequency(1,1)               single
         speed_of_sound(1,1)                   single
-        sample_count(1,1)                     uint32
-        channel_count(1,1)                    uint32
-        receive_event_count(1,1)              uint32
         transducer_transform_matrices(4,4,:) single
         transducer_tile_count(1,2)            uint32
         transducer_element_pitch(1,2)         single
@@ -28,6 +38,10 @@ classdef BeamformParameters
         emission_parameters cell
         contrast_parameters
         channel_mapping uint16
+        row_channel_mapping uint16
+        column_channel_mapping uint16
+        unit_indices(:,1) uint32 = uint32.empty(0, 1)
+        acquisition_channel_order uint16 % zero-based source channel order, channel x receive event x data frame
         acquisition_parameters
         transmit_receive_orientations uint8 % receive_event_count x data_frame_count
         focal_depths single % receive_event_count x data_frame_count
@@ -39,6 +53,31 @@ classdef BeamformParameters
     end
 
     methods
+        function bp = BeamformParameters()
+            blockParameters = ZBP.BlockDataLayoutParameters;
+            blockParameters.precedence = uint32([ ...
+                ZBP.LayoutPrecedence.ReceiveEvent, ...
+                ZBP.LayoutPrecedence.Channel, ...
+                ZBP.LayoutPrecedence.DataFrame, ...
+                ZBP.LayoutPrecedence.Ensemble]);
+            blockParameters.block_size = uint32(0);
+            blockParameters.units_per_block = uint32(0);
+            bp.block_data_layout_parameters = blockParameters;
+
+            stackParameters = ZBP.VsxStackDataLayoutParameters;
+            stackParameters.precedence = uint32([ ...
+                ZBP.LayoutPrecedence.ReceiveEvent, ...
+                ZBP.LayoutPrecedence.DataFrame, ...
+                ZBP.LayoutPrecedence.Ensemble]);
+            stackParameters.stack_size = uint32(0);
+            stackParameters.stack_channel_count = uint32(0);
+            stackParameters.units_per_stack = uint32(0);
+            stackParameters.row_channel_mapping_offset = int32(-1);
+            stackParameters.column_channel_mapping_offset = int32(-1);
+            stackParameters.unit_indices_offset = int32(-1);
+            bp.vsx_stack_data_layout_parameters = stackParameters;
+        end
+
         function ToFile(bp, filename)
             arguments (Input)
                 bp(1,1) ornot.BeamformParameters
@@ -64,26 +103,40 @@ classdef BeamformParameters
             increment_offset = @ornot.BeamformParameters.increment_offset;
             set_bytes = @ornot.BeamformParameters.set_bytes;
 
-            header = ZBP.HeaderV3;
+            header = ZBP.HeaderV4;
             header.magic = ZBP.Constants.HeaderMagic;
-            header.major = 3;
+            header.major = 4;
             header.minor = 0;
-            header.raw_data_dimension = bp.raw_data_dimension;
+            header.sample_count = bp.sample_count;
+            header.receive_event_count = bp.receive_event_count;
+            header.channel_count = bp.channel_count;
+            header.data_frame_count = bp.data_frame_count;
+            header.ensemble_count = bp.ensemble_count;
             header.raw_data_kind = int32(bp.raw_data_kind);
             header.raw_data_compression_kind = int32(bp.raw_data_compression_kind);
+            header.data_layout_kind = uint32(bp.data_layout_kind);
+            header.element_count = bp.element_count;
+            header.acquisition_precedence = bp.acquisition_precedence;
             header.decode_mode = int32(bp.decode_mode);
             header.sampling_mode = int32(bp.sampling_mode);
             header.sampling_frequency = bp.sampling_frequency;
             header.speed_of_sound = bp.speed_of_sound;
-            header.sample_count = bp.sample_count;
-            header.channel_count = bp.channel_count;
-            header.receive_event_count = bp.receive_event_count;
             header.transducer_element_pitch = bp.transducer_element_pitch;
             header.transducer_tile_count = bp.transducer_tile_count;
             header.group_acquisition_time = bp.group_acquisition_time;
             header.ensemble_repetition_interval = bp.ensemble_repetition_interval;
             header.acquisition_mode = int32(bp.acquisition_kind);
             header.contrast_mode = int32(bp.contrast_mode);
+
+            dataByteCount = prod(...
+                uint64(header.sample_count) * ...
+                uint64(header.receive_event_count) * ...
+                uint64(header.channel_count) * ...
+                uint64(header.data_frame_count) * ...
+                uint64(header.ensemble_count));
+            assert(dataByteCount > 0, ...
+                'ornot:BeamformParameters:InvalidArgument', ...
+                'Data Byte count must be greater than 0');
 
             bytes = [];
 
@@ -120,12 +173,12 @@ classdef BeamformParameters
                 header.emission_descriptors_offset = -1;
             end
 
-            assert(numel(bp.time_delays) == bp.raw_data_dimension(3))
+            assert(numel(bp.time_delays) == bp.data_frame_count)
             header.time_delays_offset = offset;
             offset = increment_offset(offset, 4*numel(bp.time_delays), offset_alignment);
             bytes = set_bytes(bytes, typecast(bp.time_delays, "uint8"), header.time_delays_offset);
 
-            assert(numel(bp.demodulation_frequencies) == bp.raw_data_dimension(3))
+            assert(numel(bp.demodulation_frequencies) == bp.data_frame_count)
             header.demodulation_frequencies_offset = offset;
             offset = increment_offset(offset, 4*numel(bp.demodulation_frequencies), offset_alignment);
             bytes  = set_bytes(bytes, typecast(bp.demodulation_frequencies, "uint8"), header.demodulation_frequencies_offset);
@@ -141,31 +194,20 @@ classdef BeamformParameters
                 header.contrast_parameters_offset = -1;
             end
 
-            if ~isempty(bp.channel_mapping)
-                header.channel_mapping_offset = offset;
-                assert(numel(bp.channel_mapping) == bp.channel_count);
-                offset = increment_offset(offset, 2*bp.channel_count, offset_alignment);
-                bytes = set_bytes(bytes, typecast(bp.channel_mapping, "uint8"), header.channel_mapping_offset);
-            else
-                header.channel_mapping_offset = -1;
-            end
-
             assert(~isempty(bp.acquisition_parameters), ...
                 "Acquisition Parameters are empty, but acquisition kind requires acquisition parameters");
 
-            data_frame_count = bp.raw_data_dimension(3);
-            receive_count = bp.receive_event_count;
             switch bp.acquisition_kind
                 case ZBP.AcquisitionKind.EPIC_FORCES
                     assert(isa(bp.acquisition_parameters, "ZBP.EPIC_FORCESParameters"));
 
-                    assert(all(size(bp.transmit_foci) == [receive_count, data_frame_count]));
+                    assert(all(size(bp.transmit_foci) == [bp.receive_event_count, bp.data_frame_count]));
 
-                    for i = 1:data_frame_count
+                    for i = 1:bp.data_frame_count
                         bp.acquisition_parameters(i).transmit_foci_offset = offset;
-                        offset = increment_offset(offset, receive_count*ZBP.RCATransmitFocus.byteSize, offset_alignment);
+                        offset = increment_offset(offset, bp.receive_event_count*ZBP.RCATransmitFocus.byteSize, offset_alignment);
                         tfOffset = bp.acquisition_parameters(i).transmit_foci_offset;
-                        for j = 1:receive_count
+                        for j = 1:bp.receive_event_count
                             bytes = set_bytes(bytes, bp.transmit_foci(j, i).toBytes(), tfOffset);
                             tfOffset = increment_offset(tfOffset, ZBP.RCATransmitFocus.byteSize, 1);
                         end
@@ -173,11 +215,11 @@ classdef BeamformParameters
                 case ZBP.AcquisitionKind.RCA_VLS
                     assert(isa(bp.acquisition_parameters, "ZBP.VLSParameters"));
 
-                    assert(all(size(bp.focal_depths) == [receive_count, data_frame_count]));
-                    assert(all(size(bp.origin_offsets) == [receive_count, data_frame_count]));
-                    assert(all(size(bp.transmit_receive_orientations) == [receive_count, data_frame_count]));
+                    assert(all(size(bp.focal_depths) == [bp.receive_event_count, bp.data_frame_count]));
+                    assert(all(size(bp.origin_offsets) == [bp.receive_event_count, bp.data_frame_count]));
+                    assert(all(size(bp.transmit_receive_orientations) == [bp.receive_event_count, bp.data_frame_count]));
 
-                    for i = 1:data_frame_count
+                    for i = 1:bp.data_frame_count
                         focalDepths = bp.focal_depths(:, i);
                         bp.acquisition_parameters(i).focal_depths_offset = offset;
                         offset = increment_offset(offset, 4*numel(focalDepths), offset_alignment);
@@ -196,10 +238,10 @@ classdef BeamformParameters
                 case ZBP.AcquisitionKind.RCA_TPW
                     assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
 
-                    assert(all(size(bp.tilting_angles) == [receive_count, data_frame_count]));
-                    assert(all(size(bp.transmit_receive_orientations) == [receive_count, data_frame_count]));
+                    assert(all(size(bp.tilting_angles) == [bp.receive_event_count, bp.data_frame_count]));
+                    assert(all(size(bp.transmit_receive_orientations) == [bp.receive_event_count, bp.data_frame_count]));
 
-                    for i = 1:data_frame_count
+                    for i = 1:bp.data_frame_count
                         tiltingAngles = bp.tilting_angles(:, i);
                         bp.acquisition_parameters(i).tilting_angles_offset = offset;
                         offset = increment_offset(offset, 4*numel(tiltingAngles), offset_alignment);
@@ -211,9 +253,9 @@ classdef BeamformParameters
                         bytes = set_bytes(bytes, typecast(orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
                     end
                 case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
-                    assert(all(size(bp.sparse_elements) == [receive_count - 1, data_frame_count]));
+                    assert(all(size(bp.sparse_elements) == [bp.receive_event_count - 1, bp.data_frame_count]));
 
-                    for i = 1:data_frame_count
+                    for i = 1:bp.data_frame_count
                         bp.acquisition_parameters(i).sparse_elements_offset = offset;
                         offset = increment_offset(offset, 2*numel(bp.sparse_elements(:,i)), offset_alignment);
                         bytes = set_bytes(bytes, typecast(bp.sparse_elements(:,i), "uint8"), bp.acquisition_parameters(i).sparse_elements_offset);
@@ -230,10 +272,10 @@ classdef BeamformParameters
                     assert(isa(bp.acquisition_parameters, "ZBP.XDopplerParameters"));
                     assert(isscalar(bp.acquisition_parameters));
 
-                    assert(sum(bp.acquisition_parameters.angle_count) == receive_count);
+                    assert(sum(bp.acquisition_parameters.angle_count) == bp.receive_event_count);
 
                     assert(~isempty(bp.tilting_angles));
-                    assert(numel(bp.tilting_angles) == receive_count);
+                    assert(numel(bp.tilting_angles) == bp.receive_event_count);
                     bp.acquisition_parameters.tilting_angles_offset = offset;
                     offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
                     bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters.tilting_angles_offset);
@@ -272,8 +314,101 @@ classdef BeamformParameters
 
             offset = increment_offset(offset, 0, offset_alignment);
 
+            rowMappingValues = bp.row_channel_mapping;
+            columnMappingValues = bp.column_channel_mapping;
+            if ~isempty(bp.channel_mapping)
+                assert(bp.data_layout_kind == ZBP.DataLayoutKind.VsxStack, ...
+                    'ornot:BeamformParameters:UnsupportedV4ChannelMapping', ...
+                    'Version 4 channel mappings require a VSX stack layout.');
+                assert(numel(bp.channel_mapping) == bp.channel_count, ...
+                    'ornot:BeamformParameters:InvalidChannelMapping', ...
+                    'Channel mapping length must match the channel count.');
+                channelMapping = bp.channel_mapping(:) + uint16(1);
+                if isempty(rowMappingValues)
+                    rowMappingValues = channelMapping;
+                end
+                if isempty(columnMappingValues)
+                    columnMappingValues = channelMapping;
+                end
+            end
+
+            switch bp.data_layout_kind
+                case ZBP.DataLayoutKind.Block
+                    blockParameters = bp.block_data_layout_parameters;
+                    if isempty(blockParameters.precedence)
+                        blockParameters.precedence = bp.acquisition_precedence;
+                    end
+                    layoutParameters = blockParameters.toBytes();
+                case ZBP.DataLayoutKind.VsxStack
+                    stackParameters = bp.vsx_stack_data_layout_parameters;
+                    if stackParameters.stack_size == 0
+                        stackParameters.precedence = bp.acquisition_precedence([1, 3, 4]);
+                        stackParameters.stack_size = uint32(double(bp.sample_count) ...
+                            * double(bp.receive_event_count) ...
+                            * ornot.dataKindByteCount(bp.raw_data_kind));
+                        stackParameters.stack_channel_count = bp.channel_count;
+                        stackParameters.units_per_stack = bp.receive_event_count;
+                    end
+                otherwise
+                    error('ornot:BeamformParameters:UnsupportedDataLayout', ...
+                        'Unsupported data layout kind: %d.', int32(bp.data_layout_kind));
+            end
+
+            if bp.data_layout_kind == ZBP.DataLayoutKind.VsxStack
+                stackParameters.row_channel_mapping_offset = -1;
+                stackParameters.column_channel_mapping_offset = -1;
+                stackParameters.unit_indices_offset = -1;
+                if ~isempty(rowMappingValues)
+                    assert(numel(rowMappingValues) == stackParameters.stack_channel_count, ...
+                        "Row channel mapping length must match the VSX stack channel count!");
+                    stackParameters.row_channel_mapping_offset = int32(offset);
+                    offset = increment_offset(offset, 2*numel(rowMappingValues), offset_alignment);
+                    assert(all(rowMappingValues(:) > 0), ...
+                        "Row channel mappings must use one-based Verasonics channel numbers!");
+                    rowMappingBytes = rowMappingValues(:) - uint16(1);
+                    bytes = set_bytes(bytes, typecast(rowMappingBytes, "uint8"), ...
+                        uint64(stackParameters.row_channel_mapping_offset));
+                end
+                if ~isempty(columnMappingValues)
+                    assert(numel(columnMappingValues) == stackParameters.stack_channel_count, ...
+                        "Column channel mapping length must match the VSX stack channel count!");
+                    stackParameters.column_channel_mapping_offset = int32(offset);
+                    offset = increment_offset(offset, 2*numel(columnMappingValues), offset_alignment);
+                    assert(all(columnMappingValues(:) > 0), ...
+                        "Column channel mappings must use one-based Verasonics channel numbers!");
+                    columnMappingBytes = columnMappingValues(:) - uint16(1);
+                    bytes = set_bytes(bytes, typecast(columnMappingBytes, "uint8"), ...
+                        uint64(stackParameters.column_channel_mapping_offset));
+                end
+                if ~isempty(bp.unit_indices)
+                    expectedUnitIndexCount = double(bp.receive_event_count) ...
+                        * double(bp.data_frame_count);
+                    assert(numel(bp.unit_indices) == expectedUnitIndexCount, ...
+                        "VSX stack unit indices must contain one entry per receive-event/data-frame pair!");
+                    assert(isequal(sort(double(bp.unit_indices(:))), ...
+                        (0:(expectedUnitIndexCount - 1)).'), ...
+                        "VSX stack unit indices must be a zero-based permutation of all receive-event/data-frame units!");
+                    stackParameters.unit_indices_offset = int32(offset);
+                    offset = increment_offset(offset, 4*numel(bp.unit_indices), offset_alignment);
+                    bytes = set_bytes(bytes, typecast(bp.unit_indices(:), "uint8"), ...
+                        uint64(stackParameters.unit_indices_offset));
+                end
+                layoutParameters = stackParameters.toBytes();
+            end
+            header.data_layout_offset = offset;
+            bytes = set_bytes(bytes, layoutParameters, header.data_layout_offset);
+            offset = increment_offset(offset, numel(layoutParameters), offset_alignment);
+
             if ~isempty(bp.data)
-                assert(numel(bp.data) == prod(max(bp.raw_data_dimension, 1)));
+                uncompressedData = ornot.DataToRaw(bp.data, ZBP.DataCompressionKind.None);
+                dataSizeParameters = bp;
+                dataSizeParameters.sample_count = sample_count;
+                dataSizeParameters.data_frame_count = bp.data_frame_count;
+                dataSizeParameters.ensemble_count = ensemble_count;
+                expectedDataSize = ornot.rawDataByteCount(dataSizeParameters);
+                assert(numel(uncompressedData) == expectedDataSize, ...
+                    'ornot:BeamformParameters:InvalidDataSize', ...
+                    'The data array size does not match the physical data-layout parameters.');
                 d = ornot.DataToRaw(bp.data, bp.raw_data_compression_kind);
                 header.raw_data_offset = offset;
                 header.raw_data_size = numel(d);
@@ -343,7 +478,7 @@ classdef BeamformParameters
             switch baseHeader.major
                 case 1
                     bp = ornot.BeamformParameters.FromV1Bytes(bytes);
-                case {2, 3}
+                case {2, 3, 4}
                     bp = ornot.BeamformParameters.FromV2V3Bytes(bytes, baseHeader.major);
             end
 
@@ -360,7 +495,6 @@ classdef BeamformParameters
             bpV1 = ZBP.HeaderV1.fromBytes(bytes);
 
             bp = ornot.BeamformParameters;
-            bp.raw_data_dimension = bpV1.raw_data_dimension;
             bp.raw_data_kind = ZBP.DataKind.Int16;
             bp.decode_mode = bpV1.decode_mode;
             bp.sampling_mode = ZBP.SamplingMode.Standard;
@@ -368,8 +502,23 @@ classdef BeamformParameters
             bp.demodulation_frequencies = bpV1.demodulation_frequency;
             bp.speed_of_sound = bpV1.speed_of_sound;
             bp.sample_count = bpV1.sample_count;
-            bp.channel_count = bpV1.channel_count;
             bp.receive_event_count = bpV1.receive_event_count;
+            bp.channel_count = bpV1.raw_data_dimension(2);
+            bp.data_frame_count = bpV1.raw_data_dimension(3);
+            bp.ensemble_count = bpV1.raw_data_dimension(4);
+            bp.data_layout_kind = ZBP.DataLayoutKind.VsxStack;
+            bp.acquisition_precedence = uint32([ ...
+                ZBP.LayoutPrecedence.Channel, ...
+                ZBP.LayoutPrecedence.ReceiveEvent, ...
+                ZBP.LayoutPrecedence.DataFrame, ...
+                ZBP.LayoutPrecedence.Ensemble]);
+            vsxStackParameters = ZBP.VsxStackDataLayoutParameters;
+            vsxStackParameters.precedence = bp.acquisition_precedence([2, 3, 4]);
+            vsxStackParameters.stack_size = raw_data_dimension(1) ...
+                * ornot.dataKindByteCount(bp.raw_data_kind);
+            vsxStackParameters.stack_channel_count = bpV1.raw_data_dimension(2);
+            vsxStackParameters.units_per_stack = bpV1.receive_event_count;
+            bp.vsx_stack_data_layout_parameters = vsxStackParameters;
             bp.transducer_transform_matrices = bpV1.transducer_transform_matrix;
             bp.transducer_element_pitch = bpV1.transducer_element_pitch;
             bp.time_delays = bpV1.time_offset;
@@ -427,31 +576,120 @@ classdef BeamformParameters
                 bp(1,1) ornot.BeamformParameters
             end
 
-            if major == 3
+            if major == 4
+                header = ZBP.HeaderV4.fromBytes(bytes);
+            elseif major == 3
                 header = ZBP.HeaderV3.fromBytes(bytes);
             elseif major == 2
                 header = ZBP.HeaderV2.fromBytes(bytes);
             end
 
             bp = ornot.BeamformParameters;
-            bp.raw_data_dimension = header.raw_data_dimension;
             bp.raw_data_kind = header.raw_data_kind;
             bp.raw_data_compression_kind = header.raw_data_compression_kind;
             bp.decode_mode = header.decode_mode;
             bp.sampling_mode = header.sampling_mode;
             bp.sampling_frequency = header.sampling_frequency;
             bp.speed_of_sound = header.speed_of_sound;
-            bp.sample_count = header.sample_count;
-            bp.channel_count = header.channel_count;
-            bp.receive_event_count = header.receive_event_count;
             bp.transducer_element_pitch = header.transducer_element_pitch;
             bp.group_acquisition_time = header.group_acquisition_time;
             bp.ensemble_repetition_interval = header.ensemble_repetition_interval;
             bp.acquisition_kind = header.acquisition_mode;
             bp.contrast_mode = header.contrast_mode;
 
-            data_frame_count = header.raw_data_dimension(3);
-            if major == 3
+            if major == 4
+                bp.data_layout_kind = ZBP.DataLayoutKind(int32(header.data_layout_kind));
+                bp.element_count = header.element_count;
+                bp.acquisition_precedence = header.acquisition_precedence;
+                bp.sample_count = header.sample_count;
+                bp.receive_event_count = header.receive_event_count;
+                bp.channel_count = header.channel_count;
+                bp.data_frame_count = header.data_frame_count;
+                bp.ensemble_count = header.ensemble_count;
+                switch bp.data_layout_kind
+                    case ZBP.DataLayoutKind.Block
+                        parameterByteCount = 24;
+                    case ZBP.DataLayoutKind.VsxStack
+                        parameterByteCount = 36;
+                    otherwise
+                        error('ornot:BeamformParameters:UnsupportedDataLayout', ...
+                            'Unsupported data layout kind: %d.', int32(header.data_layout_kind));
+                end
+                assert(header.data_layout_offset >= 0 ...
+                    && double(header.data_layout_offset) + parameterByteCount <= numel(bytes), ...
+                    'ornot:BeamformParameters:InvalidDataLayoutOffset', ...
+                    'The Version 4 layout parameters are missing or out of bounds.');
+                layoutBytes = bytes(double(header.data_layout_offset) + (1:parameterByteCount));
+                switch bp.data_layout_kind
+                    case ZBP.DataLayoutKind.Block
+                        bp.block_data_layout_parameters = ...
+                            ZBP.BlockDataLayoutParameters.fromBytes(layoutBytes);
+                    case ZBP.DataLayoutKind.VsxStack
+                        bp.vsx_stack_data_layout_parameters = ...
+                            ZBP.VsxStackDataLayoutParameters.fromBytes(layoutBytes);
+                end
+                channel_mapping_offset = int32(-1);
+            else
+                bp.sample_count = header.sample_count;
+                bp.receive_event_count = header.receive_event_count;
+                bp.channel_count = header.channel_count;
+                channel_mapping_offset = int32(-1);
+                if major == 3
+                    bp.data_frame_count = header.raw_data_dimension(3);
+                    bp.ensemble_count = header.raw_data_dimension(4);
+                    channel_mapping_offset = header.channel_mapping_offset;
+                else
+                    bp.data_frame_count = header.raw_data_dimension(3);
+                    bp.ensemble_count = header.raw_data_dimension(4);
+                    if major == 2
+                        channel_mapping_offset = header.channel_mapping_offset;
+                    end
+                end
+                bp.data_layout_kind = ZBP.DataLayoutKind.VsxStack;
+                bp.acquisition_precedence = uint32([ ...
+                    ZBP.LayoutPrecedence.ReceiveEvent, ...
+                    ZBP.LayoutPrecedence.Channel, ...
+                    ZBP.LayoutPrecedence.DataFrame, ...
+                    ZBP.LayoutPrecedence.Ensemble]);
+
+                if major == 3 && header.raw_data_layout_offset >= 0
+                    layoutOffset = double(header.raw_data_layout_offset);
+                    assert(layoutOffset + 120 <= numel(bytes), ...
+                        'ornot:BeamformParameters:InvalidLegacyLayoutOffset', ...
+                        'The Version 3 layout is missing or out of bounds.');
+                    bp.raw_data_kind = ZBP.DataKind(typecast(bytes(layoutOffset + (1:4)), 'uint32'));
+                    bp.sample_count = typecast(bytes(layoutOffset + (5:8)), 'uint32');
+                    bp.receive_event_count = typecast(bytes(layoutOffset + (9:12)), 'uint32');
+                    bp.channel_count = typecast(bytes(layoutOffset + (13:16)), 'uint32');
+                    bp.data_frame_count = typecast(bytes(layoutOffset + (17:20)), 'uint32');
+                    bp.ensemble_count = typecast(bytes(layoutOffset + (21:24)), 'uint32');
+                    bp.data_layout_kind = ZBP.DataLayoutKind(int32(typecast( ...
+                        bytes(layoutOffset + (29:32)), 'uint32')));
+                    bp.acquisition_precedence = typecast(bytes(layoutOffset + (33:48)), 'uint32');
+                    channel_mapping_offset = typecast(bytes(layoutOffset + (49:52)), 'int32');
+                    layoutBytes = bytes(layoutOffset + (53:88));
+                    switch bp.data_layout_kind
+                        case ZBP.DataLayoutKind.Block
+                            bp.block_data_layout_parameters = ...
+                                ZBP.BlockDataLayoutParameters.fromBytes(layoutBytes(1:24));
+                        case ZBP.DataLayoutKind.VsxStack
+                            bp.vsx_stack_data_layout_parameters = ...
+                                ZBP.VsxStackDataLayoutParameters.fromBytes(layoutBytes);
+                    end
+                else
+                    vsxStackParameters = ZBP.VsxStackDataLayoutParameters;
+                    vsxStackParameters.precedence = bp.acquisition_precedence([1, 3, 4]);
+                    vsxStackParameters.stack_size = uint32(double(bp.sample_count) ...
+                        * double(bp.receive_event_count) ...
+                        * ornot.dataKindByteCount(ZBP.DataKind(header.raw_data_kind)));
+                    vsxStackParameters.stack_channel_count = header.raw_data_dimension(2);
+                    vsxStackParameters.units_per_stack = bp.receive_event_count;
+                    bp.vsx_stack_data_layout_parameters = vsxStackParameters;
+                end
+            end
+
+            data_frame_count = bp.data_frame_count;
+            if major == 3 || major == 4
                 bp.time_delays = typecast(bytes(uint32(header.time_delays_offset) + (1:(4*data_frame_count))), 'single');
                 bp.demodulation_frequencies = typecast(bytes(uint32(header.demodulation_frequencies_offset) + (1:(4*data_frame_count))), 'single');
                 bp.transducer_tile_count = header.transducer_tile_count;
@@ -500,14 +738,35 @@ classdef BeamformParameters
                 assert(false, "Loading Contrast Parameters not currently supported")
             end
 
-            if header.channel_mapping_offset >= 0
-                channel_count = header.channel_count;
-                bp.channel_mapping = typecast(bytes(uint32(header.channel_mapping_offset) + (1:(2*channel_count))), 'uint16');
+            if channel_mapping_offset >= 0
+                channel_count = bp.channel_count;
+                bp.channel_mapping = typecast(bytes(uint32(channel_mapping_offset) + (1:(2*channel_count))), 'uint16');
+            end
+            if bp.data_layout_kind == ZBP.DataLayoutKind.VsxStack
+                stackParameters = bp.vsx_stack_data_layout_parameters;
+                if stackParameters.row_channel_mapping_offset > 0
+                    bp.row_channel_mapping = typecast(bytes( ...
+                        double(stackParameters.row_channel_mapping_offset) ...
+                        + (1:(2*stackParameters.stack_channel_count))), 'uint16');
+                    bp.row_channel_mapping = bp.row_channel_mapping + uint16(1);
+                end
+                if stackParameters.column_channel_mapping_offset > 0
+                    bp.column_channel_mapping = typecast(bytes( ...
+                        double(stackParameters.column_channel_mapping_offset) ...
+                        + (1:(2*stackParameters.stack_channel_count))), 'uint16');
+                    bp.column_channel_mapping = bp.column_channel_mapping + uint16(1);
+                end
+                if stackParameters.unit_indices_offset > 0
+                    unitIndexCount = double(bp.receive_event_count) ...
+                        * double(bp.data_frame_count);
+                    bp.unit_indices = typecast(bytes( ...
+                        double(stackParameters.unit_indices_offset) + (1:(4*unitIndexCount))), 'uint32');
+                end
             end
 
-            data_frame_count = header.raw_data_dimension(3);
-            receive_count = header.receive_event_count;
-            sparse_element_count = header.receive_event_count - 1;
+            data_frame_count = bp.data_frame_count;
+            receive_count = bp.receive_event_count;
+            sparse_element_count = bp.receive_event_count - 1;
             if header.acquisition_parameters_offset >= 0
                 switch header.acquisition_mode
                     case ZBP.AcquisitionKind.FORCES
@@ -613,9 +872,12 @@ classdef BeamformParameters
                 end
             end
 
+            bp.acquisition_channel_order = ...
+                ornot.BeamformParameters.normalizeVsxStackChannelOrder(bp);
+
             if header.raw_data_offset >= 0
                 byteCount = 0;
-                if major == 3
+                if major == 3 || major == 4
                     byteCount = header.raw_data_size;
                 elseif major == 2
                     switch header.raw_data_compression_kind
@@ -637,7 +899,7 @@ classdef BeamformParameters
             % NOTE(DD): V2.1 data files have a bug where the emission peak excitation time is not added to the time offset
             if header.major == 2 && header.minor == 1
                 if ~isempty(bp.emission_descriptors) && ~isempty(bp.emission_parameters)
-                    for i = 1:bp.raw_data_dimension(3)
+                    for i = 1:bp.data_frame_count
                         emissionDescriptor = bp.emission_descriptors(i);
                         emissionParameters = bp.emission_parameters{emissionDescriptor};
                         switch class(emissionParameters)
@@ -655,6 +917,99 @@ classdef BeamformParameters
     end
 
     methods (Static, Access=private)
+        function channelOrder = normalizeVsxStackChannelOrder(bp)
+            arguments (Input)
+                bp(1,1) ornot.BeamformParameters
+            end
+            arguments (Output)
+                channelOrder uint16
+            end
+
+            channelOrder = uint16.empty(0, 0, 0);
+            if bp.data_layout_kind ~= ZBP.DataLayoutKind.VsxStack
+                return
+            end
+            channelCount = double(bp.channel_count);
+            receiveCount = double(bp.receive_event_count);
+            dataFrameCount = double(bp.data_frame_count);
+            if ~isempty(bp.channel_mapping)
+                assert(numel(bp.channel_mapping) == channelCount ...
+                    && numel(unique(bp.channel_mapping)) == channelCount, ...
+                    'ornot:BeamformParameters:InvalidChannelMapping', ...
+                    'The legacy channel mapping must contain one unique entry per data channel.');
+                [~, sourceChannelOrder] = sort(bp.channel_mapping(:), 'ascend');
+                channelOrder = repmat(uint16(sourceChannelOrder - 1), ...
+                    1, receiveCount, dataFrameCount);
+                return
+            end
+            if isempty(bp.row_channel_mapping) && isempty(bp.column_channel_mapping)
+                return
+            end
+            if ~isempty(bp.row_channel_mapping) && ~isempty(bp.column_channel_mapping) ...
+                    && isequal(bp.row_channel_mapping, bp.column_channel_mapping)
+                mapping = bp.row_channel_mapping(:);
+                assert(numel(mapping) == channelCount ...
+                    && numel(unique(mapping)) == channelCount, ...
+                    'ornot:BeamformParameters:InvalidChannelMapping', ...
+                    'VSX channel mappings must contain one unique entry per data channel.');
+                [~, sourceChannelOrder] = sort(mapping, 'ascend');
+                channelOrder = repmat(uint16(sourceChannelOrder - 1), ...
+                    1, receiveCount, dataFrameCount);
+                return
+            end
+            if ~isempty(bp.transmit_receive_orientations)
+                rawReceiveOrientations = bp.transmit_receive_orientations;
+            elseif ~isempty(bp.transmit_foci)
+                rawReceiveOrientations = reshape( ...
+                    [bp.transmit_foci.transmit_receive_orientation], receiveCount, dataFrameCount);
+            elseif ~isempty(bp.acquisition_parameters) ...
+                    && isprop(bp.acquisition_parameters(1), 'transmit_receive_orientation')
+                rawReceiveOrientations = repmat( ...
+                    bp.acquisition_parameters(1).transmit_receive_orientation, ...
+                    receiveCount, dataFrameCount);
+            else
+                assert(~isempty(bp.acquisition_parameters) ...
+                    && isprop(bp.acquisition_parameters(1), 'transmit_focus'), ...
+                    'ornot:BeamformParameters:MissingReceiveOrientations', ...
+                    'VSX row/column channel maps require receive orientations to normalize channel order.');
+                rawReceiveOrientations = zeros(receiveCount, dataFrameCount, 'uint32');
+                for dataFrameIndex = 1:dataFrameCount
+                    focus = bp.acquisition_parameters(dataFrameIndex).transmit_focus;
+                    rawReceiveOrientations(:, dataFrameIndex) = ...
+                        focus.transmit_receive_orientation;
+                end
+            end
+            assert(isequal(size(rawReceiveOrientations), [receiveCount, dataFrameCount]), ...
+                'ornot:BeamformParameters:InvalidReceiveOrientations', ...
+                'Receive orientations must contain one value per receive-event/data-frame pair.');
+
+            receiveOrientations = ZBP.RCAOrientation(bitand(uint32(rawReceiveOrientations), uint32(15)));
+            channelOrder = repmat(uint16((0:(channelCount - 1)).'), 1, receiveCount, dataFrameCount);
+            for dataFrameIndex = 1:dataFrameCount
+                for receiveIndex = 1:receiveCount
+                    switch receiveOrientations(receiveIndex, dataFrameIndex)
+                        case ZBP.RCAOrientation.Rows
+                            mapping = bp.row_channel_mapping;
+                        case ZBP.RCAOrientation.Columns
+                            mapping = bp.column_channel_mapping;
+                        otherwise
+                            continue
+                    end
+                    if isempty(mapping)
+                        continue
+                    end
+                    assert(numel(mapping) == channelCount, ...
+                        'ornot:BeamformParameters:InvalidChannelMapping', ...
+                        'VSX channel mappings must contain one entry per data channel.');
+                    assert(numel(unique(mapping)) == numel(mapping), ...
+                        'ornot:BeamformParameters:InvalidChannelMapping', ...
+                        'VSX channel mappings must contain unique channel numbers.');
+                    [~, sourceChannelOrder] = sort(mapping(:), 'ascend');
+                    channelOrder(:, receiveIndex, dataFrameIndex) = uint16(sourceChannelOrder - 1);
+                end
+            end
+        end
+
         function bytes = set_bytes(bytes, value, offset, size)
             arguments (Input)
                 bytes (1, :) uint8
@@ -684,5 +1039,6 @@ classdef BeamformParameters
             offset = offset + increase;
             offset = bitand((offset + alignment - 1), bitcmp(alignment - 1));
         end
+
     end
 end

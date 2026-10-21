@@ -15,7 +15,9 @@ bsp.sampling_frequency     = parameters.sampling_frequency;
 bsp.demodulation_frequency = parameters.demodulation_frequencies(section_number);
 bsp.speed_of_sound         = parameters.speed_of_sound;
 bsp.xdc_element_pitch      = parameters.transducer_element_pitch;
-bsp.raw_data_dimensions    = parameters.raw_data_dimension(1:2);
+bsp.raw_data_dimensions    = [ ...
+    double(parameters.sample_count) * double(parameters.receive_event_count), ...
+    parameters.channel_count];
 bsp.data_kind              = parameters.raw_data_kind;
 bsp.contrast_mode          = parameters.contrast_mode;
 bsp.sample_count           = parameters.sample_count;
@@ -54,7 +56,7 @@ end
 
 if ~isempty(parameters.sparse_elements)
     sparse = reshape(parameters.sparse_elements, ...
-        parameters.receive_event_count - 1, parameters.raw_data_dimension(3));
+        parameters.receive_event_count - 1, parameters.data_frame_count);
     bsp.sparse_elements(1:size(sparse, 1)) ...
         = sparse(:, section_number);
 end

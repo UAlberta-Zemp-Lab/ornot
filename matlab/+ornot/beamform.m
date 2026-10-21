@@ -8,12 +8,56 @@ arguments (Output)
 end
 
 % Allocate Section Count x Ensemble Count x Region Count images
-images_size = [bp.raw_data_dimension(3), bp.raw_data_dimension(4), numel(settings.regions)];
+images_size = [bp.data_frame_count, bp.ensemble_count, numel(settings.regions)];
 if nargout ~= 0
     images = cell(images_size);
 else
     images = {};
 end
+
+targetLayout = ornot.BeamformParameters();
+targetLayout.raw_data_kind = bp.raw_data_kind;
+targetLayout.sample_count = bp.sample_count;
+targetLayout.receive_event_count = bp.receive_event_count;
+targetLayout.channel_count = bp.channel_count;
+targetLayout.data_frame_count = bp.data_frame_count;
+targetLayout.ensemble_count = bp.ensemble_count;
+targetLayout.data_layout_kind = ZBP.DataLayoutKind.VsxStack;
+targetLayout.acquisition_precedence = uint32([ ...
+    ZBP.LayoutPrecedence.ReceiveEvent, ...
+    ZBP.LayoutPrecedence.Channel, ...
+    ZBP.LayoutPrecedence.DataFrame, ...
+    ZBP.LayoutPrecedence.Ensemble]);
+beamformerParameters = ZBP.VsxStackDataLayoutParameters;
+beamformerParameters.precedence = targetLayout.acquisition_precedence([1, 3, 4]);
+beamformerParameters.stack_size = uint32(double(bp.sample_count) ...
+    * double(bp.receive_event_count) ...
+    * ornot.dataKindByteCount(ZBP.DataKind(bp.raw_data_kind)));
+beamformerParameters.stack_channel_count = bp.channel_count;
+beamformerParameters.units_per_stack = bp.receive_event_count;
+targetLayout.vsx_stack_data_layout_parameters = beamformerParameters;
+
+data = bp.data;
+if ~isreal(data)
+    dataClass = class(real(data));
+    dataBytes = typecast([real(data(:)); imag(data(:))], 'uint8');
+else
+    dataClass = class(data);
+    dataBytes = typecast(data(:), 'uint8');
+end
+dataBytes = ornot.convertDataLayout(dataBytes, bp, targetLayout, ...
+    UnitIndices=bp.unit_indices, ...
+    ChannelOrder=bp.acquisition_channel_order);
+if ~isreal(data)
+    data = typecast(dataBytes, dataClass);
+    half = numel(data) / 2;
+    data = complex(data(1:half), data(half + 1:end));
+else
+    data = typecast(dataBytes, dataClass);
+end
+data = reshape(data, [ ...
+    double(bp.sample_count) * double(bp.receive_event_count), ...
+    bp.channel_count, bp.data_frame_count, bp.ensemble_count]);
 
 for i = 1:prod(images_size)
     [section_index, ensemble_index, region_index] = ind2sub(images_size, i);
@@ -22,7 +66,6 @@ for i = 1:prod(images_size)
     bsp = ornot.updateOglBeamformerSimpleParametersFromSettings(bsp, settings);
     bsp = updateBspFilter(bsp, bp, section_index);
 
-    data = bp.data;
     switch class(data)
         case 'int16'
             if isreal(data)
