@@ -22,7 +22,7 @@ resolution     = [256, 256, 256];
 
 bp_filename = fullfile(data_folder, sprintf("%s.bp", filename));
 fileId = fopen(bp_filename, 'r');
-bytes = fread(fileId);
+bytes = fread(fileId, '*uint8');
 fclose(fileId);
 
 bp = ornot.BeamformParameters.FromBytes(bytes);
