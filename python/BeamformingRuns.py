@@ -114,6 +114,14 @@ class BeamformingRuns:
 				filter.barker.polarity      = emission.chip_parameters.polarity
 				filter.barker.unipolar      = True
 
+			if parameters.emission_kinds[0] == ZBP.EmissionKind_BipolarBarker:
+				emission = parameters.emission_parameters[0]
+				filter.kind = ogl.BeamformerFilterKind_MatchedBarker
+				filter.barker.code_length   = emission.code_length
+				filter.barker.chip_duration = emission.chip_parameters.cycles / emission.chip_parameters.frequency
+				filter.barker.polarity      = 1
+				filter.barker.unipolar      = False
+
 			filter.sampling_frequency = bp.sampling_frequency / 2
 			self.__must(ogl.beamformer_create_filter(filter, filter_slot, 0))
 

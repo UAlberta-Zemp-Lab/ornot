@@ -58,6 +58,7 @@
 	Chirp
 	UnipolarBurst
 	UnipolarBarker
+	BipolarBarker
 }
 
 @Table([name size elements]) DataKindTable
@@ -218,6 +219,12 @@
 @Struct EmissionUnipolarBarkerParameters
 {
 	[chip_parameters EmissionUnipolarBurstParameters]
+	[code_length U32]
+}
+
+@Struct EmissionBipolarBarkerParameters
+{
+	[chip_parameters EmissionSineParameters]
 	[code_length U32]
 }
 
