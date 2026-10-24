@@ -318,7 +318,7 @@ classdef BeamformParameters
                 bp(1,1) ornot.BeamformParameters
             end
             fileId = fopen(filename, 'r');
-            bytes = fread(fileId);
+            bytes = fread(fileId, '*uint8');
             fclose(fileId);
             bp = ornot.BeamformParameters.FromBytes(bytes);
         end
