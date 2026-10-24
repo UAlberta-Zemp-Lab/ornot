@@ -178,17 +178,20 @@ classdef BeamformParameters
                     assert(all(size(bp.transmit_receive_orientations) == [receive_count, data_frame_count]));
 
                     for i = 1:data_frame_count
+                        focalDepths = bp.focal_depths(:, i);
                         bp.acquisition_parameters(i).focal_depths_offset = offset;
-                        offset = increment_offset(offset, 4*numel(bp.focal_depths), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.focal_depths, "uint8"), bp.acquisition_parameters(i).focal_depths_offset);
+                        offset = increment_offset(offset, 4*numel(focalDepths), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(focalDepths, "uint8"), bp.acquisition_parameters(i).focal_depths_offset);
 
+                        originOffsets = bp.origin_offsets(:, i);
                         bp.acquisition_parameters(i).origin_offsets_offset = offset;
-                        offset = increment_offset(offset, 4*numel(bp.origin_offsets), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.origin_offsets, "uint8"), bp.acquisition_parameters(i).origin_offsets_offset);
+                        offset = increment_offset(offset, 4*numel(originOffsets), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(originOffsets, "uint8"), bp.acquisition_parameters(i).origin_offsets_offset);
 
+                        orientations = bp.transmit_receive_orientations(:, i);
                         bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
-                        offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                        offset = increment_offset(offset, numel(orientations), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
                     end
                 case ZBP.AcquisitionKind.RCA_TPW
                     assert(isa(bp.acquisition_parameters, "ZBP.TPWParameters"));
@@ -197,13 +200,15 @@ classdef BeamformParameters
                     assert(all(size(bp.transmit_receive_orientations) == [receive_count, data_frame_count]));
 
                     for i = 1:data_frame_count
+                        tiltingAngles = bp.tilting_angles(:, i);
                         bp.acquisition_parameters(i).tilting_angles_offset = offset;
-                        offset = increment_offset(offset, 4*numel(bp.tilting_angles), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.tilting_angles, "uint8"), bp.acquisition_parameters(i).tilting_angles_offset);
+                        offset = increment_offset(offset, 4*numel(tiltingAngles), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(tiltingAngles, "uint8"), bp.acquisition_parameters(i).tilting_angles_offset);
 
+                        orientations = bp.transmit_receive_orientations(:, i);
                         bp.acquisition_parameters(i).transmit_receive_orientations_offset = offset;
-                        offset = increment_offset(offset, numel(bp.transmit_receive_orientations), offset_alignment);
-                        bytes = set_bytes(bytes, typecast(bp.transmit_receive_orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
+                        offset = increment_offset(offset, numel(orientations), offset_alignment);
+                        bytes = set_bytes(bytes, typecast(orientations, "uint8"), bp.acquisition_parameters(i).transmit_receive_orientations_offset);
                     end
                 case {ZBP.AcquisitionKind.UFORCES, ZBP.AcquisitionKind.UHERCULES}
                     assert(all(size(bp.sparse_elements) == [receive_count - 1, data_frame_count]));
@@ -564,9 +569,6 @@ classdef BeamformParameters
                             bp.origin_offsets(:, i) = typecast(bytes(uint32(originOffsetsOffset) + (1:(4*receive_count))), "single");
                             bp.transmit_receive_orientations(:, i) = typecast(bytes(uint32(transmitReceiveOrientationsOffset) + (1:receive_count)), "uint8");
                         end
-                        bp.focal_depths = typecast(bytes(uint32(bp.acquisition_parameters.focal_depths_offset) + (1:(4*receive_count))), "single");
-                        bp.origin_offsets = typecast(bytes(uint32(bp.acquisition_parameters.origin_offsets_offset) + (1:(4*receive_count))), "single");
-                        bp.transmit_receive_orientations = typecast(bytes(uint32(bp.acquisition_parameters.transmit_receive_orientations_offset) + (1:receive_count)), "uint8");
                     case ZBP.AcquisitionKind.RCA_TPW
                         offset = uint32(header.acquisition_parameters_offset);
                         bp.acquisition_parameters = createArray([data_frame_count, 1], "ZBP.TPWParameters");
