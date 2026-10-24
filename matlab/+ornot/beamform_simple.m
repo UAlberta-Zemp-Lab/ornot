@@ -1,7 +1,18 @@
 ornot.LoadLibraries();
 
 data_folder = "data\260305_MN32-4_Example_Data\";
-filename = "260305_MN32-4_Example_Filename_FORCES-Tx-Row";
+
+[selectedFiles, data_folder] = uigetfile( ...
+    fullfile(data_folder, "*.bp"), ...
+    "Select converted experimental datasets", ...
+    "MultiSelect", "off");
+if isequal(selectedFiles, 0)
+    return
+end
+data_folder = string(data_folder);
+
+[~, filename, ~] = fileparts(selectedFiles);
+% filename = "260305_MN32-4_Example_Filename_FORCES-Tx-Row";
 % filename = "260305_MN32-4_Example_Filename_FORCES-Tx-Column";
 % filename = "260305_MN32-4_Example_Filename_uFORCES-16-Tx-Row-Chirp-2e-05";
 % filename = "260305_MN32-4_Example_Filename_VLS-128-1deg-Tx-Row-Chirp-2e-05";
@@ -22,7 +33,7 @@ lateral_extent = 50e-3 * [-1, 1];
 axial_extent   = 1e-3  * [20, 100];
 resolution     = [512, 512];
 
-bp_filename = fullfile(data_folder, sprintf("%s.bp", filename));
+bp_filename = fullfile(data_folder, sprintf("%s.zbp", filename));
 bp = ornot.BeamformParameters.FromFile(bp_filename);
 
 frame_number = 0;
