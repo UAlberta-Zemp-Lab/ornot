@@ -3,7 +3,9 @@ arguments (Input)
     samplingFrequency(1,1) single {mustBePositive}
     demodulationFrequency(1,1) single {mustBeNonnegative}
     emissionParameters(1,1) {mustBeA(emissionParameters, ...
-        ["ZBP.EmissionSineParameters", "ZBP.EmissionChirpParameters", "ZBP.EmissionUnipolarBurstParameters", "ZBP.EmissionUnipolarBarkerParameters"])}
+        ["ZBP.EmissionSineParameters", "ZBP.EmissionChirpParameters", ...
+        "ZBP.EmissionUnipolarBurstParameters", "ZBP.EmissionUnipolarBarkerParameters", ...
+        "ZBP.EmissionBipolarBarkerParameters"])}
 end
 arguments (Output)
     filter(1,1) OGLBeamformerFilter
@@ -43,6 +45,15 @@ switch class(emissionParameters)
         barker.chip_duration   = emissionParameters.burst_parameters.cycles / emissionParameters.burst_parameters.frequency;
         barker.polarity        = emissionParameters.burst_parameters.polarity;
         barker.unipolar        = true;
+
+        filter.kind = OGLBeamformerFilterKind.MatchedBarker;
+        filter.data = barker.toBytes();
+    case "ZBP.EmissionBipolarBarkerParameters"
+        barker                 = OGLBeamformerFilterParameters.MatchedBarker;
+        barker.code_length     = uint32(emissionParameters.code_length);
+        barker.chip_duration   = emissionParameters.chip_parameters.cycles / emissionParameters.chip_parameters.frequency;
+        barker.polarity        = single(1);
+        barker.unipolar        = false;
 
         filter.kind = OGLBeamformerFilterKind.MatchedBarker;
         filter.data = barker.toBytes();

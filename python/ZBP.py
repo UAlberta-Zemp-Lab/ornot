@@ -47,6 +47,7 @@ class ZBP:
 	EmissionKind_Chirp          = 1
 	EmissionKind_UnipolarBurst  = 2
 	EmissionKind_UnipolarBarker = 3
+	EmissionKind_BipolarBarker  = 4
 
 	# DataKind
 	DataKind_Int16          = 0
@@ -521,6 +522,28 @@ class ZBP:
 			result = bytearray(ZBP.EmissionUnipolarBarkerParameters.byte_size())
 			struct.pack_into('<16B', result, 0,  *self.burst_parameters.to_bytes())
 			struct.pack_into('<1f',  result, 16,  self.code_length)
+			return result
+
+	class EmissionBipolarBarkerParameters:
+		def __init__(self, chip_parameters=None, code_length=0):
+			self.chip_parameters = chip_parameters if isinstance(chip_parameters, ZBP.EmissionSineParameters) else ZBP.EmissionSineParameters()
+			self.code_length     = code_length
+
+		@classmethod
+		def from_bytes(cls, bytes):
+			result = cls()
+			result.chip_parameters  = ZBP.EmissionSineParameters.from_bytes( bytes[0:])
+			result.code_length      = struct.unpack_from('<1f',              bytes, 8)[0]
+			return result
+
+		@staticmethod
+		def byte_size():
+			return 12
+
+		def to_bytes(self):
+			result = bytearray(ZBP.EmissionBipolarBarkerParameters.byte_size())
+			struct.pack_into('<8B', result, 0, *self.chip_parameters.to_bytes())
+			struct.pack_into('<1f', result, 8,  self.code_length)
 			return result
 
 	class RCATransmitFocus:

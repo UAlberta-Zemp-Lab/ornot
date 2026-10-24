@@ -8,5 +8,6 @@ classdef EmissionKind < int32
 		Chirp          (1)
 		UnipolarBurst  (2)
 		UnipolarBarker (3)
+		BipolarBarker  (4)
 	end
 end
