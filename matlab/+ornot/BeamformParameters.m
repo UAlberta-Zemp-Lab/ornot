@@ -622,7 +622,13 @@ classdef BeamformParameters
                             byteCount = numel(bytes) - header.raw_data_offset;
                     end
                 end
-                bp = ornot.DataFromRaw(bp, bytes(uint64(header.raw_data_offset) + (1:byteCount)));
+
+                % NOTE(DD): These ranges have to be double not uint64, otherwise MATLAB
+                % in its infinite wisdom will instantiate an array that is 8 times
+                % larger than the data itself :)
+                rawDataStart = double(header.raw_data_offset) + 1;
+                rawDataEnd = double(rawDataStart + byteCount - 1);
+                bp = ornot.DataFromRaw(bp, bytes(rawDataStart:rawDataEnd));
             end
 
             % NOTE(DD): V2.1 data files have a bug where the emission peak excitation time is not added to the time offset
