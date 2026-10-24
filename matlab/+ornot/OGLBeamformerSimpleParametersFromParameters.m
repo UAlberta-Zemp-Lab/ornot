@@ -63,17 +63,25 @@ switch bsp.acquisition_kind
     case ZBP.AcquisitionKind.RCA_VLS
         bsp.single_focus       = 0;
         bsp.single_orientation = 0;
-        depths = sign(parameters.focal_depths(:)').*sqrt(parameters.focal_depths(:)'.^2 + parameters.origin_offsets(:)'.^2);
-        angles = atan2d(parameters.origin_offsets(:)', -parameters.focal_depths(:)');
+        focalDepths = parameters.focal_depths(:, section_number);
+        originOffsets = parameters.origin_offsets(:, section_number);
+        depths = sign(focalDepths(:)').*sqrt(focalDepths(:)'.^2 + originOffsets(:)'.^2);
+        angles = atan2d(originOffsets(:)', -focalDepths(:)');
         bsp.focal_depths(1:bsp.acquisition_count)    = depths(1:bsp.acquisition_count);
         bsp.steering_angles(1:bsp.acquisition_count) = angles(1:bsp.acquisition_count);
-        bsp.transmit_receive_orientations(1:bsp.acquisition_count) = parameters.transmit_receive_orientations(1:bsp.acquisition_count);
+        orientations = parameters.transmit_receive_orientations(:, section_number);
+        bsp.transmit_receive_orientations(1:bsp.acquisition_count) = ...
+            orientations(1:bsp.acquisition_count);
     case ZBP.AcquisitionKind.RCA_TPW
         bsp.single_focus       = 0;
         bsp.single_orientation = 0;
         bsp.focal_depths(:)    = inf;
-        bsp.steering_angles(1:bsp.acquisition_count) = parameters.tilting_angles(1:bsp.acquisition_count);
-        bsp.transmit_receive_orientations(1:bsp.acquisition_count) = parameters.transmit_receive_orientations(1:bsp.acquisition_count);
+        tiltingAngles = parameters.tilting_angles(:, section_number);
+        bsp.steering_angles(1:bsp.acquisition_count) = ...
+            tiltingAngles(1:bsp.acquisition_count);
+        orientations = parameters.transmit_receive_orientations(:, section_number);
+        bsp.transmit_receive_orientations(1:bsp.acquisition_count) = ...
+            orientations(1:bsp.acquisition_count);
     case {ZBP.AcquisitionKind.FORCES, ZBP.AcquisitionKind.UFORCES}
         bsp.single_orientation = 1;
         bsp.transmit_receive_orientation = ...
