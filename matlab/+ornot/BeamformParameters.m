@@ -113,6 +113,8 @@ classdef BeamformParameters
                             emissionDescriptor.emission_kind = int32(ZBP.EmissionKind.UnipolarBurst);
                         case "ZBP.EmissionUnipolarBarkerParameters"
                             emissionDescriptor.emission_kind = int32(ZBP.EmissionKind.UnipolarBarker);
+                        case "ZBP.EmissionBipolarBarkerParameters"
+                            emissionDescriptor.emission_kind = int32(ZBP.EmissionKind.BipolarBarker);
                         otherwise
                             assert(false, "Unsupported Emission");
                     end
@@ -502,6 +504,9 @@ classdef BeamformParameters
                         case ZBP.EmissionKind.UnipolarBarker
                             bp.emission_parameters{i} = ZBP.EmissionUnipolarBarkerParameters.fromBytes(...
                                 bytes(uint32(uniqueParameterOffsets(i)) + (1:ZBP.EmissionUnipolarBarkerParameters.byteSize)));
+                        case ZBP.EmissionKind.BipolarBarker
+                            bp.emission_parameters{i} = ZBP.EmissionBipolarBarkerParameters.fromBytes(...
+                                bytes(uint32(uniqueParameterOffsets(i)) + (1:ZBP.EmissionBipolarBarkerParameters.byteSize)));
                     end
                 end
             end

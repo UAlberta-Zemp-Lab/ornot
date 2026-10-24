@@ -57,6 +57,7 @@ typedef enum {
 	ZBP_EmissionKind_Chirp          = 1,
 	ZBP_EmissionKind_UnipolarBurst  = 2,
 	ZBP_EmissionKind_UnipolarBarker = 3,
+	ZBP_EmissionKind_BipolarBarker  = 4,
 	ZBP_EmissionKind_Count,
 } ZBP_EmissionKind;
 
@@ -209,6 +210,11 @@ typedef struct ZBP_EmissionUnipolarBarkerParameters {
 	ZBP_EmissionUnipolarBurstParameters chip_parameters;
 	uint32_t                            code_length;
 } ZBP_EmissionUnipolarBarkerParameters;
+
+typedef struct ZBP_EmissionBipolarBarkerParameters {
+	ZBP_EmissionSineParameters chip_parameters;
+	uint32_t                   code_length;
+} ZBP_EmissionBipolarBarkerParameters;
 
 typedef struct ZBP_RCATransmitFocus {
 	float    focal_depth;
