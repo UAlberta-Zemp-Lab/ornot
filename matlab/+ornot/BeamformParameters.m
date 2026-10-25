@@ -403,10 +403,11 @@ classdef BeamformParameters
                     acquisition_parameters.transmit_receive_orientation = bpV1.transmit_mode;
                     bp.acquisition_parameters = acquisition_parameters;
                 case {ZBP.AcquisitionKind.RCA_VLS, ZBP.AcquisitionKind.RCA_TPW}
-                    bp.focal_depths = bpV1.focal_depths;
-                    bp.origin_offsets = zeros(size(focal_depths));
-                    bp.tilting_angles = bpV1.steering_angles;
-                    bp.transmit_receive_orientations = repelem(bpV1.transmit_mode, size(focal_depths));
+                    receive_count = bpV1.receive_event_count;
+                    bp.focal_depths = reshape(bpV1.focal_depths(1:receive_count), [], 1);
+                    bp.origin_offsets = zeros(size(bp.focal_depths), 'single');
+                    bp.tilting_angles = reshape(bpV1.steering_angles(1:receive_count), [], 1);
+                    bp.transmit_receive_orientations = repmat(uint8(bpV1.transmit_mode), size(bp.focal_depths));
                 case {ZBP.AcquisitionKind.UHERCULES}
                     acquisition_parameters = ZBP.uHERCULESParameters;
                     acquisition_parameters.transmit_focus.focal_depth = bpV1.focal_depths(1);
