@@ -75,12 +75,6 @@ switch bsp.acquisition_kind
         bsp.steering_angles(1:bsp.acquisition_count) = parameters.tilting_angles(1:bsp.acquisition_count);
         bsp.transmit_receive_orientations(1:bsp.acquisition_count) = parameters.transmit_receive_orientations(1:bsp.acquisition_count);
     case {ZBP.AcquisitionKind.FORCES, ZBP.AcquisitionKind.UFORCES}
-        xdc_transform = reshape(bsp.xdc_transform, 4, 4);
-        [~, receive_orientation] = ornot.unpackTransmitReceiveOrientation(parameters.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation);
-        if receive_orientation == ZBP.RCAOrientation.Rows
-            xdc_transform(1:2,:) = xdc_transform(2:-1:1,:);
-        end
-        bsp.xdc_transform      = xdc_transform(:);
         bsp.single_orientation = 1;
         bsp.transmit_receive_orientation = ...
             parameters.acquisition_parameters(section_number).transmit_focus.transmit_receive_orientation;
