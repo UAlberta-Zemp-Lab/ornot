@@ -5299,15 +5299,16 @@ metagen_load_context(Arena *arena, char *filename)
 						} else {
 							MetaStruct *sub_struct = ctx->struct_infos + ref->table.struct_info_id;
 							if (sub_struct->info.size != (u32)-1) {
-								member_size = sub_struct->info.size * elements;
+								member_size = sub_struct->info.size;
 							} else {
 								size = (u32)-1;
 								break;
 							}
 						}
 					} else {
-						member_size = meta_kind_byte_sizes[s->type_ids[member]] * elements;
+						member_size = meta_kind_byte_sizes[s->type_ids[member]];
 					}
+					member_size *= elements;
 					size = is_union ? Max(size, member_size) : size + member_size;
 				}
 				if (size != (u32)-1)
