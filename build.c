@@ -1955,7 +1955,10 @@ function void
 cmd_pdb(Arena *a, CommandList *cmd, char *name)
 {
 	if (is_w32 && is_clang) {
-		cmd_append(a, cmd, "-fuse-ld=lld", "-g", "-gcodeview", "-Wl,--pdb=");
+		Stream sb = arena_stream(a);
+		stream_append_str8s(&sb, str8("-Wl,/pdb:"), str8_from_c_str(name), str8(".pdb"));
+		char *pdb = (char *)arena_stream_commit_zero(a, &sb).data;
+		cmd_append(a, cmd, "-fuse-ld=lld", "-g", "-gcodeview", pdb);
 	} else if (is_msvc) {
 		Stream sb = arena_stream(a);
 		stream_append_str8s(&sb, str8("-PDB:"), str8_from_c_str(name), str8(".pdb"));
