@@ -1649,7 +1649,7 @@ os_remove_directory(char *name)
 			if (!str8_equal(str8("."), file_name) && !str8_equal(str8(".."), file_name)) {
 				char *full_path = temp_sprintf("%s" OS_PATH_SEPARATOR "%s", name, find_data->file_name);
 				if (find_data->file_attributes & FILE_ATTRIBUTE_DIRECTORY) {
-					char *wow_w32_is_even_worse_than_POSix = strdup(full_path);
+					char *wow_w32_is_even_worse_than_POSix = _strdup(full_path);
 					os_remove_directory(wow_w32_is_even_worse_than_POSix);
 					free(wow_w32_is_even_worse_than_POSix);
 				} else {
@@ -2482,7 +2482,7 @@ meta_parser_token_name(MetaParser *p, MetaParseToken t)
 		META_PARSE_TOKEN_LIST
 		#undef X
 	};
-	if (t >= 0 && t < countof(names))  result = names[t];
+	if (t >= 0 && (u64)t < countof(names))  result = names[t];
 	if (t == MetaParseToken_String)    result = p->u.string;
 	if (t == MetaParseToken_RawString) result = (str8){.data = p->u.string.data - 1, .length = p->u.string.length + 1};
 	return result;
