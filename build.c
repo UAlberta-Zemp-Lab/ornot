@@ -4283,22 +4283,16 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 
 			assert(member_name.length != 0 || type_reference);
 
-			if (ctx->entities.data[type_id].kind == MetaEntityKind_Union && p.union_style != MetaPushStructStyle_MATLAB){
+			if (ctx->entities.data[type_id].kind == MetaEntityKind_Union && p.union_style == MetaPushStructStyle_C){
 				*da_push(m->scratch, &stack) = (struct stack_item){se, member + 1};
 				*da_push(m->scratch, &stack) = (struct stack_item){ctx->entities.data + type_id, 0};
 
 				MetaStruct *ss = ctx->struct_infos + ctx->entities.data[type_id].table.struct_info_id;
-				assert(ss->info.flags & MetaStructFlag_Union && p.layout_style != MetaPushStructStyle_MATLAB);
+				assert(ss->info.flags & MetaStructFlag_Union && p.layout_style == MetaPushStructStyle_C);
 				metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
-				if (p.layout_style == MetaPushStructStyle_C) meta_begin_scope(m, str8("union {"));
-				else if (p.layout_style == MetaPushStructStyle_Odin) {
-					if (member_name.length == 0) {
-						member_name = str8("data");
-					}
-					meta_begin_scope(m, member_name, str8(": struct #raw_union {"));
-				}
-					row = 0;
-					scope++;
+				meta_begin_scope(m, str8("union {"));
+				row = 0;
+				scope++;
 				break;
 			} else if (s->members[member].length == 0) {
 				*da_push(m->scratch, &stack) = (struct stack_item){se, member + 1};
@@ -4322,6 +4316,10 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 				};
 
 				u32 resolved_element_count = meta_struct_member_elements(ctx, s, member);
+
+				if (member_name.length == 0 && p.layout_style == MetaPushStructStyle_Odin) {
+					member_name = str8("_");
+				}
 
 				if (type_reference && p.union_style == MetaPushStructStyle_MATLAB) {
 					MetaEntity *re = ctx->entities.data + type_id;
@@ -4444,12 +4442,10 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 			}
 		}
 
-		if (member == s->info.member_count && s->info.flags & MetaStructFlag_Union && p.layout_style != MetaPushStructStyle_MATLAB) {
+		if (member == s->info.member_count && s->info.flags & MetaStructFlag_Union && p.layout_style == MetaPushStructStyle_C) {
 			metagen_push_table(m, p.prefix, p.suffix, columns, row, 2);
 			while (scope > 0) {
-				// TODO(DD): append the union name at the end of the c scope when it not empty
-				if (p.layout_style == MetaPushStructStyle_C) meta_end_scope(m, str8("};"));
-				else meta_end_scope(m, str8("},"));
+				meta_end_scope(m, str8("};"));
 				scope--;
 			}
 			row = 0;
@@ -4724,19 +4720,21 @@ metagen_emit_odin_code(MetaContext *ctx, Arena *arena)
 	);
 	meta_push_line(m, transmit_receive_orientation);
 
-	////////////////////////
-	// NOTE(DD): structs
+	//////////////////////////////
+	// NOTE(DD): structs & unions
 	{
 		u32 structure = 0;
 		for EachElement(meta_struct_entity_kinds, kind_it) {
-			if (!meta_struct_emit[kind_it]) continue;
 			for (da_count it = 0; it < ctx->entity_kind_counts[meta_struct_entity_kinds[kind_it]]; it++, structure++) {
 				da_count entity = ctx->entity_kind_ids[meta_struct_entity_kinds[kind_it]][it];
 				MetaEntity *e = ctx->entities.data + entity;
 				MetaStruct *s = ctx->struct_infos + e->table.struct_info_id;
 
 				if (structure != 0) meta_push(m, str8("\n"));
-				meta_begin_scope(m, s->info.name, str8(" :: struct {")); {
+
+				str8 structHeading = (s->info.flags & MetaStructFlag_Union) 
+					? str8(" :: struct #raw_union {") : str8(" :: struct {") ;
+				meta_begin_scope(m, s->info.name, structHeading); {
 					meta_push_struct_body(ctx, m, e, (MetaPushStructParameters){
 						.layout_style        = MetaPushStructStyle_Odin,
 						.union_style         = MetaPushStructStyle_Odin,
