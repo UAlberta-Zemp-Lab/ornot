@@ -11,6 +11,8 @@ library_path = '..'
 params_file = 'params.bp'
 data_file   = 'data.zst'
 
+data_frame_index = 0
+
 lateral_extent = [-30e-3, 30e-3]
 axial_extent   = [5e-3,   120e-3]
 output_points  = [512, 1024]
@@ -28,7 +30,7 @@ ogl   = ornot.ogl
 ffi   = ornot.ffi
 
 parameters = ornot.Parameters.from_file(params_file)
-bp         = ornot.beamformer_simple_parameters_from_parameters(parameters)
+bp         = ornot.beamformer_simple_parameters_from_parameters(parameters, data_frame_index)
 
 if len(parameters.raw_data) == 0:
 	data, data_size = ornot.data_from_file(parameters, data_file)
@@ -61,18 +63,19 @@ with ffi.new("BeamformerFilterParameters *") as filter:
 	# NOTE: bind filter to the parameters of the demodulation shader
 	bp.compute_stage_parameters[demodulate_shader_index] = filter_slot
 
-	if parameters.emission_kinds[0] == ZBP.EmissionKind_Sine:
+	if parameters.emission_kinds[data_frame_index] == ZBP.EmissionKind_Sine:
 		filter.kind = ogl.BeamformerFilterKind_Kaiser
 		filter.kaiser.cutoff_frequency = 0.5 * parameters.emission_parameters[0].frequency
 		filter.kaiser.beta             = 5.65
 		filter.kaiser.length           = 36
 
-	if parameters.emission_kinds[0] == ZBP.EmissionKind_Chirp:
+	if parameters.emission_kinds[data_frame_index] == ZBP.EmissionKind_Chirp:
+		ep = parameters.emission_parameters[data_frame_index]
 		filter.kind    = ogl.BeamformerFilterKind_MatchedChirp
 		filter.complex = 1
-		filter.matched_chirp.duration      = parameters.emission_parameters[0].duration
-		filter.matched_chirp.min_frequency = parameters.emission_parameters[0].min_frequency - bp.demodulation_frequencies[0]
-		filter.matched_chirp.max_frequency = parameters.emission_parameters[0].max_frequency - bp.demodulation_frequencies[0]
+		filter.matched_chirp.duration      = ep.duration
+		filter.matched_chirp.min_frequency = ep.min_frequency - bp.demodulation_frequency
+		filter.matched_chirp.max_frequency = ep.max_frequency - bp.demodulation_frequency
 
 	filter.sampling_frequency = bp.sampling_frequency / 2
 
@@ -89,8 +92,13 @@ output_data = ffi.new("float []", output_count)
 
 bp.output_points[0] = output_points[0]
 bp.output_points[1] = output_points[1]
-bp.das_voxel_transform = ornot.Affine.XZ(lateral_extent[0], axial_extent[0],
-                                         lateral_extent[1], axial_extent[1], 0)
+
+if ornot.RXOrientation(bp.transmit_receive_orientation) == ZBP.RCAOrientation_Rows:
+	bp.das_voxel_transform = ornot.Affine.YZ(lateral_extent[0], axial_extent[0],
+	                                         lateral_extent[1], axial_extent[1], 0)
+else:
+	bp.das_voxel_transform = ornot.Affine.XZ(lateral_extent[0], axial_extent[0],
+	                                         lateral_extent[1], axial_extent[1], 0)
 
 must(ogl.beamformer_beamform_data(bp, data, data_size, output_data, timeout_ms))
 

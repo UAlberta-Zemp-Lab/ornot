@@ -137,7 +137,7 @@ class ornot:
 		bp.contrast_mode          = parameters.contrast_mode
 
 		# TODO(rnp): beamformer currently only handles a single transform
-		bp.xdc_transform          = parameters.transducer_transform_matrices[0:16]
+		bp.xdc_transform          = parameters.transducer_transform_matrices[0][0:16]
 
 		sampling_mode_map = {
 			ZBP.SamplingMode_Standard: ogl.BeamformerSamplingMode_4X,
@@ -159,7 +159,9 @@ class ornot:
 		    bp.acquisition_kind == ZBP.AcquisitionKind_UHERCULES):
 			bp.sparse_elements[0:bp.acquisition_count] = parameters.acquisition_parameters['sparse_elements'][0:bp.acquisition_count]
 
-		if (bp.acquisition_kind == ZBP.AcquisitionKind_HERCULES or
+		if (bp.acquisition_kind == ZBP.AcquisitionKind_FORCES or
+		    bp.acquisition_kind == ZBP.AcquisitionKind_UFORCES or
+		    bp.acquisition_kind == ZBP.AcquisitionKind_HERCULES or
 		    bp.acquisition_kind == ZBP.AcquisitionKind_UHERCULES):
 			bp.single_focus       = 1
 			bp.single_orientation = 1
@@ -187,7 +189,29 @@ class ornot:
 				bp.focal_depths[i]    = sign * math.sqrt(depth * depth + origin * origin)
 				bp.steering_angles[i] = math.atan2(origin, -depth) * 180 / math.pi
 
+		if isinstance(parameters.emission_parameters[data_frame_index], ZBP.EmissionSineParameters):
+			ep = parameters.emission_parameters[data_frame_index]
+			bp.emission_parameters.kind           = ogl.BeamformerEmissionKind_Sine
+			bp.emission_parameters.sine.cycles    = ep.cycles
+			bp.emission_parameters.sine.frequency = ep.frequency
+		elif isinstance(parameters.emission_parameters[data_frame_index], ZBP.EmissionChirpParameters):
+			ep = parameters.emission_parameters[data_frame_index]
+			bp.emission_parameters.kind                = ogl.BeamformerEmissionKind_Chirp
+			bp.emission_parameters.chirp.duration      = ep.duration
+			bp.emission_parameters.chirp.min_frequency = ep.min_frequency
+			bp.emission_parameters.chirp.max_frequency = ep.max_frequency
+		else:
+			raise ValueError("Unsupported Emission Type")
+
 		return bp
+
+	@staticmethod
+	def RXOrientation(tx_rx):
+		return (tx_rx >> 0) & 0x0F
+
+	@staticmethod
+	def TXOrientation(tx_rx):
+		return (tx_rx >> 4) & 0x0F
 
 	class Parameters:
 		@classmethod
