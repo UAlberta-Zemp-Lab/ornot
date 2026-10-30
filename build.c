@@ -4367,6 +4367,11 @@ meta_push_struct_body(MetaContext *ctx, MetaprogramContext *m, MetaEntity *struc
 							stream_append_str8(&sb, p.base_types[meta_entity_enum_base_kind(ctx, type_id)]);
 							if (p.layout_style == MetaPushStructStyle_MATLAB)
 								stream_append_str8(&sb, str8(" % "));
+						} else if (meta_entity_is_enum(ctx, type_id) && resolved_element_count > 1 
+							&& p.layout_style == MetaPushStructStyle_C) {
+							// Note(DD): matlab's c api cannot read c headers with 
+							// fixed-sized arrays of enumerations
+							stream_append_str8(&sb, p.base_types[meta_entity_enum_base_kind(ctx, type_id)]);
 						} else {
 							if (p.layout_style == MetaPushStructStyle_MATLAB) {
 								// NOTE(rnp): matlab has really broken requirements around sub structures
